@@ -10,6 +10,7 @@ export interface CartItem {
     quantity: number;
     unitPrice: number;
     subtotal: number;
+    image?: string;
 }
 
 interface CartState {

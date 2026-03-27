@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import LogoTees from '@/assets/logo/LogoTeesFactorynegro.png';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '@/store/authStore';
 
 /**
  * Pantalla de carga ultraligera. Utiliza una animación "Curtain" de subida (y) 
@@ -58,7 +59,7 @@ const SplashScreen = forwardRef<HTMLDivElement, {}>((props, ref) => {
         <div className="flex flex-col items-center gap-4">
           <div className="w-5 h-5 border-[2px] border-zinc-200 border-t-zinc-900 rounded-full animate-spin" />
           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.25em]">
-            Cargando Portal
+            {useAuthStore(state => state.globalLoadingText)}
           </span>
         </div>
       </motion.div>

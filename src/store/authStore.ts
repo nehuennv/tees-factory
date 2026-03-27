@@ -12,22 +12,24 @@ interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
     isGlobalLoading: boolean;
-    setGlobalLoading: (val: boolean) => void;
+    globalLoadingText: string;
+    setGlobalLoading: (val: boolean, text?: string) => void;
     login: (role: Role) => void;
     logout: () => void;
 }
 
 const mockUsers: Record<Role, User> = {
-    ADMIN: { id: 'usr_admin', name: 'Héctor (Admin)', role: 'ADMIN' },
+    ADMIN: { id: 'usr_admin', name: 'Héctor', role: 'ADMIN' },
     CLIENT: { id: 'usr_client', name: 'Cliente Mayorista', role: 'CLIENT' },
-    SELLER: { id: 'usr_seller', name: 'Vendedor Vantra', role: 'SELLER' },
+    SELLER: { id: 'usr_seller', name: 'Vendedor', role: 'SELLER' },
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     isAuthenticated: false,
     isGlobalLoading: false,
-    setGlobalLoading: (val) => set({ isGlobalLoading: val }),
+    globalLoadingText: 'Cargando Portal',
+    setGlobalLoading: (val, text = 'Cargando Portal') => set({ isGlobalLoading: val, globalLoadingText: text }),
     login: (role) => {
         const user = mockUsers[role];
         set({ user, isAuthenticated: true });

@@ -12,6 +12,6 @@ export interface Product {
     image?: string;
     stockStatus: 'HIGH' | 'LOW' | 'OUT_OF_STOCK';
     totalStock: number;
-    sizes?: string;
+    sizes?: string[];
     colors?: number;
 }

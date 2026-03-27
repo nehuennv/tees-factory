@@ -174,7 +174,8 @@ export function ProductDetailPage() {
                     size: size,
                     quantity: qty,
                     unitPrice: quality.basePrice,
-                    subtotal: qty * quality.basePrice
+                    subtotal: qty * quality.basePrice,
+                    image: product.image
                 });
             }
         });
@@ -204,31 +205,55 @@ export function ProductDetailPage() {
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 h-full bg-transparent overflow-hidden p-6 lg:p-8">
 
             {/* --- Left Column: Product Info --- */}
-            <div className="w-full lg:w-[35%] xl:w-[30%] flex flex-col gap-6 overflow-y-auto pr-2 pb-10">
+            <div className="w-full lg:w-[38%] xl:w-[32%] flex flex-col gap-6 overflow-y-auto pr-2 pb-10 custom-scrollbar">
 
-                <div className="flex flex-col bg-white rounded-3xl overflow-hidden border border-zinc-200/60 shadow-sm">
-                    <div className="w-full aspect-square bg-zinc-100">
-                        <ProductImage src={product.image} alt={product.name} />
-                    </div>
-
-                    <div className="p-6 flex flex-col gap-3">
-                        <span className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">
-                            {product.collection}
-                        </span>
-                        <h1 className="text-2xl font-black text-zinc-900 leading-tight">
-                            {product.name}
-                        </h1>
-                        <div className="flex items-center gap-3 mt-1">
-                            <span className="bg-zinc-100 px-2.5 py-1 rounded-md text-xs font-semibold text-zinc-600 border border-zinc-200/50">
-                                SKU: {product.id}
-                            </span>
-                            <span className="text-sm font-bold text-zinc-500">
-                                <span className="text-zinc-900">{formatPrice(activeQuality.basePrice)}</span> / unidad
+                <div className="flex flex-col bg-white rounded-[2rem] overflow-hidden border border-zinc-200/60 shadow-sm transition-all duration-300 hover:shadow-md">
+                    {/* Contenedor de Imagen con mejor proporción para ropa y bordes redondeados */}
+                    <div className="w-full aspect-[3/4] bg-zinc-50/50 relative group/img overflow-hidden rounded-[2rem] border border-zinc-100">
+                        <ProductImage
+                            src={product.image}
+                            alt={product.name}
+                            objectContain={false}
+                            className="h-full w-full"
+                        />
+                        <div className="absolute top-4 left-4">
+                            <span className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest text-zinc-400 uppercase border border-zinc-200/50 shadow-sm">
+                                {product.collection}
                             </span>
                         </div>
-                        <p className="text-sm text-zinc-500 mt-2 leading-relaxed">
-                            {product.description}
-                        </p>
+                    </div>
+
+                    <div className="p-8 pt-4 flex flex-col gap-6">
+                        {/* Título y SKU */}
+                        <div className="space-y-2">
+                            <h1 className="text-3xl font-black text-zinc-900 leading-[1.1] tracking-tight">
+                                {product.name}
+                            </h1>
+                            <span className="inline-block bg-zinc-100 px-2 py-0.5 rounded text-[10px] font-bold text-zinc-400 border border-zinc-200/30 uppercase tracking-widest">
+                                SKU: {product.id}
+                            </span>
+                        </div>
+
+                        {/* PRECIO: Más suave y elegante */}
+                        <div className="bg-zinc-50 rounded-2xl p-6 text-zinc-900 border border-zinc-200/60 shadow-sm transform transition-transform hover:scale-[1.01] duration-300">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 opacity-80">Precio Mayorista</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-4xl font-black tracking-tighter text-zinc-900">
+                                        {formatPrice(activeQuality.basePrice)}
+                                    </span>
+                                    <span className="text-zinc-500 font-bold text-sm">/ unidad</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Descripción sin recortes y con wrap asegurado */}
+                        <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Descripción del Producto</h4>
+                            <p className="text-[15px] text-zinc-500 leading-relaxed font-medium break-words">
+                                {product.description}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

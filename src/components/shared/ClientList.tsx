@@ -1,6 +1,6 @@
 import React from 'react';
 import { MOCK_CLIENTS, type Client } from '@/mocks/clients';
-import { Phone, ShoppingBag, Info, MoreVertical, Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingBag, MoreHorizontal, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import {
     Table,
     TableBody,
@@ -16,16 +16,13 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { AssignSellerModal } from '@/features/admin/components/AssignSellerModal';
+
 
 export interface ClientListProps {
     role: 'ADMIN' | 'SELLER';
     clients?: Client[];
+    currentUserId?: string;
 }
 
 const formatCurrency = (amount: number) => {
@@ -40,161 +37,145 @@ const getInitials = (name: string) => {
     return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 };
 
-const SellerClientCard = ({ client }: { client: Client }) => {
-    const isDebt = client.balance < 0;
-
-    return (
-        <div className="group bg-white border border-zinc-200/60 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full">
-
-            {/* Header: Avatar + Info */}
-            <div className="flex justify-between items-start mb-5">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-sm font-bold text-zinc-600 shrink-0">
-                        {getInitials(client.name)}
-                    </div>
-                    <div className="flex flex-col">
-                        <h3 className="text-sm font-bold text-zinc-900 leading-none mb-1.5">{client.name}</h3>
-                        <span className="text-[10px] font-medium text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded-lg w-fit">
-                            CUIT: {client.cuit}
-                        </span>
-                    </div>
-                </div>
-
-                {client.notes && (
-                    <TooltipProvider delayDuration={100}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 cursor-help transition-colors">
-                                    <Info className="h-4 w-4" />
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="bg-zinc-900 text-zinc-50 max-w-xs text-xs p-2.5">
-                                {client.notes}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
-            </div>
-
-            {/* Saldo visualmente destacado como un "Badge" */}
-            <div className="mt-auto mb-5">
-                <div className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold border ${isDebt ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                    }`}>
-                    {formatCurrency(client.balance)}
-                </div>
-            </div>
-
-            {/* Acciones */}
-            <div className="flex items-center gap-2 pt-4 border-t border-zinc-100">
-                <Button
-                    variant="outline"
-                    className="h-9 w-9 p-0 rounded-lg border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 shrink-0 transition-colors"
-                    onClick={() => window.open(`https://wa.me/${client.phone.replace(/[^0-9]/g, '')}`, '_blank')}
-                >
-                    <Phone className="h-4 w-4" />
-                </Button>
-                <Button className="flex-1 h-9 rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 text-xs font-semibold shadow-sm transition-transform active:scale-95">
-                    <ShoppingBag className="h-3.5 w-3.5 mr-2 opacity-70" />
-                    Tomar Pedido
-                </Button>
-            </div>
-        </div>
-    );
+const truncateText = (text: string, maxLength: number = 30) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
 };
 
-const AdminClientTable = ({ clients }: { clients: Client[] }) => {
+const AdminClientTable = ({ clients, role }: { clients: Client[], role: 'ADMIN' | 'SELLER' }) => {
     return (
-        <div className="w-full bg-white border border-zinc-200/60 rounded-xl shadow-sm overflow-hidden">
-            <Table>
-                <TableHeader>
-                    <TableRow className="bg-zinc-50/50 hover:bg-zinc-50/50 border-b border-zinc-100">
-                        <TableHead className="h-11 px-5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Cliente</TableHead>
-                        <TableHead className="h-11 px-5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Contacto</TableHead>
-                        <TableHead className="h-11 px-5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-right">Saldo</TableHead>
-                        <TableHead className="h-11 w-[50px]"></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {clients.length > 0 ? clients.map((client) => {
-                        const isDebt = client.balance < 0;
-                        return (
-                            <TableRow key={client.id} className="hover:bg-zinc-50/80 border-b border-zinc-50 transition-colors group">
-                                <TableCell className="px-5 py-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-xs font-bold text-zinc-600 shrink-0">
-                                            {getInitials(client.name)}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-sm font-semibold text-zinc-900">{client.name}</span>
-                                                {client.notes && (
-                                                    <TooltipProvider delayDuration={100}>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Info className="h-3.5 w-3.5 text-zinc-300 hover:text-zinc-500 cursor-help" />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent className="bg-zinc-900 text-zinc-50 text-xs max-w-xs p-2.5">
-                                                                {client.notes}
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                )}
-                                            </div>
-                                            <span className="text-[11px] text-zinc-400 mt-0.5">CUIT: {client.cuit}</span>
-                                        </div>
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Contacto</TableHead>
+                    <TableHead>Observaciones</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Saldo</TableHead>
+                    <TableHead className="w-[80px] text-right pr-6">Acciones</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {clients.length > 0 ? clients.map((client: Client) => {
+                    const isDebt = client.balance < 0;
+                    return (
+                        <TableRow key={client.id}>
+                            <TableCell>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-xs font-bold text-zinc-600 shrink-0">
+                                        {getInitials(client.name)}
                                     </div>
-                                </TableCell>
-                                <TableCell className="px-5 py-3 align-middle">
                                     <div className="flex flex-col">
-                                        <span className="text-xs font-medium text-zinc-700">{client.phone}</span>
-                                        <span className="text-[11px] text-zinc-400 mt-0.5">{client.email}</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-sm font-semibold text-zinc-900">{client.name}</span>
+                                        </div>
+                                        <span className="text-[11px] text-zinc-400 mt-0.5">CUIT: {client.cuit}</span>
                                     </div>
-                                </TableCell>
-                                <TableCell className="px-5 py-3 align-middle text-right">
-                                    <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold border ${isDebt ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                        }`}>
-                                        {formatCurrency(client.balance)}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="px-2 py-3 align-middle text-right">
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-medium text-zinc-700">{client.phone}</span>
+                                    <span className="text-[11px] text-zinc-400 mt-0.5">{client.email}</span>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                {client.notes ? (
+                                    <span className="text-zinc-500 text-[13px] italic">
+                                        "{truncateText(client.notes)}"
+                                    </span>
+                                ) : (
+                                    <span className="text-zinc-300 text-sm">-</span>
+                                )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold border ${isDebt ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                    }`}>
+                                    {formatCurrency(client.balance)}
+                                </div>
+                            </TableCell>
+                            <TableCell className="text-right pr-4">
+                                <div className="flex items-center justify-end">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-900 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <MoreVertical className="h-4 w-4" />
+                                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-zinc-100 transition-colors">
+                                                <span className="sr-only">Abrir menú</span>
+                                                <MoreHorizontal className="h-4 w-4 text-zinc-400 hover:text-zinc-900" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-40 bg-white border-zinc-200 rounded-xl shadow-md">
-                                            <DropdownMenuItem className="text-xs text-zinc-700 cursor-pointer focus:bg-zinc-50">Ver Cuenta Corriente</DropdownMenuItem>
-                                            <DropdownMenuItem className="text-xs text-zinc-700 cursor-pointer focus:bg-zinc-50">Editar Datos</DropdownMenuItem>
-                                            <DropdownMenuItem className="text-xs text-zinc-700 cursor-pointer focus:bg-zinc-50">Asignar a Vendedor</DropdownMenuItem>
+                                        <DropdownMenuContent align="end" className="w-52 bg-white border-zinc-200 rounded-xl shadow-lg p-1.5">
+                                            <DropdownMenuItem className="flex items-center gap-2 text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg transition-colors">
+                                                <ShoppingBag className="w-3.5 h-3.5 text-zinc-400 opacity-80" />
+                                                Nuevo Pedido
+                                            </DropdownMenuItem>
+                                            <div className="h-px bg-zinc-100 my-1 mx-1" />
+                                            <DropdownMenuItem className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg">Ver Cuenta Corriente</DropdownMenuItem>
+                                            <DropdownMenuItem className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg">Editar Datos</DropdownMenuItem>
+                                            {role === 'ADMIN' && (
+                                                <DropdownMenuItem
+                                                    className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg"
+                                                    onClick={() => {
+                                                        // This will be handled by the parent state
+                                                        (window as any).openAssignSellerModal?.(client);
+                                                    }}
+                                                >
+                                                    Asignar a Vendedor
+                                                </DropdownMenuItem>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
-                                </TableCell>
-                            </TableRow>
-                        );
-                    }) : (
-                        <TableRow>
-                            <TableCell colSpan={4} className="h-32 text-center text-sm text-zinc-500">
-                                No se encontraron clientes que coincidan con la búsqueda.
+                                </div>
                             </TableCell>
                         </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </div>
+                    );
+                }) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-32 text-center text-sm text-zinc-500">
+                            No se encontraron clientes que coincidan con la búsqueda.
+                        </TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
     );
 };
 
-export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLIENTS }) => {
+export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLIENTS, currentUserId }) => {
     const [currentPage, setCurrentPage] = React.useState(1);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
 
-    // Paginación optimizada para 270+ clientes (B2B): 48 tarjetas (múltiplo de 4) o 50 filas de tabla
-    const itemsPerPage = role === 'SELLER' ? 48 : 50;
+    // Estado para el modal de asignación
+    const [isAssignModalOpen, setIsAssignModalOpen] = React.useState(false);
+    const [selectedClient, setSelectedClient] = React.useState<Client | null>(null);
+
+    // Exponer el modal al componente hijo (AdminClientTable) mediante window para evitar prop drilling complejo en este mock
+    // En una app real usaríamos Context o pasaríamos callbacks.
+    React.useEffect(() => {
+        (window as any).openAssignSellerModal = (client: Client) => {
+            setSelectedClient(client);
+            setIsAssignModalOpen(true);
+        };
+        return () => {
+            delete (window as any).openAssignSellerModal;
+        };
+    }, []);
+
+    const handleAssign = (sellerId: string | null) => {
+        console.log(`Asignando vendedor ${sellerId} al cliente ${selectedClient?.id}`);
+        // Aquí iría la lógica de actualización
+        setIsAssignModalOpen(false);
+    };
+
+    // Paginación optimizada para 270+ clientes (B2B): 50 filas de tabla
+    const itemsPerPage = 50;
 
     const filteredAndSortedClients = React.useMemo(() => {
         let result = [...clients];
+
+        // Filtrado por rol: El vendedor solo ve sus clientes asignados
+        if (role === 'SELLER' && currentUserId) {
+            result = result.filter(c => c.sellerId === currentUserId);
+        }
 
         if (searchTerm) {
             const lowerQuery = searchTerm.toLowerCase();
@@ -231,23 +212,36 @@ export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLI
 
     return (
         <div className="w-full flex flex-col gap-5">
+            {selectedClient && (
+                <AssignSellerModal
+                    isOpen={isAssignModalOpen}
+                    onClose={() => setIsAssignModalOpen(false)}
+                    clientName={selectedClient.name}
+                    onAssign={handleAssign}
+                />
+            )}
             {/* Controles: Búsqueda y Filtros */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-zinc-200/60 shadow-sm">
-                <div className="relative w-full sm:w-80">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-2">
+                <div className="relative w-full sm:max-w-sm">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
                     <input
                         type="text"
                         placeholder="Buscar por nombre, CUIT o email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-colors"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-300 transition-all placeholder:text-zinc-400 text-zinc-800 shadow-sm"
                     />
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                    {/* Filtros visuales estandarizados */}
+                    <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
+                        Estado <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
+                    </Button>
+                    <div className="w-px h-6 bg-zinc-200 mx-1 hidden sm:block shrink-0"></div>
                     <Button
                         variant="outline"
                         onClick={toggleSort}
-                        className="w-full sm:w-auto h-10 rounded-lg border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 shadow-sm transition-all"
+                        className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0 shadow-sm"
                     >
                         <ArrowUpDown className="h-4 w-4 mr-2" />
                         Ordenar {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
@@ -255,26 +249,8 @@ export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLI
                 </div>
             </div>
 
-            {/* Vista condicional del Listado */}
-            {role === 'SELLER' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {paginatedClients.length > 0 ? (
-                        paginatedClients.map((client) => (
-                            <SellerClientCard key={client.id} client={client} />
-                        ))
-                    ) : (
-                        <div className="col-span-full py-20 text-center flex flex-col items-center justify-center">
-                            <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mb-4">
-                                <Search className="h-8 w-8 text-zinc-400" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-zinc-900 mb-1">No hay resultados</h3>
-                            <p className="text-sm text-zinc-500">No encontramos ningún cliente que coincida con tu búsqueda.</p>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <AdminClientTable clients={paginatedClients} />
-            )}
+            {/* Vista unificada: Tabla para ambos roles */}
+            <AdminClientTable clients={paginatedClients} role={role} />
 
             {/* Paginación */}
             {totalPages > 1 && (

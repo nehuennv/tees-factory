@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Package, LayoutGrid, Database, Users, LogOut, Wallet, Receipt, Boxes, ShoppingBag, ClipboardList } from 'lucide-react';
+import { LayoutGrid, Database, Users, LogOut, Wallet, Receipt, ClipboardCheck, ShoppingBag, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import logoUrl from '@/assets/logo/LogoTeesFactorynegro.png';
 import { useAuthStore } from '@/store/authStore';
 import type { Role } from '@/store/authStore';
 import { Modal } from '@/components/shared/Modal';
@@ -18,7 +19,7 @@ type NavItemConfig = {
 const NAV_ITEMS: NavItemConfig[] = [
     // ADMIN
     { to: '/admin', icon: LayoutGrid, label: 'Dashboard', allowedRoles: ['ADMIN'] },
-    { to: '/admin/logistica', icon: Boxes, label: 'Tablero de Preparación', allowedRoles: ['ADMIN'] },
+    { to: '/admin/logistica', icon: ClipboardCheck, label: 'Tablero de Preparación', allowedRoles: ['ADMIN'] },
     { to: '/admin/tesoreria', icon: Wallet, label: 'Tesorería', allowedRoles: ['ADMIN'] },
     { to: '/admin/clientes', icon: Users, label: 'Clientes', allowedRoles: ['ADMIN'] },
     { to: '/admin/inventario', icon: Database, label: 'Inventario/Catálogo', aliases: ['/admin/inventario'], allowedRoles: ['ADMIN'] },
@@ -36,14 +37,27 @@ const NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export default function Sidebar() {
-    const { user, logout } = useAuthStore();
+    const { user, logout, setGlobalLoading } = useAuthStore();
     const navigate = useNavigate();
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-    const handleLogoutConfirm = () => {
+    const handleLogoutConfirm = async () => {
         setIsLogoutModalOpen(false);
+
+        // Subimos el telón con texto personalizado
+        setGlobalLoading(true, 'Cerrando Sesión...');
+
+        // Esperamos a que termine de cerrar visualmente
+        await new Promise((resolve) => setTimeout(resolve, 600));
+
+        // Vaciamos credenciales y volvemos al login
         logout();
-        navigate('/login');
+        navigate('/login', { replace: true });
+
+        // Retrasamos el fin del loader para evitar ver el salto brusco
+        setTimeout(() => {
+            setGlobalLoading(false);
+        }, 150);
     };
 
     // Filter items based on the current user's role
@@ -53,8 +67,8 @@ export default function Sidebar() {
         <aside className="w-20 lg:w-24 h-full bg-white border border-zinc-200/60 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col items-center py-6 justify-between flex-shrink-0 z-20">
             <div className="flex flex-col items-center gap-8 w-full">
                 {/* App Logo */}
-                <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white shadow-md cursor-pointer hover:bg-zinc-800 transition-all duration-300 hover:scale-105 active:scale-95">
-                    <Package className="w-6 h-6" />
+                <div className="w-12 h-12 bg-[#181516] rounded-xl flex items-center justify-center shadow-sm cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 p-1.5">
+                    <img src={logoUrl} alt="Tees Factory Logo" className="w-full h-full object-contain" />
                 </div>
 
                 {/* Navigation Icons */}
@@ -145,7 +159,7 @@ function NavItem({ to, icon: Icon, label, aliases }: NavItemProps) {
                     "transition-transform duration-300",
                     isActive ? "scale-100" : "group-hover:scale-110"
                 )}>
-                    <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                    <Icon size={22} strokeWidth={2} />
                 </div>
             </NavLink>
 

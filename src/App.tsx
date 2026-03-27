@@ -4,11 +4,17 @@ import MainLayout from "@/components/layout/MainLayout"
 import { CatalogPage } from "@/features/catalog/pages/CatalogPage"
 import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage"
 import { CheckoutPage } from "@/features/checkout/pages/CheckoutPage"
-import LoginPage from "@/pages/auth/LoginPage"
+import { LoginPageB2B } from "@/features/auth/pages/LoginPageB2B"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { useAuthStore } from "@/store/authStore"
 import SplashScreen from "@/components/shared/SplashScreen"
 import ClientsPage from "@/pages/ClientsPage"
+import { CurrentAccountPage } from "@/features/client/pages/CurrentAccountPage"
+import { CatalogManagementPage } from "@/features/admin/pages/CatalogManagementPage"
+import { OrdersBoardPage } from "@/features/admin/pages/OrdersBoardPage"
+import { TreasuryPage } from "@/features/admin/pages/TreasuryPage"
+import { AdminDashboardPage } from "@/features/admin/pages/AdminDashboardPage"
+
 function DummyPage({ title, description }: { title: string, description: string }) {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full min-h-[500px] text-zinc-500 overflow-y-auto">
@@ -50,27 +56,27 @@ function App() {
       </AnimatePresence>
       <Routes>
         <Route path="/" element={<RootRedirect />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPageB2B />} />
 
         {/* ADMIN ROUTES */}
         <Route path="/admin" element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
-            <MainLayout headerProps={{ title: 'Admin Dashboard' }}>
-              <DummyPage title="Admin Dashboard" description="Resumen principal para el administrador." />
+            <MainLayout headerProps={{ title: 'Visión General', tooltipInfo: 'Resumen de operaciones de Tees Factory.' }}>
+              <AdminDashboardPage />
             </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/admin/logistica" element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
-            <MainLayout headerProps={{ title: 'Tablero de Preparación', searchPlaceholder: 'Buscar pedido...' }}>
-              <DummyPage title="Tablero de Preparación" description="Tablero de preparación de pedidos." />
+            <MainLayout headerProps={{ title: 'Tablero de Preparación', tooltipInfo: 'Arrastra las tarjetas para cambiar el estado logístico de los pedidos.' }}>
+              <OrdersBoardPage />
             </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/admin/tesoreria" element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
-            <MainLayout headerProps={{ title: 'Tesorería' }}>
-              <DummyPage title="Tesorería" description="Aprobación de pagos y resumen financiero." />
+            <MainLayout headerProps={{ title: 'Tesorería', tooltipInfo: 'Revisión técnica de transferencias y conciliación de pagos.' }}>
+              <TreasuryPage />
             </MainLayout>
           </ProtectedRoute>
         } />
@@ -79,6 +85,7 @@ function App() {
             <MainLayout headerProps={{
               title: 'Gestión de Clientes',
               searchPlaceholder: 'Buscar cliente...',
+              tooltipInfo: 'Directorio completo de cuentas B2B activas e inactivas.',
               primaryAction: {
                 label: '+ Nuevo Cliente',
                 onClick: () => alert('Nuevo Cliente')
@@ -92,18 +99,9 @@ function App() {
           <ProtectedRoute allowedRoles={['ADMIN']}>
             <MainLayout headerProps={{
               title: 'Gestión de Inventario',
-              searchPlaceholder: 'Buscar por SKU o Nombre...',
-              tabs: [
-                { id: 'prod', label: 'Productos', isActive: true },
-                { id: 'cat', label: 'Categorías' },
-                { id: 'stock', label: 'Ajustes de Stock' },
-              ],
-              primaryAction: {
-                label: '+ Nuevo Producto',
-                onClick: () => alert('Nuevo Producto Clicked')
-              }
+              tooltipInfo: 'Administra el catálogo, activa productos y ajusta el stock de matriz.'
             }}>
-              <CatalogPage />
+              <CatalogManagementPage />
             </MainLayout>
           </ProtectedRoute>
         } />
@@ -111,14 +109,17 @@ function App() {
         {/* CLIENT ROUTES */}
         <Route path="/portal" element={
           <ProtectedRoute allowedRoles={['CLIENT']}>
-            <MainLayout headerProps={{ title: 'Resumen y Deuda' }}>
-              <DummyPage title="Resumen y Deuda" description="Estado de cuenta del cliente y límite disponible." />
+            <MainLayout headerProps={{
+              title: 'Mi Cuenta Corriente',
+              tooltipInfo: 'Resumen de tu saldo deudor, historial de movimientos y reporte de pagos.'
+            }}>
+              <CurrentAccountPage />
             </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/portal/catalogo" element={
           <ProtectedRoute allowedRoles={['CLIENT']}>
-            <MainLayout headerProps={{ title: 'Catálogo' }}>
+            <MainLayout headerProps={{ title: 'Catálogo', tooltipInfo: 'Navegá todo nuestro catálogo de productos.' }}>
               <CatalogPage />
             </MainLayout>
           </ProtectedRoute>
@@ -132,14 +133,14 @@ function App() {
         } />
         <Route path="/portal/pedidos" element={
           <ProtectedRoute allowedRoles={['CLIENT']}>
-            <MainLayout headerProps={{ title: 'Mis Pedidos', searchPlaceholder: 'Buscar en mis pedidos...' }}>
+            <MainLayout headerProps={{ title: 'Mis Pedidos', searchPlaceholder: 'Buscar en mis pedidos...', tooltipInfo: 'Historial completo de tus compras.' }}>
               <DummyPage title="Mis Pedidos" description="Historial de compras." />
             </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/portal/checkout" element={
           <ProtectedRoute allowedRoles={['CLIENT']}>
-            <MainLayout headerProps={{ title: 'Tu Pedido' }}>
+            <MainLayout headerProps={{ title: 'Tu Pedido', tooltipInfo: 'Resumen final de la compra.' }}>
               <CheckoutPage />
             </MainLayout>
           </ProtectedRoute>
@@ -148,6 +149,7 @@ function App() {
           <ProtectedRoute allowedRoles={['CLIENT']}>
             <MainLayout headerProps={{
               title: 'Reportar Pago',
+              tooltipInfo: 'Área para informar transferencias e impactar pagos.',
               primaryAction: {
                 label: 'Subir Comprobante',
                 onClick: () => alert('Subir Comprobante')
@@ -164,6 +166,7 @@ function App() {
             <MainLayout headerProps={{
               title: 'Mi Cartera de Clientes',
               searchPlaceholder: 'Buscar cliente...',
+              tooltipInfo: 'Directorio asignado de comercios B2B.',
               primaryAction: {
                 label: '+ Nuevo Cliente',
                 onClick: () => alert('Nuevo Cliente')
@@ -175,14 +178,14 @@ function App() {
         } />
         <Route path="/ventas/catalogo" element={
           <ProtectedRoute allowedRoles={['SELLER']}>
-            <MainLayout headerProps={{ title: 'Catálogo de Vendedores', searchPlaceholder: 'Buscar producto...' }}>
+            <MainLayout headerProps={{ title: 'Catálogo de Vendedores', searchPlaceholder: 'Buscar producto...', tooltipInfo: 'Catálogo general. Registrá pedidos a nombre de tus clientes.' }}>
               <CatalogPage />
             </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/ventas/catalogo/:clientId" element={
           <ProtectedRoute allowedRoles={['SELLER']}>
-            <MainLayout headerProps={{ title: 'Tomar Pedido para Cliente', searchPlaceholder: 'Buscar producto...' }}>
+            <MainLayout headerProps={{ title: 'Tomar Pedido para Cliente', searchPlaceholder: 'Buscar producto...', tooltipInfo: 'Armado de cotización para cliente específico.' }}>
               <CatalogPage />
             </MainLayout>
           </ProtectedRoute>

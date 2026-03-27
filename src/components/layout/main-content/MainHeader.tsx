@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { CartWidget } from './CartWidget';
+import { InfoTooltip } from '@/components/shared/InfoTooltip';
 
 export interface HeaderTab {
     id: string;
@@ -24,6 +25,7 @@ export interface MainHeaderProps {
         onClick?: () => void;
     };
     customActions?: React.ReactNode;
+    tooltipInfo?: string;
 }
 
 export default function MainHeader({
@@ -34,7 +36,8 @@ export default function MainHeader({
     searchPlaceholder,
     onSearch,
     primaryAction,
-    customActions
+    customActions,
+    tooltipInfo
 }: MainHeaderProps) {
     const navigate = useNavigate();
     const { user } = useAuthStore();
@@ -51,7 +54,16 @@ export default function MainHeader({
                         {title}
                     </button>
                 ) : (
-                    <h1 className="text-xl font-bold text-zinc-900">{title}</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-xl font-bold text-zinc-900">{title}</h1>
+                        {tooltipInfo && (
+                            <InfoTooltip
+                                content={tooltipInfo}
+                                align="start"
+                                className="hidden md:flex ml-1 translate-y-[1px]"
+                            />
+                        )}
+                    </div>
                 )}
 
                 {tabs.length > 0 && (

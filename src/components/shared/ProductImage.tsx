@@ -5,15 +5,20 @@ interface ProductImageProps {
     src?: string;
     alt: string;
     className?: string;
+    objectContain?: boolean;
 }
 
 /**
  * Imagen de producto con fallback elegante.
- * Si la URL está vacía o falla al cargar, muestra un placeholder con ícono.
- * Reutilizable en cualquier contexto donde se renderice una foto de prenda.
  */
-export function ProductImage({ src, alt, className = '' }: ProductImageProps) {
+export function ProductImage({ src, alt, className = '', objectContain = false }: ProductImageProps) {
     const [error, setError] = useState(false);
+    const handleError = () => {
+        if (!error) {
+            console.warn(`⚠️ Error de imagen: URL [${src}] falló para el producto [${alt}]`);
+            setError(true);
+        }
+    };
 
     if (!src || error) {
         return (
@@ -28,8 +33,8 @@ export function ProductImage({ src, alt, className = '' }: ProductImageProps) {
         <img
             src={src}
             alt={alt}
-            onError={() => setError(true)}
-            className={`w-full h-full object-cover mix-blend-multiply transition-transform duration-700 group-hover:scale-105 ${className}`}
+            onError={handleError}
+            className={`w-full h-full ${objectContain ? 'object-contain' : 'object-cover'} mix-blend-multiply transition-transform duration-700 group-hover:scale-105 ${className}`}
         />
     );
 }

@@ -12,8 +12,10 @@ export const ClientsPage: React.FC = () => {
     const role = user.role === 'ADMIN' ? 'ADMIN' : 'SELLER';
 
     return (
-        <div className="w-full h-full flex flex-col p-2">
-            <ClientList role={role} />
+        <div className="h-full w-full overflow-y-auto bg-zinc-50 p-6">
+            <div className="w-full mx-auto pb-20">
+                <ClientList role={role} currentUserId={user.id} />
+            </div>
         </div>
     );
 };
