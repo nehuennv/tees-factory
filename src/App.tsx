@@ -19,19 +19,7 @@ import { TreasuryPage } from "@/features/admin/pages/TreasuryPage"
 import { AdminDashboardPage } from "@/features/admin/pages/AdminDashboardPage"
 import { NewClientModal } from "@/features/admin/components/NewClientModal"
 
-function DummyPage({ title, description }: { title: string, description: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full w-full min-h-[500px] text-zinc-500 overflow-y-auto">
-      <div className="w-16 h-16 bg-zinc-100 border border-zinc-200 rounded-2xl mb-6 flex items-center justify-center text-zinc-400 transition-transform duration-300 hover:scale-105">
-        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-      </div>
-      <h2 className="text-xl font-bold text-zinc-900 mb-2">{title}</h2>
-      <p className="max-w-md text-center">{description}</p>
-    </div>
-  );
-}
+
 
 // Root component to route authenticated users to their home
 function RootRedirect() {

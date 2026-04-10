@@ -7,25 +7,26 @@ import {
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Package } from 'lucide-react';
-import type { Order, OrderStatus } from '@/mocks/orders';
+// Replaced Order with any to accommodate backend flexible object
 
 interface OrderDetailModalProps {
-    order: Order | null;
+    order: any | null;
     isOpen: boolean;
     onClose: () => void;
 }
 
-const statusMap: Record<OrderStatus, { label: string; color: string }> = {
-    NEW: { label: 'Nuevo', color: 'bg-zinc-200 text-zinc-800' },
-    PAID: { label: 'Pagado', color: 'bg-blue-100 text-blue-800' },
-    PREPARING: { label: 'En Preparación', color: 'bg-orange-100 text-orange-800' },
-    DISPATCHED: { label: 'Despachado', color: 'bg-green-100 text-green-800' },
+const statusMap: Record<string, { label: string; color: string }> = {
+    PENDING: { label: 'Pendiente', color: 'bg-zinc-200 text-zinc-800' },
+    CONFIRMED: { label: 'Aprobado', color: 'bg-blue-100 text-blue-800' },
+    SHIPPED: { label: 'Despachado', color: 'bg-amber-100 text-amber-800' },
+    DELIVERED: { label: 'Entregado', color: 'bg-green-100 text-green-800' },
+    CANCELLED: { label: 'Cancelado', color: 'bg-red-100 text-red-800' },
 };
 
 export function OrderDetailModal({ order, isOpen, onClose }: OrderDetailModalProps) {
     if (!order) return null;
 
-    const statusInfo = statusMap[order.status];
+    const statusInfo = statusMap[order.status as keyof typeof statusMap] || { label: order.status, color: 'bg-zinc-200 text-zinc-800' };
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -39,7 +40,7 @@ export function OrderDetailModal({ order, isOpen, onClose }: OrderDetailModalPro
                             </span>
                         </div>
                         <DialogDescription className="mt-0.5 text-zinc-500">
-                            Cliente: <strong className="text-zinc-900 font-semibold">{order.clientName}</strong> · Fecha: {order.date}
+                            Cliente: <strong className="text-zinc-900 font-semibold">{order.client?.name || order.clientName || 'Consumidor Final'}</strong> · Fecha: {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : order.date}
                         </DialogDescription>
                     </div>
                 </DialogHeader>
@@ -64,20 +65,20 @@ export function OrderDetailModal({ order, isOpen, onClose }: OrderDetailModalPro
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {order.items.map((item) => (
-                                        <TableRow key={item.id} className="hover:bg-zinc-50/50">
+                                    {(order.items || order.orderDetails || []).map((item: any, idx: number) => (
+                                        <TableRow key={item.id || idx} className="hover:bg-zinc-50/50">
                                             <TableCell>
-                                                <p className="font-semibold text-zinc-900">{item.productName}</p>
-                                                <p className="text-xs text-zinc-500">{item.quality}</p>
+                                                <p className="font-semibold text-zinc-900">{item.variant?.product?.name || item.productName || 'Producto Múltiple'}</p>
+                                                <p className="text-xs text-zinc-500">{item.variant?.product?.category || item.quality || 'N/A'}</p>
                                             </TableCell>
-                                            <TableCell className="text-zinc-700">{item.color}</TableCell>
-                                            <TableCell className="font-medium text-zinc-900">{item.size}</TableCell>
+                                            <TableCell className="text-zinc-700">{item.variant?.colorName || item.color || '-'}</TableCell>
+                                            <TableCell className="font-medium text-zinc-900">{item.variant?.size || item.size || '-'}</TableCell>
                                             <TableCell className="text-right font-medium text-zinc-900">{item.quantity}</TableCell>
                                             <TableCell className="text-right text-zinc-600">
-                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(item.unitPrice)}
+                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(item.unitPrice || item.price || 0)}
                                             </TableCell>
                                             <TableCell className="text-right font-semibold text-zinc-900">
-                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(item.unitPrice * item.quantity)}
+                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format((item.unitPrice || item.price || 0) * item.quantity)}
                                             </TableCell>
                                         </TableRow>
                                     ))}

@@ -18,7 +18,7 @@ interface AdminProduct extends Product {
 
 export function CatalogManagementPage() {
     const [products, setProducts] = useState<AdminProduct[]>([]);
-    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+    const [_isLoadingProducts, setIsLoadingProducts] = useState(true);
 
     useEffect(() => {
         setIsLoadingProducts(true);

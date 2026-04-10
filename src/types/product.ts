@@ -11,7 +11,7 @@ export interface Product {
     category: string;
     basePrice: number;
     totalStock: number;
-    isActive: boolean;
+    isActive?: boolean;
 
     // Campos que vienen solo del mock (se irán eliminando progresivamente)
     quality?: string;

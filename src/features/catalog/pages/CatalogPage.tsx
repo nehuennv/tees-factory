@@ -25,7 +25,7 @@ import apiClient from '@/lib/apiClient';
 export function CatalogPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [products, setProducts] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [_isLoading, setIsLoading] = useState(true);
 
     const { totalUnits, totalPrice, items } = useCartStore();
     const draftIsActive = useOrderDraftStore((s) => s.isActive);

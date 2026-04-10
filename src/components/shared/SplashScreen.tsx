@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
  * Pantalla de carga ultraligera. Utiliza una animación "Curtain" de subida (y) 
  * 100% acelerada por GPU (sin coste de repaint en cálculos de opacidad masivos).
  */
-const SplashScreen = forwardRef<HTMLDivElement, {}>((props, ref) => {
+const SplashScreen = forwardRef<HTMLDivElement, {}>((_props, ref) => {
   return (
     <motion.div
       ref={ref}
