@@ -23,7 +23,6 @@ const ROLE_ROUTES: Record<Role, string> = {
 
 export const LoginPageB2B = () => {
     const login = useAuthStore((state) => state.login);
-    const debugLogin = useAuthStore((state) => state.debugLogin);
     const setGlobalLoading = useAuthStore((state) => state.setGlobalLoading);
     const navigate = useNavigate();
 
@@ -85,23 +84,6 @@ export const LoginPageB2B = () => {
             toast.error(backendMessage, { duration: 5000 });
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    // ── Debug Backdoor (Solo DEV) ───────────────────────────────
-    const handleDebugLogin = async (role: Role) => {
-        try {
-            setGlobalLoading(true);
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            debugLogin(role);
-            navigate(ROLE_ROUTES[role], { replace: true });
-
-            setTimeout(() => {
-                setGlobalLoading(false);
-            }, 150);
-        } catch (error) {
-            console.error(error);
-            setGlobalLoading(false);
         }
     };
 
@@ -222,20 +204,6 @@ export const LoginPageB2B = () => {
                         </button>
                     </p>
                 </div>
-
-                {/* === DEV BACKDOOR (Solo visible en Localhost) === */}
-                {import.meta.env.DEV && (
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 opacity-20 hover:opacity-100 transition-opacity duration-300">
-                        <div className="bg-zinc-100/80 backdrop-blur border border-zinc-200 px-3 py-1.5 rounded-full flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase text-zinc-400 mr-2 tracking-widest">Debug:</span>
-                            <button onClick={() => handleDebugLogin('ADMIN')} className="text-xs font-semibold text-zinc-600 hover:text-zinc-900">Admin</button>
-                            <span className="text-zinc-300">|</span>
-                            <button onClick={() => handleDebugLogin('SELLER')} className="text-xs font-semibold text-zinc-600 hover:text-zinc-900">Vendedor</button>
-                            <span className="text-zinc-300">|</span>
-                            <button onClick={() => handleDebugLogin('CLIENT')} className="text-xs font-semibold text-zinc-600 hover:text-zinc-900">Cliente</button>
-                        </div>
-                    </div>
-                )}
 
             </div>
         </div>

@@ -24,13 +24,6 @@ interface AuthState {
      */
     login: (email: string, password: string) => Promise<void>;
 
-    /**
-     * Debug login — mantiene los botones de desarrollo para acceso rápido.
-     * Solo disponible en entorno DEV. Llama al mismo endpoint real con
-     * credenciales pre-configuradas, o setea un mock local si el server no responde.
-     */
-    debugLogin: (role: Role) => void;
-
     /** Limpia sesión, token y redirige a login */
     logout: () => void;
 
@@ -60,20 +53,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         });
     },
 
-    // ── Debug Login (solo DEV) ──────────────────────────────────
-    debugLogin: (role: Role) => {
-        // Fallback local para desarrollo sin servidor backend activo
-        const mockUsers: Record<Role, User> = {
-            ADMIN:  { id: 'dev_admin',  email: 'admin@hector.com',   role: 'ADMIN',  reference_id: null },
-            CLIENT: { id: 'dev_client', email: 'cliente@tienda.com', role: 'CLIENT', reference_id: 'dev-client-profile' },
-            SELLER: { id: 'dev_seller', email: 'vendedor@hector.com', role: 'SELLER', reference_id: 'dev-seller-profile' },
-        };
-
-        const user = mockUsers[role];
-        localStorage.setItem('jwt_token', `dev_token_${role}`);
-        set({ user, isAuthenticated: true });
-    },
-
     // ── Logout ──────────────────────────────────────────────────
     logout: () => {
         localStorage.removeItem('jwt_token');
@@ -88,21 +67,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         const token = localStorage.getItem('jwt_token');
         if (!token) return;
 
-        // Si es un token de debug, rehidratar con el mock local
-        if (token.startsWith('dev_token_')) {
-            const role = token.replace('dev_token_', '') as Role;
-            const mockUsers: Record<Role, User> = {
-                ADMIN:  { id: 'dev_admin',  email: 'admin@hector.com',   role: 'ADMIN',  reference_id: null },
-                CLIENT: { id: 'dev_client', email: 'cliente@tienda.com', role: 'CLIENT', reference_id: 'dev-client-profile' },
-                SELLER: { id: 'dev_seller', email: 'vendedor@hector.com', role: 'SELLER', reference_id: 'dev-seller-profile' },
-            };
-            if (mockUsers[role]) {
-                set({ user: mockUsers[role], isAuthenticated: true });
-            }
-            return;
-        }
-
-        // Para tokens reales: por ahora lo dejamos como "logueado"
+        // Para tokens reales: por ahora lo dejamos como "logueado" (ya que hay un token).
+        // Si el backend es de verdad, se podría pedir GET /api/auth/me aquí.
+        set({ isAuthenticated: true });
         // pero sin user data (el interceptor 401 limpiará si está expirado).
         // Idealmente se pide GET /api/auth/me aquí.
     },
