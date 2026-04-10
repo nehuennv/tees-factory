@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Product } from "@/types/product";
-import { MOCK_PRODUCTS } from "@/lib/mockData";
-import { updateProductStatus } from "@/api/mockAdminCatalog";
+import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Edit2, ChevronDown, SlidersHorizontal, MoreHorizontal, Trash2, Package, Eye, EyeOff } from "lucide-react";
@@ -11,19 +10,37 @@ import { ProductEditModal } from "../components/ProductEditModal";
 import { Modal } from "@/components/shared/Modal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatPrice } from "@/lib/formatters";
-import { Toaster } from "@/components/ui/sonner";
+import { CreateProductModal } from "../components/CreateProductModal";
 
 interface AdminProduct extends Product {
     isActive: boolean;
 }
 
 export function CatalogManagementPage() {
-    const [products, setProducts] = useState<AdminProduct[]>(() =>
-        MOCK_PRODUCTS.map(p => ({ ...p, isActive: true }))
-    );
+    const [products, setProducts] = useState<AdminProduct[]>([]);
+    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+    useEffect(() => {
+        setIsLoadingProducts(true);
+        apiClient.get('/products')
+            .then(res => {
+                const fetched = res.data.map((p: any) => ({
+                    ...p,
+                    image: p.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=2600&auto=format&fit=crop'
+                }));
+                setProducts(fetched);
+            })
+            .catch(err => {
+                console.error(err);
+            })
+            .finally(() => setIsLoadingProducts(false));
+    }, []);
     const [searchQuery, setSearchQuery] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState("ALL");
+    const [statusFilter, setStatusFilter] = useState("ALL");
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedProductForEdit, setSelectedProductForEdit] = useState<Product | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<string | null>(null);
@@ -48,11 +65,27 @@ export function CatalogManagementPage() {
     };
 
     const filteredProducts = useMemo(() => {
-        return products.filter(p =>
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.id.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [products, searchQuery]);
+        let result = products;
+
+        if (categoryFilter !== "ALL") {
+            result = result.filter(p => p.category === categoryFilter);
+        }
+
+        if (statusFilter !== "ALL") {
+            const isActive = statusFilter === 'ACTIVE';
+            result = result.filter(p => p.isActive === isActive);
+        }
+
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(p =>
+                p.name.toLowerCase().includes(query) ||
+                p.id.toLowerCase().includes(query)
+            );
+        }
+
+        return result;
+    }, [products, searchQuery, categoryFilter, statusFilter]);
 
     const handleToggleStatus = async (productId: string, currentStatus: boolean) => {
         const newStatus = !currentStatus;
@@ -63,7 +96,7 @@ export function CatalogManagementPage() {
         );
 
         try {
-            await updateProductStatus(productId, newStatus);
+            await apiClient.patch(`/products/${productId}/status`, { isActive: newStatus });
             toast.success(newStatus ? "Producto Activado" : "Producto Desactivado", {
                 description: `El estado del producto ha sido actualizado en la base de datos.`,
             });
@@ -94,16 +127,39 @@ export function CatalogManagementPage() {
                         />
                     </div>
                     <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                        <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
-                            Categoría <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
-                        </Button>
-                        <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
-                            Estado <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
+                                    {categoryFilter === 'ALL' ? 'Categoría' : categoryFilter} <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40 bg-white border border-zinc-200 rounded-xl shadow-lg p-1">
+                                <DropdownMenuItem onClick={() => setCategoryFilter('ALL')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Todas</DropdownMenuItem>
+                                {Array.from(new Set(products.map(p => p.category))).map(cat => (
+                                    <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">{cat}</DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
+                                    {statusFilter === 'ALL' ? 'Estado' : statusFilter === 'ACTIVE' ? 'Activos' : 'Pausados'} <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40 bg-white border border-zinc-200 rounded-xl shadow-lg p-1">
+                                <DropdownMenuItem onClick={() => setStatusFilter('ALL')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Todos</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setStatusFilter('ACTIVE')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Activos</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setStatusFilter('PAUSED')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Pausados</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <div className="w-px h-6 bg-zinc-200 mx-1 hidden sm:block shrink-0"></div>
                         <Button variant="ghost" className="rounded-xl h-10 px-4 text-zinc-500 hover:text-zinc-900 whitespace-nowrap shrink-0">
                             <SlidersHorizontal className="w-4 h-4 mr-2" />
                             Más filtros
+                        </Button>
+                        <Button onClick={() => setIsCreateModalOpen(true)} className="rounded-xl h-10 px-4 bg-zinc-900 text-white hover:bg-zinc-800 whitespace-nowrap shrink-0 shadow-sm font-semibold ml-2">
+                            + Nuevo Producto
                         </Button>
                     </div>
                 </div>
@@ -259,7 +315,10 @@ export function CatalogManagementPage() {
                     onClick: () => { setIsDeleteModalOpen(false); setProductToDelete(null); },
                 }}
             />
-            <Toaster position="bottom-right" />
+            <CreateProductModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+            />
         </div>
     );
 }

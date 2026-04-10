@@ -23,6 +23,7 @@ const ROLE_ROUTES: Record<Role, string> = {
 
 export const LoginPageB2B = () => {
     const login = useAuthStore((state) => state.login);
+    const debugLogin = useAuthStore((state) => state.debugLogin);
     const setGlobalLoading = useAuthStore((state) => state.setGlobalLoading);
     const navigate = useNavigate();
 
@@ -34,33 +35,67 @@ export const LoginPageB2B = () => {
     useEffect(() => {
         const interval = setInterval(() => {
             setBgIndex((prev) => (prev + 1) % bgImages.length);
-        }, 5000); // Rota cada 5 segundos
+        }, 5000);
         return () => clearInterval(interval);
     }, []);
 
-    // Función real de Login (Cuando conectemos el backend)
+    // ── Login Real contra la API ────────────────────────────────
     const handleRegularLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Acá iría la lógica contra tu API real.
-        // Por ahora simulamos que no encuentra el usuario.
-        setTimeout(() => {
+        try {
+            setGlobalLoading(true, 'Validando credenciales...');
+            await login(email, password);
+
+            // Leer el user recién seteado para redirigir según su rol
+            const user = useAuthStore.getState().user;
+            if (user) {
+                navigate(ROLE_ROUTES[user.role], { replace: true });
+            }
+
+            // Dar tiempo al router a renderizar antes de quitar el splash
+            setTimeout(() => setGlobalLoading(false), 150);
+        } catch (err: any) {
+            setGlobalLoading(false);
+
+            // Error de red (servidor no accesible, CORS, timeout)
+            if (!err?.response) {
+                toast.error('No se pudo conectar con el servidor', {
+                    description: 'Verificá tu conexión a internet o contactá al administrador.',
+                    duration: 6000,
+                });
+                return;
+            }
+
+            // Error 401 o 403 del backend (credenciales inválidas)
+            const status = err.response.status;
+            if (status === 401 || status === 403) {
+                toast.error('Credenciales incorrectas', {
+                    description: 'El correo o la contraseña no son válidos. Intentá nuevamente.',
+                    duration: 5000,
+                });
+                return;
+            }
+
+            // Cualquier otro error del backend (500, etc.)
+            const backendMessage = err.response?.data?.message
+                || err.response?.data?.error
+                || 'Ocurrió un error inesperado. Intentá más tarde.';
+            toast.error(backendMessage, { duration: 5000 });
+        } finally {
             setIsLoading(false);
-            toast.error("Credenciales inválidas. Por favor, intentá nuevamente.");
-        }, 1500);
+        }
     };
 
-    // Botones mágicos de Debug (Dev Backdoor)
+    // ── Debug Backdoor (Solo DEV) ───────────────────────────────
     const handleDebugLogin = async (role: Role) => {
         try {
             setGlobalLoading(true);
-            await new Promise((resolve) => setTimeout(resolve, 800)); // Delay sutil
-            login(role);
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            debugLogin(role);
             navigate(ROLE_ROUTES[role], { replace: true });
 
-            // Le damos tiempo al router a renderizar el dashboard por detrás
-            // antes de empezar a desaparecer la cortina global (SplashScreen).
             setTimeout(() => {
                 setGlobalLoading(false);
             }, 150);

@@ -1,4 +1,5 @@
-import { useState, useMemo, memo, useCallback } from 'react';
+import { useState, useMemo, memo, useCallback, useEffect } from 'react';
+import apiClient from '@/lib/apiClient';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -27,22 +28,21 @@ import { useDroppable } from '@dnd-kit/core';
 import { Search, ChevronDown, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { MOCK_ORDERS } from '@/mocks/orders';
-import type { Order, OrderStatus } from '@/mocks/orders';
 import { OrderCard } from '../components/OrderCard';
 import { OrderDetailModal } from '../components/OrderDetailModal';
+import { AdminFastOrderModal } from '../components/AdminFastOrderModal';
 
 type ColumnDef = {
-    id: OrderStatus;
+    id: string;
     title: string;
     colorClass: string;
 };
 
 const COLUMNS: ColumnDef[] = [
-    { id: 'NEW', title: 'Nuevos', colorClass: 'bg-zinc-100/50' },
-    { id: 'PAID', title: 'Pagados', colorClass: 'bg-blue-50/40' },
-    { id: 'PREPARING', title: 'En Preparación', colorClass: 'bg-amber-50/40' },
-    { id: 'DISPATCHED', title: 'Despachados', colorClass: 'bg-emerald-50/40' },
+    { id: 'PENDING', title: 'Pendientes', colorClass: 'bg-zinc-100/50' },
+    { id: 'CONFIRMED', title: 'Aprobados', colorClass: 'bg-blue-50/40' },
+    { id: 'SHIPPED', title: 'Despachados', colorClass: 'bg-amber-50/40' },
+    { id: 'DELIVERED', title: 'Entregados', colorClass: 'bg-emerald-50/40' },
 ];
 
 const BoardColumn = memo(function BoardColumn({
@@ -51,8 +51,8 @@ const BoardColumn = memo(function BoardColumn({
     onOrderClick
 }: {
     column: ColumnDef;
-    orders: Order[];
-    onOrderClick: (o: Order) => void
+    orders: any[];
+    onOrderClick: (o: any) => void
 }) {
     const { setNodeRef } = useDroppable({ id: column.id });
     const { over } = useDndContext();
@@ -89,25 +89,48 @@ const BoardColumn = memo(function BoardColumn({
 });
 
 export function OrdersBoardPage() {
-    const [columns, setColumns] = useState<Record<OrderStatus, Order[]>>(() => {
-        const initial = { NEW: [], PAID: [], PREPARING: [], DISPATCHED: [] } as Record<OrderStatus, Order[]>;
-        MOCK_ORDERS.forEach(order => initial[order.status].push(order));
-        return initial;
+    const [columns, setColumns] = useState<Record<string, any[]>>({
+        PENDING: [], CONFIRMED: [], SHIPPED: [], DELIVERED: []
     });
 
-    const [activeOrder, setActiveOrder] = useState<Order | null>(null);
-    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [activeOrder, setActiveOrder] = useState<any | null>(null);
+    const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+    const [isFastOrderModalOpen, setIsFastOrderModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [minAmountFilter, setMinAmountFilter] = useState<number | null>(null);
 
+    useEffect(() => {
+        setIsLoading(true);
+        apiClient.get('/orders')
+            .then(res => {
+                const initial: Record<string, any[]> = { PENDING: [], CONFIRMED: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
+                res.data.forEach((order: any) => {
+                    if (initial[order.status]) {
+                        initial[order.status].push(order);
+                    } else {
+                        // Fallback
+                        initial['PENDING'].push(order);
+                    }
+                });
+                setColumns(initial);
+            })
+            .catch(err => {
+                console.error(err);
+                toast.error("Error al cargar pedidos");
+            })
+            .finally(() => setIsLoading(false));
+    }, []);
+
     const filteredColumns = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase();
-        const result = { NEW: [], PAID: [], PREPARING: [], DISPATCHED: [] } as Record<OrderStatus, Order[]>;
+        const result: Record<string, any[]> = { PENDING: [], CONFIRMED: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
 
-        (Object.keys(columns) as OrderStatus[]).forEach(status => {
+        (Object.keys(columns)).forEach(status => {
             result[status] = columns[status].filter(
                 o => {
-                    const matchesSearch = !searchTerm.trim() || o.id.toLowerCase().includes(lowerSearch) || o.clientName.toLowerCase().includes(lowerSearch);
+                    const clientNameStr = o.client?.name || o.clientName || "";
+                    const matchesSearch = !searchTerm.trim() || o.id.toLowerCase().includes(lowerSearch) || clientNameStr.toLowerCase().includes(lowerSearch);
                     const matchesAmount = minAmountFilter === null || o.totalAmount >= minAmountFilter;
                     return matchesSearch && matchesAmount;
                 }
@@ -122,9 +145,9 @@ export function OrdersBoardPage() {
     );
 
     const findContainer = useCallback((id: string | number) => {
-        if (COLUMNS.some(c => c.id === id)) return id as OrderStatus;
-        return (Object.keys(columns) as OrderStatus[]).find(key =>
-            columns[key].some(item => item.id === id)
+        if (COLUMNS.some(c => c.id === id)) return id as string;
+        return (Object.keys(columns)).find(key =>
+            columns[key]?.some(item => item.id === id)
         );
     }, [columns]);
 
@@ -183,7 +206,13 @@ export function OrdersBoardPage() {
 
         if (draggedOrder && draggedOrder.status !== overContainer) {
             const colTitle = COLUMNS.find(c => c.id === overContainer)?.title;
-            toast.success(`Pedido movido a ${colTitle}`);
+            
+            apiClient.patch(`/orders/${draggedOrder.id}/status`, { status: overContainer })
+                .then(() => toast.success(`Pedido movido a ${colTitle}`))
+                .catch(err => {
+                    console.error(err);
+                    toast.error("Error al mover el pedido. Refresque la página.");
+                });
         }
     }, [activeOrder, columns, findContainer]);
 
@@ -231,13 +260,22 @@ export function OrdersBoardPage() {
                         className="flex items-center justify-center rounded-xl h-10 px-4 text-sm font-medium text-zinc-500 hover:text-zinc-900 whitespace-nowrap shrink-0 transition-colors">
                         Limpiar filtros
                     </button>
-                    <button className="flex items-center justify-center rounded-xl h-10 px-4 ml-1 sm:ml-2 bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition-colors shadow-sm whitespace-nowrap shrink-0">
+                    <button 
+                        onClick={() => setIsFastOrderModalOpen(true)}
+                        className="flex items-center justify-center rounded-xl h-10 px-4 ml-1 sm:ml-2 bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition-colors shadow-sm whitespace-nowrap shrink-0"
+                    >
                         <Plus className="w-4 h-4 mr-1.5" /> Nuevo Pedido
                     </button>
                 </div>
             </div>
 
             <div className="flex-1 w-full min-h-0 overflow-x-auto custom-scrollbar pb-2">
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center p-12 text-zinc-500 h-full">
+                        <span className="w-8 h-8 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin mb-4" />
+                        <p className="font-medium animate-pulse">Cargando tablero...</p>
+                    </div>
+                ) : (
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -264,12 +302,17 @@ export function OrdersBoardPage() {
                         ) : null}
                     </DragOverlay>
                 </DndContext>
+                )}
             </div>
 
             <OrderDetailModal
                 isOpen={!!selectedOrder}
                 onClose={() => setSelectedOrder(null)}
                 order={selectedOrder}
+            />
+            <AdminFastOrderModal
+                isOpen={isFastOrderModalOpen}
+                onClose={() => setIsFastOrderModalOpen(false)}
             />
         </div>
     );

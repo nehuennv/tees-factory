@@ -1,96 +1,31 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShoppingBag, TableProperties } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/formatters';
 import { useCartStore, type CartItem } from '@/store/cartStore';
 import { toast } from 'sonner';
-import { MOCK_PRODUCTS } from '@/lib/mockData';
+import apiClient from '@/lib/apiClient';
 import { ProductImage } from '@/components/shared/ProductImage';
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+const SIZES_FALLBACK = ['S', 'M', 'L', 'XL', 'XXL'];
 
-// Paleta de colores realista para generar variantes por producto
+// Paleta de colores para asignar HEX visual según nombre
 const COLOR_POOL = [
     { name: "Negro", hex: "#18181b" },
     { name: "Blanco", hex: "#ffffff" },
-    { name: "Gris Melange", hex: "#9ca3af" },
-    { name: "Azul Marino", hex: "#1e3a8a" },
+    { name: "Gris", hex: "#9ca3af" },
+    { name: "Azul", hex: "#1e3a8a" },
     { name: "Rojo", hex: "#dc2626" },
-    { name: "Verde Militar", hex: "#4d7c0f" },
+    { name: "Verde", hex: "#4d7c0f" },
     { name: "Beige", hex: "#d4c5a9" },
     { name: "Bordo", hex: "#881337" },
-    { name: "Celeste", hex: "#7dd3fc" },
-    { name: "Rosa Palo", hex: "#fda4af" },
-    { name: "Mostaza", hex: "#ca8a04" },
-    { name: "Vintage Wash", hex: "#52525b" },
 ];
 
-// Calidades disponibles según categoría
-const QUALITY_PRESETS: Record<string, { name: string; priceMultiplier: number }[]> = {
-    Remeras: [
-        { name: "Premium Cotton", priceMultiplier: 1.2 },
-        { name: "Heavyweight 240g", priceMultiplier: 1.4 },
-        { name: "Basic 24/1", priceMultiplier: 0.85 },
-    ],
-    Buzos: [
-        { name: "Frisa Premium 320g", priceMultiplier: 1.15 },
-        { name: "Frisa Invisible", priceMultiplier: 1.0 },
-        { name: "French Terry", priceMultiplier: 1.3 },
-    ],
-    Pantalones: [
-        { name: "Rústico Liviano", priceMultiplier: 1.0 },
-        { name: "Frisa Pesada", priceMultiplier: 1.2 },
-        { name: "Drill Stretch", priceMultiplier: 1.35 },
-    ],
-    Camperas: [
-        { name: "Nylon Ripstop", priceMultiplier: 1.0 },
-        { name: "Softshell Premium", priceMultiplier: 1.3 },
-    ],
-    Conjuntos: [
-        { name: "Combo Frisa", priceMultiplier: 1.0 },
-        { name: "Combo Dry Fit", priceMultiplier: 1.15 },
-    ],
-    Accesorios: [
-        { name: "Estándar", priceMultiplier: 1.0 },
-        { name: "Premium", priceMultiplier: 1.3 },
-    ],
+const getHexForColor = (name: string) => {
+    const found = COLOR_POOL.find(c => name.toLowerCase().includes(c.name.toLowerCase()));
+    return found ? found.hex : '#cccccc';
 };
-
-/**
- * Genera datos de detalle de producto a partir de un producto del catálogo.
- * Simula lo que haría una API real devolviendo calidades y colores.
- */
-function generateProductDetail(catalogProduct: typeof MOCK_PRODUCTS[0]) {
-    const colorCount = catalogProduct.colors || 4;
-    // Seleccionar colores de la paleta de forma determinista (basado en el id)
-    const seed = catalogProduct.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const shuffled = [...COLOR_POOL].sort((a, b) => {
-        const hashA = (a.name.charCodeAt(0) * seed) % 100;
-        const hashB = (b.name.charCodeAt(0) * seed) % 100;
-        return hashA - hashB;
-    });
-    const selectedColors = shuffled.slice(0, Math.min(colorCount, COLOR_POOL.length));
-
-    // Obtener calidades según la categoría
-    const categoryQualities = QUALITY_PRESETS[catalogProduct.category] || QUALITY_PRESETS["Accesorios"];
-    const qualities = categoryQualities.map(q => ({
-        name: q.name,
-        basePrice: Math.round(catalogProduct.basePrice * q.priceMultiplier / 100) * 100,
-        colors: selectedColors,
-    }));
-
-    return {
-        id: catalogProduct.id,
-        name: catalogProduct.name,
-        description: catalogProduct.description,
-        image: catalogProduct.image?.startsWith("http")
-            ? catalogProduct.image.replace("w=500", "w=800")
-            : catalogProduct.image,
-        collection: catalogProduct.quality === "NUEVO" ? "NUEVA COLECCIÓN" : "COLECCIÓN PERMANENTE",
-        qualities,
-    };
-}
 
 export function ProductDetailPage() {
     const { productId } = useParams();
@@ -99,14 +34,34 @@ export function ProductDetailPage() {
 
     const [selectedQualityIdx, setSelectedQualityIdx] = useState(0);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
+    const [product, setProduct] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Buscar el producto en el catálogo por ID
-    const catalogProduct = MOCK_PRODUCTS.find(p => p.id === productId);
+    useEffect(() => {
+        setIsLoading(true);
+        apiClient.get(`/products/${productId}`)
+            .then(res => setProduct(res.data))
+            .catch(err => {
+                console.error(err);
+                if (err.response?.status !== 404) {
+                     toast.error("Error al cargar producto");
+                }
+            })
+            .finally(() => setIsLoading(false));
+    }, [productId]);
 
-    // Generar los datos de detalle dinámicamente (o null si no existe)
-    const product = catalogProduct ? generateProductDetail(catalogProduct) : null;
+    const activeQuality = product?.qualities?.[selectedQualityIdx];
 
-    const activeQuality = product?.qualities[selectedQualityIdx];
+    // Dynamic sizes for table headers
+    const activeSizes = useMemo(() => {
+        if (!activeQuality) return SIZES_FALLBACK;
+        const set = new Set<string>();
+        activeQuality.colors?.forEach((c: any) => {
+            c.sizes?.forEach((s: any) => set.add(s.size));
+        });
+        const arr = Array.from(set);
+        return arr.length > 0 ? arr : SIZES_FALLBACK;
+    }, [activeQuality]);
 
     const handleQuantityChange = (colorName: string, size: string, value: string) => {
         const parsed = parseInt(value, 10);
@@ -126,7 +81,7 @@ export function ProductDetailPage() {
 
     const getRowTotal = (colorName: string) => {
         let total = 0;
-        SIZES.forEach(size => {
+        activeSizes.forEach(size => {
             const key = `${selectedQualityIdx}-${colorName}-${size}`;
             total += (quantities[key] || 0);
         });
@@ -137,13 +92,12 @@ export function ProductDetailPage() {
         let units = 0;
         let price = 0;
 
-        if (!product) return { totalUnits: units, totalPrice: price };
+        if (!product || !product.qualities) return { totalUnits: units, totalPrice: price };
 
-        // Iteramos sobre todas las calidades por si el usuario cargó en varias
-        product.qualities.forEach((quality, qIdx) => {
-            quality.colors.forEach(color => {
-                SIZES.forEach(size => {
-                    const key = `${qIdx}-${color.name}-${size}`;
+        product.qualities.forEach((quality: any, qIdx: number) => {
+            quality.colors?.forEach((color: any) => {
+                activeSizes.forEach(size => {
+                    const key = `${qIdx}-${color.colorName}-${size}`;
                     const qty = quantities[key] || 0;
                     units += qty;
                     price += qty * quality.basePrice;
@@ -152,7 +106,7 @@ export function ProductDetailPage() {
         });
 
         return { totalUnits: units, totalPrice: price };
-    }, [quantities, product]);
+    }, [quantities, product, activeSizes]);
 
     const handleAddToCart = () => {
         if (!product) return;
@@ -163,31 +117,54 @@ export function ProductDetailPage() {
                 const [qIdxStr, colorName, size] = key.split('-');
                 const qIdx = parseInt(qIdxStr, 10);
                 const quality = product.qualities[qIdx];
-                const itemId = `${product.id}-${quality.name}-${colorName}-${size}`;
+                const colorData = quality.colors.find((c: any) => c.colorName === colorName);
+                const sizeData = colorData?.sizes?.find((s: any) => s.size === size);
+
+                if (!sizeData) {
+                    toast.error(`Variante ${colorName}-${size} no encontrada`);
+                    return;
+                }
+
+                // If asking for more than physical available stock
+                if (qty > sizeData.availableStock) {
+                    toast.error(`No hay suficiente stock de ${colorName} - Talle ${size}. Máx: ${sizeData.availableStock}`);
+                    return;
+                }
+
+                const itemId = `${product.id}-${quality.qualityName}-${colorName}-${size}`;
 
                 cartItems.push({
                     id: itemId,
+                    variantId: sizeData.id,
                     productId: product.id,
                     productName: product.name,
-                    quality: quality.name,
+                    quality: quality.qualityName,
                     color: colorName,
                     size: size,
                     quantity: qty,
                     unitPrice: quality.basePrice,
                     subtotal: qty * quality.basePrice,
-                    image: product.image
+                    image: product.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=2600&auto=format&fit=crop'
                 });
             }
         });
 
         if (cartItems.length > 0) {
             addItems(cartItems);
-            toast.success(`${cartItems.length} artículos agregados al pedido`);
+            toast.success(`${cartItems.length} variantes agregadas al pedido`);
             setQuantities({});
         }
     };
 
-    // Null guard AFTER all hooks (React rules compliance)
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-zinc-500">
+                <span className="w-8 h-8 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin mb-4" />
+                <p className="font-medium animate-pulse">Cargando matriz de talles...</p>
+            </div>
+        );
+    }
+
     if (!product || !activeQuality) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-zinc-500 p-8">
@@ -218,7 +195,7 @@ export function ProductDetailPage() {
                         />
                         <div className="absolute top-4 left-4">
                             <span className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest text-zinc-400 uppercase border border-zinc-200/50 shadow-sm">
-                                {product.collection}
+                                {product.collection || 'COLECCIÓN'}
                             </span>
                         </div>
                     </div>
@@ -278,18 +255,18 @@ export function ProductDetailPage() {
                         </div>
 
                         <div className="flex flex-wrap items-center p-1 bg-zinc-100/80 rounded-xl w-fit border border-zinc-200/50">
-                            {product.qualities.map((quality, idx) => {
+                            {product.qualities?.map((quality: any, idx: number) => {
                                 const isActive = idx === selectedQualityIdx;
                                 return (
                                     <button
-                                        key={quality.name}
+                                        key={quality.qualityName || idx}
                                         onClick={() => setSelectedQualityIdx(idx)}
                                         className={`px-4 lg:px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${isActive
                                             ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/60'
                                             : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50 border border-transparent'
                                             }`}
                                     >
-                                        {quality.name}
+                                        {quality.qualityName}
                                     </button>
                                 );
                             })}
@@ -304,7 +281,7 @@ export function ProductDetailPage() {
                                     <th className="py-4 px-6 text-xs font-bold text-zinc-400 uppercase tracking-widest w-[180px]">
                                         Color / Talle
                                     </th>
-                                    {SIZES.map(size => (
+                                    {activeSizes.map((size: string) => (
                                         <th key={size} className="py-4 px-3 text-xs font-bold text-zinc-400 uppercase tracking-widest text-center w-20">
                                             {size}
                                         </th>
@@ -315,34 +292,45 @@ export function ProductDetailPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
-                                {activeQuality.colors.map(color => (
-                                    <tr key={color.name} className="hover:bg-zinc-50/50 transition-colors">
+                                {activeQuality.colors?.map((color: any) => (
+                                    <tr key={color.colorName} className="hover:bg-zinc-50/50 transition-colors">
                                         <td className="py-4 px-6 flex items-center gap-3">
                                             <div
                                                 className="w-4 h-4 rounded-full border border-zinc-200/80 shadow-inner"
-                                                style={{ backgroundColor: color.hex }}
+                                                style={{ backgroundColor: getHexForColor(color.colorName) }}
                                             />
                                             <span className="text-sm font-semibold text-zinc-700">
-                                                {color.name}
+                                                {color.colorName}
                                             </span>
                                         </td>
 
-                                        {SIZES.map(size => (
-                                            <td key={size} className="py-4 px-3 align-middle text-center">
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    value={getQuantity(color.name, size)}
-                                                    onChange={(e) => handleQuantityChange(color.name, size, e.target.value)}
-                                                    placeholder="0"
-                                                    className="w-14 h-11 text-center bg-zinc-50 border border-transparent hover:bg-zinc-100 focus:bg-white focus:border-zinc-300 rounded-lg text-sm font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all outline-none mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-zinc-300 placeholder:font-normal"
-                                                />
-                                            </td>
-                                        ))}
+                                        {activeSizes.map((size: string) => {
+                                            const sizeData = color.sizes?.find((s: any) => s.size === size);
+                                            const maxStock = sizeData?.availableStock || 0;
+                                            const inputDisabled = maxStock === 0;
+
+                                            return (
+                                                <td key={size} className="py-4 px-3 align-middle text-center">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={maxStock}
+                                                        disabled={inputDisabled}
+                                                        title={inputDisabled ? "Sin stock" : `Máx: ${maxStock}`}
+                                                        value={getQuantity(color.colorName, size)}
+                                                        onChange={(e) => handleQuantityChange(color.colorName, size, e.target.value)}
+                                                        placeholder={inputDisabled ? "-" : "0"}
+                                                        className={`w-14 h-11 text-center bg-zinc-50 border border-transparent 
+                                                            ${inputDisabled ? 'opacity-50 cursor-not-allowed text-zinc-400 bg-zinc-100' : 'hover:bg-zinc-100 focus:bg-white focus:border-zinc-300 text-zinc-900'} 
+                                                            rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all outline-none mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-zinc-300 placeholder:font-normal`}
+                                                    />
+                                                </td>
+                                            );
+                                        })}
 
                                         <td className="py-4 px-6 text-right">
                                             <span className="text-sm font-bold text-zinc-400">
-                                                {getRowTotal(color.name)}
+                                                {getRowTotal(color.colorName)}
                                             </span>
                                         </td>
                                     </tr>

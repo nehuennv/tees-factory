@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Product } from "@/types/product";
-import { updateProductStock } from "@/api/mockAdminCatalog";
+import apiClient from "@/lib/apiClient";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -67,7 +67,12 @@ export function ProductStockDrawer({ product, isOpen, onClose }: ProductStockDra
         setSavingCells(prev => ({ ...prev, [cellKey]: true }));
 
         try {
-            await updateProductStock(product.id, quality, color, size, numValue);
+            await apiClient.put(`/products/${product.id}/stock`, [{
+                qualityId: quality,
+                color: color,
+                size: size,
+                physicalStock: numValue
+            }]);
             toast.success("Stock guardado", {
                 description: `${color} / ${size} actualizado a ${numValue}.`,
                 duration: 2000,

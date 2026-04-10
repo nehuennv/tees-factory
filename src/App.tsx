@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Routes, Route, Navigate } from "react-router-dom"
 import { AnimatePresence } from "framer-motion"
 import MainLayout from "@/components/layout/MainLayout"
@@ -10,10 +11,13 @@ import { useAuthStore } from "@/store/authStore"
 import SplashScreen from "@/components/shared/SplashScreen"
 import ClientsPage from "@/pages/ClientsPage"
 import { CurrentAccountPage } from "@/features/client/pages/CurrentAccountPage"
+import { ClientOrdersPage } from "@/features/client/pages/ClientOrdersPage"
+import { PaymentReportPage } from "@/features/client/pages/PaymentReportPage"
 import { CatalogManagementPage } from "@/features/admin/pages/CatalogManagementPage"
 import { OrdersBoardPage } from "@/features/admin/pages/OrdersBoardPage"
 import { TreasuryPage } from "@/features/admin/pages/TreasuryPage"
 import { AdminDashboardPage } from "@/features/admin/pages/AdminDashboardPage"
+import { NewClientModal } from "@/features/admin/components/NewClientModal"
 
 function DummyPage({ title, description }: { title: string, description: string }) {
   return (
@@ -48,6 +52,7 @@ function RootRedirect() {
 
 function App() {
   const isGlobalLoading = useAuthStore(state => state.isGlobalLoading);
+  const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
 
   return (
     <>
@@ -88,7 +93,7 @@ function App() {
               tooltipInfo: 'Directorio completo de cuentas B2B activas e inactivas.',
               primaryAction: {
                 label: '+ Nuevo Cliente',
-                onClick: () => alert('Nuevo Cliente')
+                onClick: () => setIsNewClientModalOpen(true)
               }
             }}>
               <ClientsPage />
@@ -134,7 +139,7 @@ function App() {
         <Route path="/portal/pedidos" element={
           <ProtectedRoute allowedRoles={['CLIENT']}>
             <MainLayout headerProps={{ title: 'Mis Pedidos', searchPlaceholder: 'Buscar en mis pedidos...', tooltipInfo: 'Historial completo de tus compras.' }}>
-              <DummyPage title="Mis Pedidos" description="Historial de compras." />
+              <ClientOrdersPage />
             </MainLayout>
           </ProtectedRoute>
         } />
@@ -150,12 +155,8 @@ function App() {
             <MainLayout headerProps={{
               title: 'Reportar Pago',
               tooltipInfo: 'Área para informar transferencias e impactar pagos.',
-              primaryAction: {
-                label: 'Subir Comprobante',
-                onClick: () => alert('Subir Comprobante')
-              }
             }}>
-              <DummyPage title="Reportar Pago" description="Cargar comprobante de transferencia." />
+              <PaymentReportPage />
             </MainLayout>
           </ProtectedRoute>
         } />
@@ -169,31 +170,32 @@ function App() {
               tooltipInfo: 'Directorio asignado de comercios B2B.',
               primaryAction: {
                 label: '+ Nuevo Cliente',
-                onClick: () => alert('Nuevo Cliente')
+                onClick: () => setIsNewClientModalOpen(true)
               }
             }}>
               <ClientsPage />
             </MainLayout>
           </ProtectedRoute>
         } />
-        <Route path="/ventas/catalogo" element={
+        {/* Flujo de toma de pedido para un cliente específico */}
+        <Route path="/ventas/pedido/:clientId" element={
           <ProtectedRoute allowedRoles={['SELLER']}>
-            <MainLayout headerProps={{ title: 'Catálogo de Vendedores', searchPlaceholder: 'Buscar producto...', tooltipInfo: 'Catálogo general. Registrá pedidos a nombre de tus clientes.' }}>
+            <MainLayout headerProps={{ title: 'Tomar Pedido', searchPlaceholder: 'Buscar producto...', tooltipInfo: 'Armá el pedido seleccionando productos del catálogo.' }}>
               <CatalogPage />
             </MainLayout>
           </ProtectedRoute>
         } />
-        <Route path="/ventas/catalogo/:clientId" element={
+        <Route path="/ventas/pedido/:clientId/:productId" element={
           <ProtectedRoute allowedRoles={['SELLER']}>
-            <MainLayout headerProps={{ title: 'Tomar Pedido para Cliente', searchPlaceholder: 'Buscar producto...', tooltipInfo: 'Armado de cotización para cliente específico.' }}>
-              <CatalogPage />
-            </MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/ventas/catalogo/:productId" element={
-          <ProtectedRoute allowedRoles={['SELLER']}>
-            <MainLayout headerProps={{ title: 'Volver al Catálogo', showBack: true, backUrl: '/ventas/catalogo' }}>
+            <MainLayout headerProps={{ title: 'Volver al Pedido', showBack: true }}>
               <ProductDetailPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/ventas/checkout" element={
+          <ProtectedRoute allowedRoles={['SELLER']}>
+            <MainLayout headerProps={{ title: 'Confirmar Pedido', tooltipInfo: 'Revisá el pedido antes de confirmarlo.' }}>
+              <CheckoutPage />
             </MainLayout>
           </ProtectedRoute>
         } />
@@ -201,6 +203,12 @@ function App() {
         {/* Catch-all route mapping to root to rely on Role routing or authentication state */}
         <Route path="*" element={<RootRedirect />} />
       </Routes>
+
+      {/* Global Modals for App Level Actions */}
+      <NewClientModal 
+        isOpen={isNewClientModalOpen} 
+        onClose={() => setIsNewClientModalOpen(false)} 
+      />
     </>
   );
 }

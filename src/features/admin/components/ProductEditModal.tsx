@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import apiClient from "@/lib/apiClient";
 
 interface ProductEditModalProps {
     product: Product | null;
@@ -30,16 +31,26 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!formData.name || !formData.category || !formData.basePrice) {
             toast.error("Por favor completa los campos obligatorios.");
             return;
         }
 
-        onSave({ ...product, ...formData } as Product);
-        // Omitimos el toast de success aquí porque lo haremos en CatalogManagementPage según requerimiento,
-        // o podemos dejarlo aquí y omitirlo allá. Lo mantendremos en la vista principal para mejor control optimista.
-        onClose();
+        try {
+            await apiClient.patch(`/products/${product.id}`, {
+                name: formData.name,
+                category: formData.category,
+                basePrice: formData.basePrice,
+                description: formData.description,
+                image: formData.image
+            });
+            onSave({ ...product, ...formData } as Product);
+            onClose();
+        } catch (err) {
+            toast.error("Error al actualizar producto.");
+            console.error(err);
+        }
     };
 
     return (

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { BankDetailsCard } from '@/components/shared/BankDetailsCard';
+import apiClient from '@/lib/apiClient';
 import {
     Sheet,
     SheetContent,
@@ -27,23 +28,45 @@ export function PaymentReportModal() {
     // Form states
     const [bank, setBank] = useState('');
     const [amount, setAmount] = useState('');
+    const [file, setFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const resetForm = () => {
         setBank('');
         setAmount('');
+        setFile(null);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!amount || Number(amount) <= 0) {
+            toast.error("Ingresa un monto válido");
+            return;
+        }
+
         setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            setIsLoading(false);
+        const formData = new FormData();
+        formData.append('amount', amount.toString());
+        formData.append('notes', `Banco: ${bank}`);
+        if (file) {
+            formData.append('receiptFile', file);
+        }
+
+        try {
+            await apiClient.post('/payments', formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
             toast.success('Pago reportado con éxito. En revisión.');
             setIsOpen(false);
             resetForm();
-        }, 2000);
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.response?.data?.error || 'Hubo un error al reportar tu pago.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleOpenChange = (open: boolean) => {
@@ -125,12 +148,22 @@ export function PaymentReportModal() {
 
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Adjuntar Comprobante</label>
-                                    <div className="border-dashed border-2 border-zinc-200 bg-zinc-50/50 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-zinc-100/50 transition-all group">
+                                    <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        ref={fileInputRef} 
+                                        accept="image/*,.pdf"
+                                        onChange={(e) => setFile(e.target.files?.[0] || null)} 
+                                    />
+                                    <div 
+                                        className="border-dashed border-2 border-zinc-200 bg-zinc-50/50 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-zinc-100/50 transition-all group"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
                                         <div className="w-8 h-8 rounded-lg border border-zinc-200 flex items-center justify-center mb-2 text-zinc-400 bg-white shadow-sm group-hover:scale-110 transition-transform">
                                             <UploadCloud className="w-4 h-4" />
                                         </div>
                                         <span className="text-sm font-bold text-zinc-900 mb-0.5">
-                                            Subir imagen o PDF
+                                            {file ? file.name : "Subir imagen o PDF"}
                                         </span>
                                         <span className="text-[10px] text-zinc-400 font-medium px-4 leading-tight">
                                             Se debe ver el Nro. de operación

@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
-import { MOCK_PAYMENTS, type PaymentReport } from '@/mocks/payments';
-import { updatePaymentStatus } from '@/api/mockTreasury';
+import apiClient from '@/lib/apiClient';
 import { ReceiptViewerModal } from '../components/ReceiptViewerModal';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Eye, CheckCircle2 } from "lucide-react";
@@ -12,8 +11,9 @@ import { MoreHorizontal, Eye, CheckCircle2 } from "lucide-react";
 type StatusFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export function TreasuryPage() {
-    const [payments, setPayments] = useState<PaymentReport[]>(MOCK_PAYMENTS);
-    const [selectedPayment, setSelectedPayment] = useState<PaymentReport | null>(null);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
     const [searchQuery, setSearchQuery] = useState('');
@@ -34,18 +34,34 @@ export function TreasuryPage() {
         return text.substring(0, maxLength) + '...';
     };
 
+    const loadPayments = async () => {
+        setIsLoading(true);
+        try {
+            const res = await apiClient.get('/payments');
+            setPayments(res.data);
+        } catch(err) {
+            toast.error("Error al cargar pagos");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    useEffect(() => {
+        loadPayments();
+    }, []);
+
     const handleApprove = async (id: string, approvedAmount: number) => {
         const payment = payments.find(p => p.id === id);
         if (!payment) return;
 
         setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'APPROVED', approvedAmount } : p));
-        toast.success(`Pago conciliado por ${formatPrice(approvedAmount)}`);
-
+        
         try {
-            await updatePaymentStatus(id, 'APPROVED', approvedAmount);
+            await apiClient.post(`/payments/${id}/approve`, { approvedAmount });
+            toast.success(`Pago conciliado por ${formatPrice(approvedAmount)}`);
         } catch (error) {
             setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'PENDING', approvedAmount: undefined } : p));
-            toast.error(`Error al aprobar el pago de ${payment.clientName}`);
+            toast.error(`Error al aprobar el pago`);
         }
     };
 
@@ -54,22 +70,22 @@ export function TreasuryPage() {
         if (!payment) return;
 
         setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'REJECTED' } : p));
-        toast.success(`Pago de ${payment.clientName} rechazado`);
-
+        toast.success(`Pago rechazado`);
+        
+        // Asumiendo que el backend maneje reject a través del status patch:
         try {
-            await updatePaymentStatus(id, 'REJECTED');
+            await apiClient.patch(`/payments/${id}/status`, { status: "REJECTED" });
         } catch (error) {
-            setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'PENDING' } : p));
-            toast.error(`Error al rechazar el pago de ${payment.clientName}`);
+            console.error(error);
         }
     };
 
-    const openReceiptModal = (payment: PaymentReport) => {
+    const openReceiptModal = (payment: any) => {
         setSelectedPayment(payment);
         setIsModalOpen(true);
     };
 
-    const getStatusBadge = (status: PaymentReport['status']) => {
+    const getStatusBadge = (status: string) => {
         switch (status) {
             case 'PENDING':
                 return <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-200/60 text-[11px] font-bold tracking-wide uppercase">Pendiente</span>;
@@ -133,7 +149,14 @@ export function TreasuryPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {filteredPayments.length === 0 ? (
+                    {isLoading ? (
+                        <TableRow>
+                            <TableCell colSpan={8} className="text-center py-12 text-zinc-500">
+                                <span className="w-6 h-6 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin inline-block mb-4" />
+                                <p>Cargando pagos...</p>
+                            </TableCell>
+                        </TableRow>
+                    ) : filteredPayments.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={8} className="text-center text-zinc-500 py-16 bg-zinc-50/30">
                                 <div className="flex flex-col items-center justify-center">
@@ -141,7 +164,7 @@ export function TreasuryPage() {
                                         <Search className="w-5 h-5 text-zinc-400" />
                                     </div>
                                     <p className="text-[15px] font-medium text-zinc-900">No hay pagos para mostrar</p>
-                                    <p className="text-sm text-zinc-500 mt-1">Intenta con otros filtros de búsqueda o estado.</p>
+                                    <p className="text-sm text-zinc-500 mt-1">Intenta con otros filtros.</p>
                                 </div>
                             </TableCell>
                         </TableRow>

@@ -1,6 +1,9 @@
+import { useState, useEffect } from 'react';
 import { PaymentReportModal } from '../components/PaymentReportModal';
-import { MOCK_CURRENT_BALANCE, MOCK_TRANSACTIONS, type Transaction } from '@/mocks/account';
 import { formatPrice } from '@/lib/formatters';
+import apiClient from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
+import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import {
     Table,
@@ -20,8 +23,37 @@ import {
 } from 'lucide-react';
 
 export function CurrentAccountPage() {
+    const { user } = useAuthStore();
+    const referenceId = user?.reference_id;
+
+    const [currentDebt, setCurrentDebt] = useState<number>(0);
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!referenceId) {
+            setIsLoading(false);
+            return;
+        }
+
+        setIsLoading(true);
+        apiClient.get(`/clients/${referenceId}/ledger`)
+            .then(res => {
+                setCurrentDebt(res.data.client?.currentDebt || 0);
+                setTransactions(res.data.ledger || []);
+            })
+            .catch(err => {
+                console.error(err);
+                if (err.response?.status !== 404) {
+                    toast.error("Error al cargar la cuenta corriente");
+                }
+            })
+            .finally(() => setIsLoading(false));
+    }, [referenceId]);
+
     // LÓGICA DE NEGOCIO
-    const isDebt = MOCK_CURRENT_BALANCE < 0;
+    // En la API nueva, currentDebt > 0 significa que debe plata.
+    const isDebt = currentDebt > 0;
     const balanceLabel = isDebt ? 'Saldo Deudor Actual' : 'Saldo a Favor';
     const balanceColor = isDebt ? 'text-rose-600' : 'text-emerald-600';
     const balanceBg = isDebt ? 'bg-rose-50' : 'bg-emerald-50';
@@ -30,7 +62,7 @@ export function CurrentAccountPage() {
     const cardBorderColor = isDebt ? 'border-l-rose-500' : 'border-l-emerald-500';
     const cardBgGradient = isDebt ? 'bg-gradient-to-r from-rose-50/40 to-white' : 'bg-gradient-to-r from-emerald-50/40 to-white';
 
-    const getStatusBadge = (status: Transaction['status']) => {
+    const getStatusBadge = (status: string) => {
         switch (status) {
             case 'COMPLETED':
                 return (
@@ -58,8 +90,8 @@ export function CurrentAccountPage() {
         }
     };
 
-    const getAmountDisplay = (amount: number, type: Transaction['type']) => {
-        if (type === 'ORDER') {
+    const getAmountDisplay = (amount: number, type: string) => {
+        if (type === 'DEBT_INCREASE' || type === 'ORDER') {
             return (
                 <div className="flex items-center justify-end gap-1.5 text-zinc-900 font-bold whitespace-nowrap">
                     <span>{formatPrice(amount)}</span>
@@ -105,7 +137,7 @@ export function CurrentAccountPage() {
                                     {balanceLabel}
                                 </span>
                                 <span className={`text-5xl md:text-6xl font-black tracking-tight ${balanceColor}`}>
-                                    {formatPrice(Math.abs(MOCK_CURRENT_BALANCE))}
+                                    {formatPrice(Math.abs(currentDebt))}
                                 </span>
                             </div>
                         </div>
@@ -141,28 +173,37 @@ export function CurrentAccountPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {MOCK_TRANSACTIONS.length === 0 ? (
+                                    {isLoading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center py-12 text-zinc-500">
+                                                <div className="flex justify-center mb-4">
+                                                    <span className="w-6 h-6 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin" />
+                                                </div>
+                                                Cargando historial...
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : transactions.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={4} className="text-center py-12 text-zinc-500">
                                                 No hay movimientos registrados.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        MOCK_TRANSACTIONS.map((tx) => (
-                                            <TableRow key={tx.id} className="hover:bg-zinc-50/50 transition-colors group">
+                                        transactions.map((tx: any, idx: number) => (
+                                            <TableRow key={tx.id || idx} className="hover:bg-zinc-50/50 transition-colors group">
                                                 <TableCell className="text-sm text-zinc-500 font-medium whitespace-nowrap">
-                                                    {formatDate(tx.date)}
+                                                    {formatDate(tx.createdAt || tx.date)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
-                                                        <span className="font-bold text-zinc-900">{tx.description}</span>
+                                                        <span className="font-bold text-zinc-900">{tx.description || 'Movimiento'}</span>
                                                         <span className="text-xs text-zinc-400 font-medium mt-0.5 uppercase tracking-wider">
-                                                            {tx.type === 'ORDER' ? 'Nuevo Pedido' : 'Reporte de Pago'}
+                                                            {tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER' ? 'Nuevo Pedido' : 'Reporte de Pago'}
                                                         </span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {getStatusBadge(tx.status)}
+                                                    {getStatusBadge(tx.status || 'COMPLETED')}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     {getAmountDisplay(tx.amount, tx.type)}

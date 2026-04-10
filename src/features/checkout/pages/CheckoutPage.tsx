@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCartStore } from "@/store/cartStore";
+import { useOrderDraftStore } from "@/store/orderDraftStore";
+import apiClient from "@/lib/apiClient";
 import { BankDetailsCard } from '@/components/shared/BankDetailsCard';
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -13,13 +15,15 @@ import {
     ArrowRight,
     Package,
     CreditCard,
-    UploadCloud
+    UploadCloud,
+    User
 } from "lucide-react";
 import { toast } from "sonner";
 
 export function CheckoutPage() {
     const navigate = useNavigate();
     const { items, totalUnits, totalPrice, clearCart } = useCartStore();
+    const { isActive: isDraft, clientName: draftClientName, clientId: draftClientId, clearDraft } = useOrderDraftStore();
 
     const [deliveryMethod, setDeliveryMethod] = useState("fabrica");
     const [notes, setNotes] = useState("");
@@ -28,24 +32,63 @@ export function CheckoutPage() {
     const [orderNumber, setOrderNumber] = useState("");
     const [finalTotal, setFinalTotal] = useState(0);
 
-    const handleConfirmOrder = () => {
+    const handleConfirmOrder = async () => {
         if (items.length === 0) {
             toast.error("El carrito está vacío");
             return;
         }
 
-        setIsLoading(true);
-        // Generamos un número de orden falso para la UI
-        const fakeOrderNum = `#ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+        // Validate variants
+        const missingVariants = items.filter(i => !i.variantId);
+        if (missingVariants.length > 0) {
+            toast.error("Algunos productos no tienen una variante válida.", {
+                description: "Por favor vuelve al catálogo y agrégalos nuevamente."
+            });
+            return;
+        }
 
-        // Simulamos la llamada a la API
-        setTimeout(() => {
-            setIsLoading(false);
-            setOrderNumber(fakeOrderNum);
-            setFinalTotal(totalPrice); // Guardamos el total antes de vaciar el carrito
+        setIsLoading(true);
+
+        const payload = {
+            clientId: isDraft && draftClientId ? draftClientId : undefined,
+            notes: `Entrega: ${deliveryMethod}. ${notes}`,
+            items: items.map(item => ({
+                variantId: item.variantId,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice
+            }))
+        };
+
+        try {
+            const res = await apiClient.post('/orders', payload);
+            
+            // Backend should return order { id }
+            setOrderNumber(res.data.id || "CONFIRMADO");
+            setFinalTotal(totalPrice);
             setIsSuccess(true);
-            clearCart();
-        }, 2000);
+            
+            if (isDraft) {
+                clearDraft();
+            } else {
+                clearCart();
+            }
+        } catch (error: any) {
+            console.error(error);
+            if (error.response?.status === 400 || error.response?.status === 409) {
+                toast.error("Inventario insuficiente", {
+                    description: error.response?.data?.error || "Alguien acaba de comprar el stock de un artículo que seleccionaste. Revisa tu pedido.",
+                    duration: 5000,
+                    action: {
+                        label: "Volver a Editar",
+                        onClick: () => navigate("/portal/catalogo"),
+                    },
+                });
+            } else {
+                toast.error("Error al procesar el pedido. Intenta nuevamente.");
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     // PANTALLA DE ÉXITO (B2B Order Confirmation)
@@ -61,7 +104,10 @@ export function CheckoutPage() {
                         </div>
                         <h1 className="text-3xl font-extrabold text-zinc-900 tracking-tight mb-2">¡Pedido Registrado!</h1>
                         <p className="text-zinc-500 text-lg">
-                            Tu orden de compra <span className="font-bold text-zinc-900 px-1">{orderNumber}</span> ha sido procesada con éxito.
+                            {isDraft && draftClientName
+                                ? <>Pedido <span className="font-bold text-zinc-900 px-1">{orderNumber}</span> registrado para <span className="font-bold text-zinc-900">{draftClientName}</span>.&nbsp;</>
+                                : <>Tu orden de compra <span className="font-bold text-zinc-900 px-1">{orderNumber}</span> ha sido procesada con éxito.</>
+                            }
                         </p>
                     </div>
 
@@ -103,19 +149,32 @@ export function CheckoutPage() {
 
                     {/* Botones de Acción */}
                     <div className="flex flex-col sm:flex-row gap-3 w-full">
-                        <Button
-                            className="flex-1 h-12 text-base rounded-xl font-semibold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors"
-                            onClick={() => navigate("/portal/pedidos")} // Asumiendo que tenés esta ruta
-                        >
-                            Ver mis pedidos
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="flex-1 h-12 text-base rounded-xl font-semibold text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 transition-colors"
-                            onClick={() => navigate("/portal/catalogo")}
-                        >
-                            Seguir comprando
-                        </Button>
+                        {isDraft ? (
+                            /* Flujo Seller: volver a la cartera */
+                            <Button
+                                className="flex-1 h-12 text-base rounded-xl font-semibold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors"
+                                onClick={() => navigate("/ventas/clientes")}
+                            >
+                                Volver a Mi Cartera
+                            </Button>
+                        ) : (
+                            /* Flujo Cliente */
+                            <>
+                                <Button
+                                    className="flex-1 h-12 text-base rounded-xl font-semibold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors"
+                                    onClick={() => navigate("/portal/pedidos")}
+                                >
+                                    Ver mis pedidos
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 h-12 text-base rounded-xl font-semibold text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 transition-colors"
+                                    onClick={() => navigate("/portal/catalogo")}
+                                >
+                                    Seguir comprando
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -124,6 +183,19 @@ export function CheckoutPage() {
 
     return (
         <div className="max-w-6xl mx-auto py-6 px-4 md:px-6 animate-in fade-in duration-500">
+
+            {/* Banner de contexto: pedido para un cliente (seller flow) */}
+            {isDraft && draftClientName && (
+                <div className="flex items-center gap-3 bg-zinc-900 text-white rounded-2xl px-5 py-3.5 mb-6 shadow-lg animate-in slide-in-from-top-2 fade-in duration-300">
+                    <div className="w-9 h-9 rounded-full bg-white/15 border border-white/10 flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4 text-white/80" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Confirmando pedido para</span>
+                        <span className="text-sm font-bold text-white leading-tight">{draftClientName}</span>
+                    </div>
+                </div>
+            )}
 
 
             {/* PANTALLA DE CARRITO VACÍO (Empty State Premium) */}

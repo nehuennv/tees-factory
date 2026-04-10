@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 export interface CartItem {
     id: string; // productId-quality-color-size
+    variantId: string; // UUID from backend for precise checkout
     productId: string;
     productName: string;
     quality: string;

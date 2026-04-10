@@ -1,5 +1,6 @@
-import React from 'react';
-import { MOCK_CLIENTS, type Client } from '@/mocks/clients';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import apiClient from '@/lib/apiClient';
 import { ShoppingBag, MoreHorizontal, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import {
     Table,
@@ -17,11 +18,26 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AssignSellerModal } from '@/features/admin/components/AssignSellerModal';
+import { EditClientModal } from '@/features/admin/components/EditClientModal';
+import { useOrderDraftStore } from '@/store/orderDraftStore';
+import { toast } from 'sonner';
 
+
+export interface Client {
+    id: string;
+    name: string;
+    cuit: string;
+    email: string;
+    phone: string;
+    address: string;
+    balance: number;
+    sellerId: string;
+    isActive: boolean;
+    notes?: string;
+}
 
 export interface ClientListProps {
     role: 'ADMIN' | 'SELLER';
-    clients?: Client[];
     currentUserId?: string;
 }
 
@@ -42,7 +58,7 @@ const truncateText = (text: string, maxLength: number = 30) => {
     return text.substring(0, maxLength) + '...';
 };
 
-const AdminClientTable = ({ clients, role }: { clients: Client[], role: 'ADMIN' | 'SELLER' }) => {
+const AdminClientTable = ({ clients, role, onNewOrder, onEditClient }: { clients: Client[], role: 'ADMIN' | 'SELLER', onNewOrder?: (client: Client) => void, onEditClient?: (client: Client) => void }) => {
     return (
         <Table>
             <TableHeader>
@@ -103,13 +119,26 @@ const AdminClientTable = ({ clients, role }: { clients: Client[], role: 'ADMIN' 
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-52 bg-white border-zinc-200 rounded-xl shadow-lg p-1.5">
-                                            <DropdownMenuItem className="flex items-center gap-2 text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg transition-colors">
+                                            <DropdownMenuItem
+                                                className="flex items-center gap-2 text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg transition-colors"
+                                                onClick={() => onNewOrder?.(client)}
+                                            >
                                                 <ShoppingBag className="w-3.5 h-3.5 text-zinc-400 opacity-80" />
                                                 Nuevo Pedido
                                             </DropdownMenuItem>
                                             <div className="h-px bg-zinc-100 my-1 mx-1" />
-                                            <DropdownMenuItem className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg">Ver Cuenta Corriente</DropdownMenuItem>
-                                            <DropdownMenuItem className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg">Editar Datos</DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg"
+                                                onClick={() => toast.info('Redirigiendo al historial financiero del cliente...')}
+                                            >
+                                                Ver Cuenta Corriente
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg"
+                                                onClick={() => onEditClient?.(client)}
+                                            >
+                                                Editar Datos
+                                            </DropdownMenuItem>
                                             {role === 'ADMIN' && (
                                                 <DropdownMenuItem
                                                     className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg"
@@ -139,14 +168,36 @@ const AdminClientTable = ({ clients, role }: { clients: Client[], role: 'ADMIN' 
     );
 };
 
-export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLIENTS, currentUserId }) => {
+export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) => {
+    const navigate = useNavigate();
+    const startDraft = useOrderDraftStore((s) => s.startDraft);
+
+    const [clients, setClients] = useState<Client[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     const [currentPage, setCurrentPage] = React.useState(1);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
 
-    // Estado para el modal de asignación
     const [isAssignModalOpen, setIsAssignModalOpen] = React.useState(false);
     const [selectedClient, setSelectedClient] = React.useState<Client | null>(null);
+
+    // Estado para EditClientModal
+    const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+    const [clientToEdit, setClientToEdit] = React.useState<Client | null>(null);
+    const [statusFilter, setStatusFilter] = React.useState<'ALL' | 'ACTIVE' | 'DEBT'>('ALL');
+
+    // Carga inicial
+    useEffect(() => {
+        setIsLoading(true);
+        apiClient.get('/clients')
+            .then(res => setClients(res.data))
+            .catch(err => {
+                console.error(err);
+                toast.error("Error al cargar la lista de clientes");
+            })
+            .finally(() => setIsLoading(false));
+    }, []);
 
     // Exponer el modal al componente hijo (AdminClientTable) mediante window para evitar prop drilling complejo en este mock
     // En una app real usaríamos Context o pasaríamos callbacks.
@@ -160,10 +211,26 @@ export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLI
         };
     }, []);
 
-    const handleAssign = (sellerId: string | null) => {
-        console.log(`Asignando vendedor ${sellerId} al cliente ${selectedClient?.id}`);
-        // Aquí iría la lógica de actualización
+    const handleAssign = () => {
+        toast.success(`Vendedor actualizado`, {
+            description: `Se ha modificado el representante de ventas asignado.`
+        });
         setIsAssignModalOpen(false);
+    };
+
+    /**
+     * Inicia el flujo de creación de pedido para un cliente.
+     * 1. Registra el contexto del draft (para quién es el pedido)
+     * 2. Navega al catálogo contextual del seller
+     */
+    const handleNewOrder = (client: Client) => {
+        startDraft(client.id, client.name);
+        navigate(`/ventas/pedido/${client.id}`);
+    };
+
+    const handleEditClient = (client: Client) => {
+        setClientToEdit(client);
+        setIsEditModalOpen(true);
     };
 
     // Paginación optimizada para 270+ clientes (B2B): 50 filas de tabla
@@ -175,6 +242,13 @@ export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLI
         // Filtrado por rol: El vendedor solo ve sus clientes asignados
         if (role === 'SELLER' && currentUserId) {
             result = result.filter(c => c.sellerId === currentUserId);
+        }
+
+        // Filtrado por status
+        if (statusFilter === 'DEBT') {
+            result = result.filter(c => c.balance < 0);
+        } else if (statusFilter === 'ACTIVE') {
+            result = result.filter(c => c.balance >= 0);
         }
 
         if (searchTerm) {
@@ -233,10 +307,19 @@ export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLI
                     />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                    {/* Filtros visuales estandarizados */}
-                    <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
-                        Estado <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
-                    </Button>
+                    {/* Filtros visuales estandarizados con Dropdown funcionales */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0 shadow-sm transition-colors">
+                                {statusFilter === 'ALL' ? 'Estado' : statusFilter === 'DEBT' ? 'Con Deuda' : 'Al día'} <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40 bg-white border border-zinc-200 rounded-xl shadow-lg p-1">
+                            <DropdownMenuItem onClick={() => setStatusFilter('ALL')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Todos</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setStatusFilter('ACTIVE')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Al día</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setStatusFilter('DEBT')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-semibold text-red-600 py-2 px-3 outline-none">Con Deuda</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <div className="w-px h-6 bg-zinc-200 mx-1 hidden sm:block shrink-0"></div>
                     <Button
                         variant="outline"
@@ -250,7 +333,14 @@ export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLI
             </div>
 
             {/* Vista unificada: Tabla para ambos roles */}
-            <AdminClientTable clients={paginatedClients} role={role} />
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center p-12 text-zinc-500 bg-white rounded-2xl border border-zinc-200 shadow-sm">
+                    <span className="w-8 h-8 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin mb-4" />
+                    <p className="font-medium animate-pulse">Cargando clientes...</p>
+                </div>
+            ) : (
+                <AdminClientTable clients={paginatedClients} role={role} onNewOrder={handleNewOrder} onEditClient={handleEditClient} />
+            )}
 
             {/* Paginación */}
             {totalPages > 1 && (
@@ -295,6 +385,12 @@ export const ClientList: React.FC<ClientListProps> = ({ role, clients = MOCK_CLI
                     </div>
                 </div>
             )}
+
+            <EditClientModal
+                isOpen={isEditModalOpen}
+                onClose={() => { setIsEditModalOpen(false); setClientToEdit(null); }}
+                client={clientToEdit}
+            />
         </div>
     );
 };

@@ -32,8 +32,6 @@ const NAV_ITEMS: NavItemConfig[] = [
 
     // SELLER
     { to: '/ventas/clientes', icon: Users, label: 'Mi Cartera de Clientes', allowedRoles: ['SELLER'] },
-    // Eliminamos el tomar pedido con ID explícito de la sidebar, o lo dejamos como vista general
-    { to: '/ventas/catalogo', icon: ShoppingBag, label: 'Catálogo Vendedores', allowedRoles: ['SELLER'] },
 ];
 
 export default function Sidebar() {
@@ -97,13 +95,13 @@ export default function Sidebar() {
                 {/* User Avatar */}
                 <div className="relative group w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center overflow-visible border border-zinc-200 cursor-pointer hover:ring-2 hover:ring-zinc-900 hover:ring-offset-2 transition-all duration-300 hover:scale-105">
                     <img
-                        src={`https://ui-avatars.com/api/?name=${user?.name || 'U'}&background=f4f4f5&color=18181b&bold=true`}
+                        src={`https://ui-avatars.com/api/?name=${user?.email?.split('@')[0] || 'U'}&background=f4f4f5&color=18181b&bold=true`}
                         alt="Perfil del Usuario"
                         className="w-full h-full object-cover rounded-full"
                     />
                     {/* Tooltip for user name */}
                     <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-zinc-900 text-white text-xs font-semibold tracking-wide rounded-md opacity-0 -translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 whitespace-nowrap shadow-xl">
-                        {user?.name || 'Usuario'}
+                        {user?.email?.split('@')[0] || 'Usuario'}
                         <div className="block absolute top-1/2 -translate-y-1/2 -left-1 w-2.5 h-2.5 bg-zinc-900 rotate-45 rounded-[2px] z-[-1]"></div>
                     </div>
                 </div>

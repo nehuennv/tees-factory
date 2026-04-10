@@ -1,42 +1,83 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_PRODUCTS } from '@/lib/mockData';
 import type { Product } from '@/types/product';
 import { CatalogToolbar } from '../components/CatalogToolbar';
 import { CatalogGrid } from '../components/CatalogGrid';
 import { OrderSummaryBar } from '../components/OrderSummaryBar';
+import { OrderDraftBanner } from '../components/OrderDraftBanner';
 import { useCartStore } from '@/store/cartStore';
+import { useOrderDraftStore } from '@/store/orderDraftStore';
 import { formatPrice } from '@/lib/formatters';
+import apiClient from '@/lib/apiClient';
 
 /**
  * CatalogPage — Página orquestadora del catálogo mayorista.
  *
  * Responsabilidad única: conectar estado local de búsqueda con los
  * componentes de presentación (Toolbar, Grid, SummaryBar).
- * Toda la lógica visual vive en los sub-componentes extraídos.
+ *
+ * Soporta dos contextos:
+ *   1. Cliente navegando su propio catálogo (/portal/catalogo)
+ *   2. Vendedor armando un pedido para un cliente (/ventas/pedido/:clientId)
+ *
+ * La detección del contexto es automática vía `orderDraftStore`.
  */
 export function CatalogPage() {
     const [searchTerm, setSearchTerm] = useState('');
-    const { totalUnits, totalPrice, items } = useCartStore();
+    const [products, setProducts] = useState<Product[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const filteredProducts: Product[] = MOCK_PRODUCTS.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.id.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const { totalUnits, totalPrice, items } = useCartStore();
+    const draftIsActive = useOrderDraftStore((s) => s.isActive);
+    const draftClientId = useOrderDraftStore((s) => s.clientId);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setIsLoading(true);
+            const params: any = {};
+            if (searchTerm.trim()) params.search = searchTerm;
+            
+            apiClient.get('/products', { params })
+                .then(res => {
+                    const fetchedProducts = res.data.map((p: any) => ({
+                        ...p,
+                        // Provide a placeholder image as the API does not return images yet
+                        image: p.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=2600&auto=format&fit=crop'
+                    }));
+                    setProducts(fetchedProducts);
+                })
+                .catch(err => console.error("Error fetching products:", err))
+                .finally(() => setIsLoading(false));
+        }, 300);
+
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
 
     const navigate = useNavigate();
 
     const handleProductAction = (product: Product) => {
-        navigate(`/portal/catalogo/${product.id}`);
+        if (draftIsActive && draftClientId) {
+            // Seller armando pedido → detalle dentro del flujo de pedido
+            navigate(`/ventas/pedido/${draftClientId}/${product.id}`);
+        } else {
+            // Cliente normal → detalle del catálogo
+            navigate(`/portal/catalogo/${product.id}`);
+        }
     };
 
     const handleCheckout = () => {
-        navigate('/portal/checkout');
+        if (draftIsActive) {
+            navigate('/ventas/checkout');
+        } else {
+            navigate('/portal/checkout');
+        }
     };
 
     return (
         <div className="flex flex-col h-full bg-transparent">
+            {/* Banner contextual: solo se muestra si el seller tiene un draft activo */}
+            <OrderDraftBanner />
+
             {/* Contenido scrolleable */}
             <div className="flex-1 overflow-y-auto pb-6 px-6 lg:px-8 pt-6">
                 <CatalogToolbar
@@ -45,7 +86,7 @@ export function CatalogPage() {
                 />
 
                 <CatalogGrid
-                    products={filteredProducts}
+                    products={products}
                     onProductAction={handleProductAction}
                 />
             </div>
@@ -57,6 +98,7 @@ export function CatalogPage() {
                     totalUnits={`${totalUnits} un.`}
                     subtotal={formatPrice(totalPrice)}
                     onAction={handleCheckout}
+                    actionLabel={draftIsActive ? 'CONFIRMAR PEDIDO' : 'REVISAR PEDIDO'}
                 />
             )}
         </div>
