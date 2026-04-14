@@ -39,15 +39,20 @@ apiClient.interceptors.response.use(
     },
     (error) => {
         if (error.response && error.response.status === 401) {
-            // Limpiar token y forzar recarga al login
-            localStorage.removeItem('jwt_token');
-            // Evitamos import circular: el store se limpiará al recargar
-            // porque rehydrate() no encontrará token válido.
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
+            const method = error.config?.method?.toUpperCase();
+            // Solo desloguear en GETs (token vencido).
+            // En mutaciones (POST/PATCH/PUT/DELETE) el 401 indica permisos insuficientes:
+            // en ese caso rechazamos el error para que el componente muestre un toast,
+            // sin cerrar la sesión del usuario.
+            const isReadRequest = method === 'GET' || method === undefined;
+            if (isReadRequest) {
+                localStorage.removeItem('jwt_token');
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
             }
         }
-        
+
         return Promise.reject(error);
     }
 );

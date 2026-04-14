@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
@@ -23,13 +24,18 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, PackageOpen, Truck, CheckCircle2, Clock } from 'lucide-react';
 
 export function ClientOrdersPage() {
+    const { user } = useAuthStore();
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
     useEffect(() => {
+        if (!user?.reference_id) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
-        apiClient.get('/orders')
+        apiClient.get('/orders', { params: { clientId: user.reference_id } })
             .then(res => setOrders(res.data))
             .catch(err => {
                 console.error(err);
@@ -38,7 +44,7 @@ export function ClientOrdersPage() {
                 }
             })
             .finally(() => setIsLoading(false));
-    }, []);
+    }, [user?.reference_id]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {

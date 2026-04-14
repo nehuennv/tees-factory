@@ -91,7 +91,7 @@ export function NewClientModal({ isOpen, onClose }: NewClientModalProps) {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="email" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Email de Contacto</label>
+                    <label htmlFor="email" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Email de Contacto <span className="text-zinc-400 font-normal normal-case tracking-normal">(opcional)</span></label>
                     <Input
                         id="email"
                         name="email"
@@ -104,7 +104,7 @@ export function NewClientModal({ isOpen, onClose }: NewClientModalProps) {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="phone" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Teléfono / WhatsApp</label>
+                    <label htmlFor="phone" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Teléfono / WhatsApp <span className="text-zinc-400 font-normal normal-case tracking-normal">(opcional)</span></label>
                     <Input
                         id="phone"
                         name="phone"

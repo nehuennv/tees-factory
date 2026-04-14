@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import apiClient from '@/lib/apiClient';
+import { useOrderDraftStore } from './orderDraftStore';
 
 export type Role = 'ADMIN' | 'CLIENT' | 'SELLER';
 
@@ -44,6 +45,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     login: async (email: string, password: string) => {
         const { data } = await apiClient.post('/auth/login', { email, password });
 
+        // Limpiar cualquier draft de sesión anterior antes de entrar
+        useOrderDraftStore.getState().clearDraft();
+
         // Persistir token para que el interceptor de Axios lo adjunte
         localStorage.setItem('jwt_token', data.token);
 
@@ -55,6 +59,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     // ── Logout ──────────────────────────────────────────────────
     logout: () => {
+        // Limpiar draft activo para que no persista en la próxima sesión
+        useOrderDraftStore.getState().clearDraft();
         localStorage.removeItem('jwt_token');
         set({ user: null, isAuthenticated: false });
     },

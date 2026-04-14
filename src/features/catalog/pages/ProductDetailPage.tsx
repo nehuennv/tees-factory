@@ -40,7 +40,36 @@ export function ProductDetailPage() {
     useEffect(() => {
         setIsLoading(true);
         apiClient.get(`/products/${productId}`)
-            .then(res => setProduct(res.data))
+            .then(res => {
+                const data = res.data;
+                // Si el backend devuelve 'variants' en lugar de 'qualities',
+                // o la estructura difiere, lo normalizamos aquí.
+                if (data && !data.qualities && data.variants) {
+                    // Agrupar variants planos en estructura qualities[].colors[].sizes[]
+                    const qualityMap: Record<string, any> = {};
+                    data.variants.forEach((v: any) => {
+                        const qName = v.quality || v.qualityName || 'Estándar';
+                        if (!qualityMap[qName]) {
+                            qualityMap[qName] = { qualityName: qName, basePrice: v.price || v.unitPrice || data.basePrice || 0, colors: {} };
+                        }
+                        const cName = v.color || v.colorName || 'Default';
+                        if (!qualityMap[qName].colors[cName]) {
+                            qualityMap[qName].colors[cName] = { colorName: cName, sizes: [] };
+                        }
+                        qualityMap[qName].colors[cName].sizes.push({
+                            id: v.id,
+                            size: v.size,
+                            sku: v.sku || '',
+                            availableStock: v.availableStock ?? v.stock ?? 0,
+                        });
+                    });
+                    data.qualities = Object.values(qualityMap).map((q: any) => ({
+                        ...q,
+                        colors: Object.values(q.colors),
+                    }));
+                }
+                setProduct(data);
+            })
             .catch(err => {
                 console.error(err);
                 if (err.response?.status !== 404) {
@@ -165,11 +194,23 @@ export function ProductDetailPage() {
         );
     }
 
-    if (!product || !activeQuality) {
+    if (!product) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-zinc-500 p-8">
                 <p className="text-lg font-bold text-zinc-900 mb-2">Producto no encontrado</p>
                 <p className="text-sm mb-4">El producto con ID "{productId}" no existe en el catálogo.</p>
+                <Button onClick={() => navigate(-1)} variant="outline" className="rounded-xl">
+                    Volver al catálogo
+                </Button>
+            </div>
+        );
+    }
+
+    if (!activeQuality) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full text-zinc-500 p-8">
+                <p className="text-lg font-bold text-zinc-900 mb-2">Sin variantes disponibles</p>
+                <p className="text-sm mb-4">Este producto no tiene talles ni calidades configuradas aún. Contactá al administrador.</p>
                 <Button onClick={() => navigate(-1)} variant="outline" className="rounded-xl">
                     Volver al catálogo
                 </Button>

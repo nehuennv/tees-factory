@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AssignSellerModal } from '@/features/admin/components/AssignSellerModal';
 import { EditClientModal } from '@/features/admin/components/EditClientModal';
+import { Modal } from '@/components/shared/Modal';
 import { useOrderDraftStore } from '@/store/orderDraftStore';
 import { toast } from 'sonner';
 
@@ -58,7 +59,7 @@ const truncateText = (text: string, maxLength: number = 30) => {
     return text.substring(0, maxLength) + '...';
 };
 
-const AdminClientTable = ({ clients, role, onNewOrder, onEditClient }: { clients: Client[], role: 'ADMIN' | 'SELLER', onNewOrder?: (client: Client) => void, onEditClient?: (client: Client) => void }) => {
+const AdminClientTable = ({ clients, role, onNewOrder, onEditClient, onDeleteClient }: { clients: Client[], role: 'ADMIN' | 'SELLER', onNewOrder?: (client: Client) => void, onEditClient?: (client: Client) => void, onDeleteClient?: (client: Client) => void }) => {
     return (
         <Table>
             <TableHeader>
@@ -150,6 +151,13 @@ const AdminClientTable = ({ clients, role, onNewOrder, onEditClient }: { clients
                                                     Asignar a Vendedor
                                                 </DropdownMenuItem>
                                             )}
+                                            <div className="h-px bg-zinc-100 my-1 mx-1" />
+                                            <DropdownMenuItem
+                                                className="text-xs font-semibold text-red-600 cursor-pointer focus:bg-red-50 focus:text-red-700 py-2 rounded-lg"
+                                                onClick={() => onDeleteClient?.(client)}
+                                            >
+                                                Eliminar Cliente
+                                            </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
@@ -186,6 +194,11 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
     const [clientToEdit, setClientToEdit] = React.useState<Client | null>(null);
     const [statusFilter, setStatusFilter] = React.useState<'ALL' | 'ACTIVE' | 'DEBT'>('ALL');
+
+    // Estado para confirmación de eliminación
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+    const [clientToDelete, setClientToDelete] = React.useState<Client | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
 
     // Carga inicial
     useEffect(() => {
@@ -233,16 +246,35 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
         setIsEditModalOpen(true);
     };
 
+    const handleDeleteClient = (client: Client) => {
+        setClientToDelete(client);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteClient = async () => {
+        if (!clientToDelete) return;
+        setIsDeleting(true);
+        try {
+            await apiClient.delete(`/clients/${clientToDelete.id}`);
+            setClients(prev => prev.filter(c => c.id !== clientToDelete.id));
+            toast.success('Cliente eliminado', {
+                description: `${clientToDelete.name} fue eliminado del sistema.`,
+            });
+            setIsDeleteModalOpen(false);
+            setClientToDelete(null);
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.response?.data?.error || 'Error al eliminar el cliente');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     // Paginación optimizada para 270+ clientes (B2B): 50 filas de tabla
     const itemsPerPage = 50;
 
     const filteredAndSortedClients = React.useMemo(() => {
         let result = [...clients];
-
-        // Filtrado por rol: El vendedor solo ve sus clientes asignados
-        if (role === 'SELLER' && currentUserId) {
-            result = result.filter(c => c.sellerId === currentUserId);
-        }
 
         // Filtrado por status
         if (statusFilter === 'DEBT') {
@@ -339,7 +371,7 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
                     <p className="font-medium animate-pulse">Cargando clientes...</p>
                 </div>
             ) : (
-                <AdminClientTable clients={paginatedClients} role={role} onNewOrder={handleNewOrder} onEditClient={handleEditClient} />
+                <AdminClientTable clients={paginatedClients} role={role} onNewOrder={handleNewOrder} onEditClient={handleEditClient} onDeleteClient={handleDeleteClient} />
             )}
 
             {/* Paginación */}
@@ -390,6 +422,27 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
                 isOpen={isEditModalOpen}
                 onClose={() => { setIsEditModalOpen(false); setClientToEdit(null); }}
                 client={clientToEdit}
+            />
+
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => { if (!isDeleting) { setIsDeleteModalOpen(false); setClientToDelete(null); } }}
+                title="Eliminar Cliente"
+                description={`¿Estás seguro de que querés eliminar a "${clientToDelete?.name}"? Esta acción no se puede deshacer.`}
+                maxWidth="sm"
+                hideCloseButton
+                primaryAction={{
+                    label: 'Sí, eliminar',
+                    variant: 'destructive',
+                    onClick: confirmDeleteClient,
+                    isLoading: isDeleting,
+                    disabled: isDeleting,
+                }}
+                secondaryAction={{
+                    label: 'Cancelar',
+                    onClick: () => { setIsDeleteModalOpen(false); setClientToDelete(null); },
+                    disabled: isDeleting,
+                }}
             />
         </div>
     );

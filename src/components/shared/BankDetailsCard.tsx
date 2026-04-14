@@ -11,10 +11,11 @@ export function BankDetailsCard() {
 
     const bankData = {
         banco: "Banco Galicia",
-        titular: "TEES FACTORY S.R.L.",
-        cuit: "30-71458922-1",
-        cbu: "0070123420000005432108",
-        alias: "pago.tees.factory"
+        nroCuenta: "4019522-7 367-1",
+        titular: "Héctor Ortuño Alvarez",
+        cuit: "20-29490717-4",
+        cbu: "0070367130004019522716",
+        alias: "TEES-FACTORY"
     };
 
     const copyToClipboard = (text: string, field: string) => {
@@ -54,8 +55,9 @@ export function BankDetailsCard() {
             </div>
             <div className="space-y-1">
                 <DetailItem label="Banco" value={bankData.banco} field="banco" />
+                <DetailItem label="N° de Cuenta" value={bankData.nroCuenta} field="nroCuenta" showCopy />
                 <DetailItem label="Titular" value={bankData.titular} field="titular" />
-                <DetailItem label="CUIT" value={bankData.cuit} field="cuit" />
+                <DetailItem label="CUIT" value={bankData.cuit} field="cuit" showCopy />
                 <DetailItem label="CBU" value={bankData.cbu} field="cbu" showCopy />
                 <DetailItem label="Alias" value={bankData.alias} field="alias" showCopy />
             </div>

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { BankDetailsCard } from '@/components/shared/BankDetailsCard';
 import apiClient from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
 import {
     Sheet,
     SheetContent,
@@ -18,52 +19,73 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { UploadCloud, Loader2 } from 'lucide-react';
+import { UploadCloud, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function PaymentReportModal() {
+    const { user } = useAuthStore();
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     // Form states
-    const [bank, setBank] = useState('');
+    const [method, setMethod] = useState('transfer');
     const [amount, setAmount] = useState('');
+    const [date, setDate] = useState('');
+    const [operationNumber, setOperationNumber] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const resetForm = () => {
-        setBank('');
+        setMethod('transfer');
         setAmount('');
+        setDate('');
+        setOperationNumber('');
         setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.MouseEvent | React.FormEvent) => {
         e.preventDefault();
-        
-        if (!amount || Number(amount) <= 0) {
-            toast.error("Ingresa un monto válido");
+
+        if (!amount || parseFloat(amount) <= 0) {
+            toast.error('Ingresá un monto válido.');
+            return;
+        }
+        if (!date) {
+            toast.error('La fecha del pago es obligatoria.');
+            return;
+        }
+        if (!operationNumber.trim()) {
+            toast.error('El número de operación es obligatorio.');
+            return;
+        }
+        if (!file) {
+            toast.error('Por favor adjuntá un comprobante.');
             return;
         }
 
         setIsLoading(true);
 
         const formData = new FormData();
-        formData.append('amount', amount.toString());
-        formData.append('notes', `Banco: ${bank}`);
-        if (file) {
-            formData.append('receiptFile', file);
+        formData.append('method', method);
+        formData.append('amount', amount);
+        formData.append('date', date);
+        formData.append('operationNumber', operationNumber);
+        formData.append('receipt', file);
+        if (user?.reference_id) {
+            formData.append('clientId', user.reference_id);
         }
 
         try {
             await apiClient.post('/payments', formData, {
-                headers: { "Content-Type": "multipart/form-data" }
+                headers: { 'Content-Type': 'multipart/form-data' },
             });
-            toast.success('Pago reportado con éxito. En revisión.');
+            toast.success('Pago reportado con éxito. El tesorero lo validará pronto.');
             setIsOpen(false);
             resetForm();
         } catch (error: any) {
             console.error(error);
-            toast.error(error.response?.data?.error || 'Hubo un error al reportar tu pago.');
+            toast.error(error.response?.data?.error || 'Error al reportar el pago. Intentá de nuevo.');
         } finally {
             setIsLoading(false);
         }
@@ -79,7 +101,6 @@ export function PaymentReportModal() {
             <SheetTrigger asChild>
                 <Button
                     className="w-full rounded-xl bg-zinc-900 border-zinc-900 text-white hover:bg-zinc-800 h-10 font-bold transition-all shadow-md shadow-zinc-200"
-                    onClick={() => setIsOpen(true)}
                 >
                     Informar Pago Ahora
                 </Button>
@@ -96,103 +117,122 @@ export function PaymentReportModal() {
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="p-6 flex flex-col gap-8">
-                        {/* --- NEW: Bank Details Card Integration --- */}
                         <BankDetailsCard />
 
                         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                            <div className="flex flex-col gap-6">
-                                <div className="flex flex-col gap-2">
-                                    <label htmlFor="method" className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Método de Pago</label>
-                                    <Select name="method" defaultValue="transfer">
-                                        <SelectTrigger id="method" className="rounded-xl h-11 border-zinc-200">
-                                            <SelectValue placeholder="Seleccionar método" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="transfer">Transferencia Bancaria</SelectItem>
-                                            <SelectItem value="deposit">Depósito</SelectItem>
-                                            <SelectItem value="cash">Efectivo</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
 
-                                <div className="flex flex-col gap-2">
-                                    <label htmlFor="amount" className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Monto Pagado</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">$</span>
-                                        <Input
-                                            id="amount"
-                                            name="amount"
-                                            type="number"
-                                            placeholder="0.00"
-                                            value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
-                                            required
-                                            className="rounded-xl pl-8 h-11 border-zinc-200 font-bold"
-                                        />
-                                    </div>
-                                </div>
+                            <div className="flex flex-col gap-2">
+                                <label htmlFor="modal-method" className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Método de Pago</label>
+                                <Select name="method" value={method} onValueChange={setMethod}>
+                                    <SelectTrigger id="modal-method" className="rounded-xl h-11 border-zinc-200 bg-zinc-50">
+                                        <SelectValue placeholder="Seleccionar método" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="transfer">Transferencia Bancaria</SelectItem>
+                                        <SelectItem value="deposit">Depósito por Cajero</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                                <div className="flex flex-col gap-2">
-                                    <label htmlFor="bank" className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Banco / Origen</label>
+                            <div className="flex flex-col gap-2">
+                                <label htmlFor="modal-date" className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
+                                    Fecha del Pago <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    id="modal-date"
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => setDate(e.target.value)}
+                                    required
+                                    className="rounded-xl h-11 border-zinc-200 bg-zinc-50 focus:bg-white transition-colors"
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label htmlFor="modal-op" className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
+                                    Número de Operación <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    id="modal-op"
+                                    type="text"
+                                    placeholder="Ej: 0012345678"
+                                    value={operationNumber}
+                                    onChange={(e) => setOperationNumber(e.target.value)}
+                                    required
+                                    className="rounded-xl h-11 border-zinc-200 bg-zinc-50 focus:bg-white transition-colors placeholder:text-zinc-400 font-mono"
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label htmlFor="modal-amount" className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
+                                    Monto Depositado <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">$</span>
                                     <Input
-                                        id="bank"
-                                        name="bank"
-                                        type="text"
-                                        placeholder="Desde qué banco transferiste"
-                                        value={bank}
-                                        onChange={(e) => setBank(e.target.value)}
+                                        id="modal-amount"
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
                                         required
-                                        className="rounded-xl h-11 border-zinc-200"
+                                        min="0.01"
+                                        step="0.01"
+                                        className="rounded-xl pl-8 h-12 border-zinc-200 bg-zinc-50 focus:bg-white font-black text-lg transition-colors placeholder:font-normal placeholder:text-zinc-300"
                                     />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Adjuntar Comprobante</label>
-                                    <input 
-                                        type="file" 
-                                        className="hidden" 
-                                        ref={fileInputRef} 
-                                        accept="image/*,.pdf"
-                                        onChange={(e) => setFile(e.target.files?.[0] || null)} 
-                                    />
-                                    <div 
-                                        className="border-dashed border-2 border-zinc-200 bg-zinc-50/50 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-zinc-100/50 transition-all group"
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        <div className="w-8 h-8 rounded-lg border border-zinc-200 flex items-center justify-center mb-2 text-zinc-400 bg-white shadow-sm group-hover:scale-110 transition-transform">
-                                            <UploadCloud className="w-4 h-4" />
-                                        </div>
-                                        <span className="text-sm font-bold text-zinc-900 mb-0.5">
-                                            {file ? file.name : "Subir imagen o PDF"}
-                                        </span>
-                                        <span className="text-[10px] text-zinc-400 font-medium px-4 leading-tight">
-                                            Se debe ver el Nro. de operación
-                                        </span>
-                                    </div>
                                 </div>
                             </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
+                                    Adjuntar Comprobante <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                    className="hidden"
+                                    accept="image/*,application/pdf"
+                                />
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`border-dashed border-2 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all group ${
+                                        file ? 'border-zinc-900 bg-zinc-50/80' : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
+                                    }`}
+                                >
+                                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-2.5 shadow-sm transition-transform ${
+                                        file ? 'border-zinc-300 bg-white text-zinc-900 scale-105' : 'border-zinc-200 bg-white text-zinc-400 group-hover:scale-110'
+                                    }`}>
+                                        {file ? <CheckCircle2 className="w-4 h-4 text-zinc-900" /> : <UploadCloud className="w-4 h-4" />}
+                                    </div>
+                                    <span className="text-sm font-bold text-zinc-900 mb-0.5">
+                                        {file ? file.name : 'Subir imagen o PDF bancario'}
+                                    </span>
+                                    <span className="text-[10px] text-zinc-500 font-medium px-4 leading-tight">
+                                        {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB • Click para cambiar` : 'El Nro. de operación debe ser visible'}
+                                    </span>
+                                </div>
+                            </div>
+
                         </form>
                     </div>
                 </div>
 
                 <div className="p-6 border-t border-zinc-100 bg-white shrink-0">
-                    <div className="flex flex-col gap-3">
-                        <Button
-                            onClick={handleSubmit}
-                            className="w-full rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white h-12 font-bold shadow-lg shadow-zinc-200"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Enviando reporte...
-                                </>
-                            ) : (
-                                'Informar Pago Ahora'
-                            )}
-                        </Button>
-
-                    </div>
+                    <Button
+                        onClick={handleSubmit}
+                        className="w-full rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white h-12 font-bold shadow-lg shadow-zinc-200"
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Enviando reporte...
+                            </>
+                        ) : (
+                            'Informar Pago Ahora'
+                        )}
+                    </Button>
                 </div>
             </SheetContent>
         </Sheet>

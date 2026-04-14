@@ -38,7 +38,16 @@ export function TreasuryPage() {
         setIsLoading(true);
         try {
             const res = await apiClient.get('/payments');
-            setPayments(res.data);
+            // Normalize backend field names to frontend expectations:
+            // backend: reference → transactionId, paymentDate → date, amount → approvedAmount (for non-PENDING)
+            const normalized = res.data.map((p: any) => ({
+                ...p,
+                transactionId: p.reference ?? p.transactionId ?? '',
+                date: p.paymentDate ?? p.date ?? p.createdAt ?? '',
+                approvedAmount: p.approvedAmount ?? (p.status !== 'PENDING' ? p.amount : undefined),
+                observation: p.observation ?? p.notes ?? undefined,
+            }));
+            setPayments(normalized);
         } catch(err) {
             toast.error("Error al cargar pagos");
         } finally {
@@ -65,17 +74,20 @@ export function TreasuryPage() {
         }
     };
 
-    const handleReject = async (id: string) => {
+    const handleReject = async (id: string, reason?: string) => {
         const payment = payments.find(p => p.id === id);
         if (!payment) return;
 
+        // Optimistic update
         setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'REJECTED' } : p));
-        toast.success(`Pago rechazado`);
-        
-        // Asumiendo que el backend maneje reject a través del status patch:
+
         try {
-            await apiClient.patch(`/payments/${id}/status`, { status: "REJECTED" });
+            await apiClient.patch(`/payments/${id}/status`, { status: "REJECTED", reason });
+            toast.success(`Pago rechazado`);
         } catch (error) {
+            // Rollback si el API falla
+            setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'PENDING' } : p));
+            toast.error(`Error al rechazar el pago`);
             console.error(error);
         }
     };
@@ -130,8 +142,8 @@ export function TreasuryPage() {
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             filteredPayments = filteredPayments.filter(p =>
-                p.clientName.toLowerCase().includes(query) ||
-                p.transactionId.toLowerCase().includes(query)
+                p.clientName?.toLowerCase().includes(query) ||
+                p.transactionId?.toLowerCase().includes(query)
             );
         }
 
