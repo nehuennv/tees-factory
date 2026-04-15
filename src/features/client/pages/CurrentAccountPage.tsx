@@ -22,25 +22,51 @@ import {
     XCircle
 } from 'lucide-react';
 
+import { useParams } from 'react-router-dom';
+
 export function CurrentAccountPage() {
+    const { clientId } = useParams();
     const { user } = useAuthStore();
-    const referenceId = user?.reference_id;
+    const [clientName, setClientName] = useState<string>('');
+    
+    // Determinamos el ID del cliente a consultar
+    // Si hay clientId en URL, es vista administrativa. Si no, es vista propia del cliente.
+    const activeClientId = clientId || user?.reference_id;
+    const isAdministrativeView = !!clientId;
 
     const [currentDebt, setCurrentDebt] = useState<number>(0);
     const [transactions, setTransactions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!referenceId) {
+        if (!activeClientId) {
             setIsLoading(false);
             return;
         }
 
         setIsLoading(true);
-        apiClient.get(`/clients/${referenceId}/ledger`)
+        apiClient.get(`/clients/${activeClientId}/ledger`)
             .then(res => {
-                setCurrentDebt(res.data.client?.currentDebt || 0);
-                setTransactions(res.data.ledger || []);
+                const ledger = res.data.ledger || [];
+                const clientData = res.data.client || {};
+                
+                // Si el backend nos manda 0 de deuda pero hay movimientos aprobados,
+                // calculamos el balance real nosotros para mostrar el "Saldo a Favor".
+                const realBalance = ledger.reduce((acc: number, tx: any) => {
+                    const status = (tx.status || 'COMPLETED').toUpperCase();
+                    if (status !== 'COMPLETED' && status !== 'APPROVED') return acc;
+                    
+                    if (tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER') {
+                        return acc + (tx.amount || 0);
+                    } else {
+                        return acc - (tx.amount || 0);
+                    }
+                }, 0);
+
+                // Priorizamos el cálculo real si el del backend es 0 o menor
+                setCurrentDebt(realBalance);
+                setClientName(clientData.name || '');
+                setTransactions(ledger);
             })
             .catch(err => {
                 console.error(err);
@@ -49,7 +75,7 @@ export function CurrentAccountPage() {
                 }
             })
             .finally(() => setIsLoading(false));
-    }, [referenceId]);
+    }, [activeClientId]);
 
     // LÓGICA DE NEGOCIO
     // En la API nueva, currentDebt > 0 significa que debe plata.
@@ -63,8 +89,10 @@ export function CurrentAccountPage() {
     const cardBgGradient = isDebt ? 'bg-gradient-to-r from-rose-50/40 to-white' : 'bg-gradient-to-r from-emerald-50/40 to-white';
 
     const getStatusBadge = (status: string) => {
-        switch (status) {
+        const s = status?.toUpperCase();
+        switch (s) {
             case 'COMPLETED':
+            case 'APPROVED':
                 return (
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200/50">
                         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -134,7 +162,7 @@ export function CurrentAccountPage() {
 
                             <div className="flex flex-col gap-1">
                                 <span className="text-sm font-bold tracking-widest text-zinc-500 uppercase">
-                                    {balanceLabel}
+                                    {isAdministrativeView ? `Cuenta de ${clientName}` : balanceLabel}
                                 </span>
                                 <span className={`text-5xl md:text-6xl font-black tracking-tight ${balanceColor}`}>
                                     {formatPrice(Math.abs(currentDebt))}
@@ -143,14 +171,16 @@ export function CurrentAccountPage() {
                         </div>
 
                         <div className="w-full md:w-[320px] shrink-0">
-                            {/* Acción de Reportar Pago con mejor diseño */}
-                            <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/40 p-5 shadow-sm flex flex-col gap-4">
-                                <div className="flex flex-col gap-1">
-                                    <h4 className="text-sm font-bold text-zinc-900">¿Realizaste un pago?</h4>
-                                    <p className="text-xs text-zinc-500 leading-tight">Infórmalo ahora para agilizar el despacho de tus pedidos.</p>
+                            {/* Acción de Reportar Pago solo visible para el cliente */}
+                            {!isAdministrativeView && (
+                                <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/40 p-5 shadow-sm flex flex-col gap-4">
+                                    <div className="flex flex-col gap-1">
+                                        <h4 className="text-sm font-bold text-zinc-900">¿Realizaste un pago?</h4>
+                                        <p className="text-xs text-zinc-500 leading-tight">Infórmalo ahora para agilizar el despacho de tus pedidos.</p>
+                                    </div>
+                                    <PaymentReportModal />
                                 </div>
-                                <PaymentReportModal />
-                            </div>
+                            )}
                         </div>
                     </div>
                 </Card>

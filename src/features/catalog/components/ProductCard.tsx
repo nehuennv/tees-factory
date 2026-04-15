@@ -34,13 +34,18 @@ export function ProductCard({
             {/* Info Container */}
             <div className="flex flex-col flex-1 p-3 lg:p-4">
                 {/* Título y SKU */}
-                <div className="flex justify-between items-start mb-2 gap-1">
-                    <h3 className="text-xs lg:text-sm font-bold text-zinc-900 leading-snug line-clamp-2">
+                <div className="flex flex-col mb-2">
+                    <h3 className="text-xs lg:text-sm font-bold text-zinc-900 leading-snug line-clamp-1 group-hover:text-zinc-700 transition-colors">
                         {product.name}
                     </h3>
-                    <span className="text-[8px] lg:text-[9px] font-semibold text-zinc-500 bg-zinc-100 px-1 py-0.5 rounded uppercase tracking-wider shrink-0">
-                        {product.id}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                            SKU:
+                        </span>
+                        <span className="text-[9px] font-medium text-zinc-500 truncate max-w-[120px]">
+                            {product.id}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Tags: Talles y Colores */}

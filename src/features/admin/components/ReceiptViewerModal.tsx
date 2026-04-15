@@ -5,7 +5,7 @@ import { Receipt, Building2, User, Hash, Calendar, CheckCircle2, XCircle } from 
 import type { PaymentReport } from '@/mocks/payments'
 
 interface ReceiptViewerModalProps {
-    payment: PaymentReport | null;
+    payment: any | null;
     isOpen: boolean;
     onClose: () => void;
     onApprove: (id: string, amount: number) => void;
@@ -114,6 +114,11 @@ export function ReceiptViewerModal({ payment, isOpen, onClose, onApprove, onReje
                             </div>
 
                             <div className="bg-zinc-50/80 border border-zinc-100 rounded-xl p-5 space-y-4 mb-6">
+                                <div>
+                                    <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Monto Informado por Cliente</p>
+                                    <p className="text-zinc-900 font-bold text-xl">${payment.amount ? payment.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '0,00'}</p>
+                                </div>
+
                                 <div>
                                     <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Método de Pago</p>
                                     <p className="text-zinc-900 font-semibold text-sm">{payment.method}</p>

@@ -12,71 +12,76 @@ export interface User {
     reference_id: string | null;
 }
 
+// ── Leer sesión del JWT en localStorage de forma síncrona ──────────────────
+// Se ejecuta UNA sola vez al importar el módulo, antes de cualquier render.
+function readSessionFromToken(): { user: User | null; isAuthenticated: boolean } {
+    try {
+        const token = localStorage.getItem('jwt_token');
+        if (!token) return { user: null, isAuthenticated: false };
+
+        const payload = JSON.parse(
+            atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+        );
+
+        // Si el token expiró, limpiar y no restaurar
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+            localStorage.removeItem('jwt_token');
+            return { user: null, isAuthenticated: false };
+        }
+
+        return {
+            isAuthenticated: true,
+            user: {
+                id: payload.id,
+                email: payload.email,
+                role: payload.role as Role,
+                reference_id: payload.reference_id ?? null,
+            },
+        };
+    } catch {
+        localStorage.removeItem('jwt_token');
+        return { user: null, isAuthenticated: false };
+    }
+}
+
+const initialSession = readSessionFromToken();
+
 interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
     isGlobalLoading: boolean;
     globalLoadingText: string;
     setGlobalLoading: (val: boolean, text?: string) => void;
-
-    /**
-     * Login real contra POST /api/auth/login.
-     * Guarda el JWT en localStorage y el user en estado global.
-     */
     login: (email: string, password: string) => Promise<void>;
-
-    /** Limpia sesión, token y redirige a login */
     logout: () => void;
-
-    /** Intenta rehidratar la sesión desde un JWT guardado en localStorage */
     rehydrate: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-    user: null,
-    isAuthenticated: false,
+    user: initialSession.user,
+    isAuthenticated: initialSession.isAuthenticated,
     isGlobalLoading: false,
     globalLoadingText: 'Cargando Portal',
 
     setGlobalLoading: (val, text = 'Cargando Portal') =>
         set({ isGlobalLoading: val, globalLoadingText: text }),
 
-    // ── Login Real ──────────────────────────────────────────────
     login: async (email: string, password: string) => {
         const { data } = await apiClient.post('/auth/login', { email, password });
-
-        // Limpiar cualquier draft de sesión anterior antes de entrar
         useOrderDraftStore.getState().clearDraft();
-
-        // Persistir token para que el interceptor de Axios lo adjunte
         localStorage.setItem('jwt_token', data.token);
-
-        set({
-            user: data.user as User,
-            isAuthenticated: true,
-        });
+        set({ user: data.user as User, isAuthenticated: true });
     },
 
-    // ── Logout ──────────────────────────────────────────────────
     logout: () => {
-        // Limpiar draft activo para que no persista en la próxima sesión
         useOrderDraftStore.getState().clearDraft();
         localStorage.removeItem('jwt_token');
         set({ user: null, isAuthenticated: false });
     },
 
-    // ── Rehidratar sesión ───────────────────────────────────────
-    // Si el usuario recarga la página y hay un token en localStorage,
-    // intentamos validarlo. Por ahora solo rehidratamos desde localStorage.
-    // Cuando el backend tenga GET /api/auth/me, se puede mejorar.
+    // Mantenemos rehydrate por compatibilidad, pero ya no hace falta llamarlo
     rehydrate: () => {
-        const token = localStorage.getItem('jwt_token');
-        if (!token) return;
-
-        // Para tokens reales: por ahora lo dejamos como "logueado" (ya que hay un token).
-        // Si el backend es de verdad, se podría pedir GET /api/auth/me aquí.
-        set({ isAuthenticated: true });
-        // pero sin user data (el interceptor 401 limpiará si está expirado).
-        // Idealmente se pide GET /api/auth/me aquí.
+        const session = readSessionFromToken();
+        set(session);
     },
 }));

@@ -7,25 +7,27 @@ import { toast } from 'sonner';
 interface CreateProductModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onProductCreated?: (product: any) => void;
 }
 
-export function CreateProductModal({ isOpen, onClose }: CreateProductModalProps) {
+export function CreateProductModal({ isOpen, onClose, onProductCreated }: CreateProductModalProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
-        sku: '',
-        price: '',
         category: '',
-        image: ''
+        description: '',
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
+    const resetForm = () => setFormData({ name: '', category: '', description: '' });
+
+
     const handleSave = () => {
-        if (!formData.name || !formData.sku || !formData.price || !formData.category) {
-            toast.error('Complete los campos obligatorios (*)');
+        if (!formData.name || !formData.category) {
+            toast.error('Completá los campos obligatorios (*)');
             return;
         }
 
@@ -34,20 +36,18 @@ export function CreateProductModal({ isOpen, onClose }: CreateProductModalProps)
         apiClient.post('/products', {
             name: formData.name,
             category: formData.category,
-            description: '', // default empty
-            basePrice: Number(formData.price) // Sending what we have just in case
+            description: formData.description,
         })
-            .then(() => {
-                toast.success('Producto creado con éxito', {
-                    description: `${formData.name} se ha añadido al catálogo.`,
+            .then((res) => {
+                toast.success('Producto creado', {
+                    description: `"${formData.name}" se añadió al catálogo.`,
                 });
+                onProductCreated?.(res.data);
                 onClose();
-                setFormData({ name: '', sku: '', price: '', category: '', image: '' });
-                // We could dispatch an event or call a window refresh safely if needed
-                window.location.reload(); 
+                resetForm();
             })
             .catch((err) => {
-                toast.error('Error al crear producto');
+                toast.error(err.response?.data?.error || 'Error al crear el producto');
                 console.error(err);
             })
             .finally(() => {
@@ -58,25 +58,28 @@ export function CreateProductModal({ isOpen, onClose }: CreateProductModalProps)
     return (
         <Modal
             isOpen={isOpen}
-            onClose={onClose}
+            onClose={() => { onClose(); resetForm(); }}
             title="Crear Nuevo Producto"
-            description="Ingresa los datos base para añadir un nuevo artículo al catálogo de Tees Factory."
+            description="Ingresá los datos base para añadir un nuevo artículo al catálogo."
             maxWidth="md"
             primaryAction={{
                 label: 'Crear Producto',
                 onClick: handleSave,
                 isLoading: isLoading,
-                disabled: isLoading || !formData.name || !formData.sku || !formData.price || !formData.category
+                disabled: isLoading || !formData.name || !formData.category,
+
             }}
             secondaryAction={{
                 label: 'Cancelar',
-                onClick: onClose,
-                disabled: isLoading
+                onClick: () => { onClose(); resetForm(); },
+                disabled: isLoading,
             }}
         >
             <div className="flex flex-col gap-5 py-2">
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="name" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Nombre del Producto *</label>
+                    <label htmlFor="name" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                        Nombre del Producto <span className="text-red-500">*</span>
+                    </label>
                     <Input
                         id="name"
                         name="name"
@@ -89,18 +92,9 @@ export function CreateProductModal({ isOpen, onClose }: CreateProductModalProps)
 
                 <div className="flex gap-4">
                     <div className="flex flex-col gap-2 flex-1">
-                        <label htmlFor="sku" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">SKU / ID *</label>
-                        <Input
-                            id="sku"
-                            name="sku"
-                            placeholder="Ej. REM-OVER-C"
-                            value={formData.sku}
-                            onChange={handleChange}
-                            className="rounded-xl bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-900"
-                        />
-                    </div>
-                    <div className="flex flex-col gap-2 flex-1">
-                        <label htmlFor="category" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Categoría *</label>
+                        <label htmlFor="category" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                            Categoría <span className="text-red-500">*</span>
+                        </label>
                         <Input
                             id="category"
                             name="category"
@@ -113,32 +107,19 @@ export function CreateProductModal({ isOpen, onClose }: CreateProductModalProps)
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="price" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Precio Sugerido *</label>
-                    <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">$</span>
-                        <Input
-                            id="price"
-                            name="price"
-                            type="number"
-                            placeholder="0.00"
-                            value={formData.price}
-                            onChange={handleChange}
-                            className="rounded-xl pl-8 bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-900"
-                        />
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <label htmlFor="image" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">URL de Imagen (Opcional)</label>
+                    <label htmlFor="description" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                        Descripción <span className="text-zinc-400 font-normal normal-case">(opcional)</span>
+                    </label>
                     <Input
-                        id="image"
-                        name="image"
-                        placeholder="https://..."
-                        value={formData.image}
+                        id="description"
+                        name="description"
+                        placeholder="Ej. Algodón 100%, corte regular..."
+                        value={formData.description}
                         onChange={handleChange}
                         className="rounded-xl bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-900"
                     />
                 </div>
+
             </div>
         </Modal>
     );

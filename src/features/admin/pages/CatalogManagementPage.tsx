@@ -3,10 +3,9 @@ import type { Product } from "@/types/product";
 import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Edit2, ChevronDown, SlidersHorizontal, MoreHorizontal, Trash2, Package, Eye, EyeOff } from "lucide-react";
+import { Search, Edit2, ChevronDown, SlidersHorizontal, MoreHorizontal, Trash2, Package, Eye, EyeOff, Shirt } from "lucide-react";
 import { toast } from "sonner";
 import { ProductStockDrawer } from "../components/ProductStockDrawer";
-import { ProductEditModal } from "../components/ProductEditModal";
 import { Modal } from "@/components/shared/Modal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatPrice } from "@/lib/formatters";
@@ -24,11 +23,7 @@ export function CatalogManagementPage() {
         setIsLoadingProducts(true);
         apiClient.get('/products')
             .then(res => {
-                const fetched = res.data.map((p: any) => ({
-                    ...p,
-                    image: p.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=2600&auto=format&fit=crop'
-                }));
-                setProducts(fetched);
+                setProducts(res.data);
             })
             .catch(err => {
                 console.error(err);
@@ -39,9 +34,7 @@ export function CatalogManagementPage() {
     const [categoryFilter, setCategoryFilter] = useState("ALL");
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [selectedProductForEdit, setSelectedProductForEdit] = useState<Product | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
@@ -50,18 +43,18 @@ export function CatalogManagementPage() {
         setIsDeleteModalOpen(true);
     };
 
-    const handleConfirmDelete = () => {
-        if (productToDelete) {
+    const handleConfirmDelete = async () => {
+        if (!productToDelete) return;
+        try {
+            await apiClient.delete(`/products/${productToDelete}`);
             setProducts(prev => prev.filter(p => p.id !== productToDelete));
             toast.success("Producto eliminado");
+        } catch {
+            toast.error("Error al eliminar el producto");
+        } finally {
+            setIsDeleteModalOpen(false);
+            setProductToDelete(null);
         }
-        setIsDeleteModalOpen(false);
-        setProductToDelete(null);
-    };
-
-    const handleSaveProductDetails = (updatedProduct: Product) => {
-        setProducts(prev => prev.map(p => p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p));
-        toast.success("Producto actualizado correctamente");
     };
 
     const filteredProducts = useMemo(() => {
@@ -154,10 +147,6 @@ export function CatalogManagementPage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <div className="w-px h-6 bg-zinc-200 mx-1 hidden sm:block shrink-0"></div>
-                        <Button variant="ghost" className="rounded-xl h-10 px-4 text-zinc-500 hover:text-zinc-900 whitespace-nowrap shrink-0">
-                            <SlidersHorizontal className="w-4 h-4 mr-2" />
-                            Más filtros
-                        </Button>
                         <Button onClick={() => setIsCreateModalOpen(true)} className="rounded-xl h-10 px-4 bg-zinc-900 text-white hover:bg-zinc-800 whitespace-nowrap shrink-0 shadow-sm font-semibold ml-2">
                             + Nuevo Producto
                         </Button>
@@ -180,16 +169,18 @@ export function CatalogManagementPage() {
                             <TableRow key={product.id} className="hover:bg-zinc-50/50 transition-colors group">
                                 <TableCell>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-lg bg-zinc-100 border border-zinc-200/50 overflow-hidden flex-shrink-0 relative">
-                                            {/* Fallback pattern if image is missing/broken */}
-                                            <img
-                                                src={product.image}
-                                                alt={product.name}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9Im5vbmUiPjxwYXRoIGQ9Ik0wIDhoNDh2NDhIMHoiIGZpbGw9IiNmNGY0ZjUiLz48cGF0aCBkPSJNMjQgMTZoMTZ2MTZIMjR6IiBmaWxsPSIjZTRlNGU3Ii8+PC9zdmc+'; // simple placeholder
-                                                }}
-                                            />
+                                        <div className="w-12 h-12 rounded-lg bg-zinc-100 border border-zinc-200/50 overflow-hidden flex-shrink-0 relative flex items-center justify-center">
+                                            <Shirt className="w-5 h-5 text-zinc-300 absolute" />
+                                            {product.image && (
+                                                <img
+                                                    src={product.image}
+                                                    alt={product.name}
+                                                    className="w-full h-full object-cover relative z-10"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).style.display = 'none';
+                                                    }}
+                                                />
+                                            )}
                                         </div>
                                         <div>
                                             <p className="font-semibold text-zinc-900">{product.name}</p>
@@ -230,21 +221,11 @@ export function CatalogManagementPage() {
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-48 bg-white rounded-xl border-zinc-200 shadow-lg">
                                             <DropdownMenuItem
-                                                onClick={() => {
-                                                    setSelectedProductForEdit(product);
-                                                    setIsEditModalOpen(true);
-                                                }}
-                                                className="cursor-pointer font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 focus:bg-zinc-50"
-                                            >
-                                                <Edit2 className="mr-2 h-4 w-4" />
-                                                <span>Editar Detalles</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
                                                 onClick={() => setSelectedProduct(product)}
                                                 className="cursor-pointer font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 focus:bg-zinc-50"
                                             >
-                                                <Package className="mr-2 h-4 w-4" />
-                                                <span>Gestionar Matriz</span>
+                                                <Edit2 className="mr-2 h-4 w-4" />
+                                                <span>Editar / Gestionar Matriz</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator className="bg-zinc-100" />
                                             <DropdownMenuItem
@@ -287,16 +268,15 @@ export function CatalogManagementPage() {
                 </Table>
             </div>
 
-            <ProductEditModal
-                isOpen={isEditModalOpen}
-                product={selectedProductForEdit}
-                onClose={() => setIsEditModalOpen(false)}
-                onSave={handleSaveProductDetails}
-            />
             <ProductStockDrawer
                 isOpen={!!selectedProduct}
                 product={selectedProduct}
                 onClose={() => setSelectedProduct(null)}
+                onProductSaved={(updatedProduct) => {
+                    setProducts(prev =>
+                        prev.map(p => p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p)
+                    );
+                }}
             />
             <Modal
                 isOpen={isDeleteModalOpen}
@@ -315,9 +295,17 @@ export function CatalogManagementPage() {
                     onClick: () => { setIsDeleteModalOpen(false); setProductToDelete(null); },
                 }}
             />
-            <CreateProductModal 
-                isOpen={isCreateModalOpen} 
-                onClose={() => setIsCreateModalOpen(false)} 
+            <CreateProductModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onProductCreated={(newProduct) => {
+                    setProducts(prev => [...prev, {
+                        ...newProduct,
+                        isActive: newProduct.isActive ?? true,
+                        basePrice: newProduct.basePrice ?? 0,
+                        totalStock: newProduct.totalStock ?? 0,
+                    }]);
+                }}
             />
         </div>
     );

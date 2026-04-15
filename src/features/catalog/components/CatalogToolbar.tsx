@@ -43,12 +43,6 @@ export function CatalogToolbar({
                     Estado <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
                 </Button>
 
-                <div className="w-px h-6 bg-zinc-200 mx-1 hidden sm:block shrink-0"></div>
-
-                <Button variant="ghost" className="rounded-xl h-10 px-4 text-zinc-500 hover:text-zinc-900 whitespace-nowrap shrink-0">
-                    <SlidersHorizontal className="w-4 h-4 mr-2" />
-                    Más filtros
-                </Button>
             </div>
         </div>
     );

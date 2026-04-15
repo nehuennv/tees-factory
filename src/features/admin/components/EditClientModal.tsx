@@ -24,10 +24,10 @@ export function EditClientModal({ isOpen, onClose, client }: EditClientModalProp
     useEffect(() => {
         if (client) {
             setFormData({
-                name: client.name,
-                cuit: client.cuit,
-                email: client.email,
-                phone: client.phone,
+                name: client.name ?? '',
+                cuit: client.cuit ?? '',
+                email: client.email ?? '',
+                phone: client.phone ?? '',
             });
         }
     }, [client]);
@@ -46,7 +46,7 @@ export function EditClientModal({ isOpen, onClose, client }: EditClientModalProp
         setIsLoading(true);
 
         try {
-            await apiClient.patch(`/clients/${client.id}`, formData);
+            await apiClient.put(`/clients/${client.id}`, formData);
             toast.success('Cliente actualizado', {
                 description: `Los datos de ${formData.name} fueron modificados con éxito.`,
             });

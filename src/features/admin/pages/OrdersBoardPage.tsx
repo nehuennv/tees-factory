@@ -40,7 +40,7 @@ type ColumnDef = {
 
 const COLUMNS: ColumnDef[] = [
     { id: 'PENDING', title: 'Pendientes', colorClass: 'bg-zinc-100/50' },
-    { id: 'CONFIRMED', title: 'Aprobados', colorClass: 'bg-blue-50/40' },
+    { id: 'PICKING', title: 'Aprobados', colorClass: 'bg-blue-50/40' },
     { id: 'SHIPPED', title: 'Despachados', colorClass: 'bg-amber-50/40' },
     { id: 'DELIVERED', title: 'Entregados', colorClass: 'bg-emerald-50/40' },
 ];
@@ -90,7 +90,7 @@ const BoardColumn = memo(function BoardColumn({
 
 export function OrdersBoardPage() {
     const [columns, setColumns] = useState<Record<string, any[]>>({
-        PENDING: [], CONFIRMED: [], SHIPPED: [], DELIVERED: []
+        PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: []
     });
 
     const [isLoading, setIsLoading] = useState(true);
@@ -104,7 +104,7 @@ export function OrdersBoardPage() {
         setIsLoading(true);
         apiClient.get('/orders')
             .then(res => {
-                const initial: Record<string, any[]> = { PENDING: [], CONFIRMED: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
+                const initial: Record<string, any[]> = { PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
                 res.data.forEach((order: any) => {
                     if (initial[order.status]) {
                         initial[order.status].push(order);
@@ -124,7 +124,7 @@ export function OrdersBoardPage() {
 
     const filteredColumns = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase();
-        const result: Record<string, any[]> = { PENDING: [], CONFIRMED: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
+        const result: Record<string, any[]> = { PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
 
         (Object.keys(columns)).forEach(status => {
             result[status] = columns[status].filter(

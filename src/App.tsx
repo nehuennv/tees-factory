@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Routes, Route, Navigate } from "react-router-dom"
 import { AnimatePresence } from "framer-motion"
 import MainLayout from "@/components/layout/MainLayout"
@@ -40,7 +40,12 @@ function RootRedirect() {
 
 function App() {
   const isGlobalLoading = useAuthStore(state => state.isGlobalLoading);
+  const rehydrate = useAuthStore(state => state.rehydrate);
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
+
+  useEffect(() => {
+    rehydrate();
+  }, []);
 
   return (
     <>
@@ -70,6 +75,18 @@ function App() {
           <ProtectedRoute allowedRoles={['ADMIN']}>
             <MainLayout headerProps={{ title: 'Tesorería', tooltipInfo: 'Revisión técnica de transferencias y conciliación de pagos.' }}>
               <TreasuryPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/clientes/:clientId/cuenta" element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <MainLayout headerProps={{ 
+              title: 'Cuenta Corriente', 
+              showBack: true, 
+              backUrl: '/admin/clientes',
+              tooltipInfo: 'Historial financiero y saldo deudor del cliente seleccionado.'
+            }}>
+              <CurrentAccountPage />
             </MainLayout>
           </ProtectedRoute>
         } />
@@ -150,6 +167,18 @@ function App() {
         } />
 
         {/* SELLER ROUTES */}
+        <Route path="/ventas/clientes/:clientId/cuenta" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'SELLER']}>
+            <MainLayout headerProps={{ 
+              title: 'Cuenta Corriente', 
+              showBack: true, 
+              backUrl: '/ventas/clientes',
+              tooltipInfo: 'Historial financiero y saldo deudor del cliente seleccionado.'
+            }}>
+              <CurrentAccountPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
         <Route path="/ventas/clientes" element={
           <ProtectedRoute allowedRoles={['SELLER']}>
             <MainLayout headerProps={{
@@ -167,21 +196,21 @@ function App() {
         } />
         {/* Flujo de toma de pedido para un cliente específico */}
         <Route path="/ventas/pedido/:clientId" element={
-          <ProtectedRoute allowedRoles={['SELLER']}>
+          <ProtectedRoute allowedRoles={['ADMIN', 'SELLER']}>
             <MainLayout headerProps={{ title: 'Tomar Pedido', searchPlaceholder: 'Buscar producto...', tooltipInfo: 'Armá el pedido seleccionando productos del catálogo.' }}>
               <CatalogPage />
             </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/ventas/pedido/:clientId/:productId" element={
-          <ProtectedRoute allowedRoles={['SELLER']}>
+          <ProtectedRoute allowedRoles={['ADMIN', 'SELLER']}>
             <MainLayout headerProps={{ title: 'Volver al Pedido', showBack: true }}>
               <ProductDetailPage />
             </MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/ventas/checkout" element={
-          <ProtectedRoute allowedRoles={['SELLER']}>
+          <ProtectedRoute allowedRoles={['ADMIN', 'SELLER']}>
             <MainLayout headerProps={{ title: 'Confirmar Pedido', tooltipInfo: 'Revisá el pedido antes de confirmarlo.' }}>
               <CheckoutPage />
             </MainLayout>

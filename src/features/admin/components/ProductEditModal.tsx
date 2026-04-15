@@ -24,7 +24,6 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
         }
     }, [product, isOpen]);
 
-    // Ocultar modal si no hay producto
     if (!product) return null;
 
     const handleChange = (field: keyof Product, value: string | number) => {
@@ -32,23 +31,26 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
     };
 
     const handleSave = async () => {
-        if (!formData.name || !formData.category || !formData.basePrice) {
+        if (!formData.name || !formData.category) {
             toast.error("Por favor completa los campos obligatorios.");
             return;
         }
 
         try {
+            // Según docs/backend-endpoints-doc.md y Integracion_Frontend_Backend.md,
+            // el backend actual no soporta el campo 'image' en productos.
             await apiClient.patch(`/products/${product.id}`, {
                 name: formData.name,
                 category: formData.category,
-                basePrice: formData.basePrice,
                 description: formData.description,
-                image: formData.image
             });
+
+            toast.success("Producto actualizado");
             onSave({ ...product, ...formData } as Product);
             onClose();
-        } catch (err) {
-            toast.error("Error al actualizar producto.");
+        } catch (err: any) {
+            const msg = err?.response?.data?.error || err?.response?.data?.message || "Error al actualizar producto";
+            toast.error(msg);
             console.error(err);
         }
     };
@@ -91,29 +93,6 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="basePrice" className="text-sm font-medium text-zinc-900">Precio Base ($) *</Label>
-                            <Input
-                                id="basePrice"
-                                type="number"
-                                value={formData.basePrice || ""}
-                                onChange={(e) => handleChange("basePrice", Number(e.target.value))}
-                                className="h-11 rounded-xl border-zinc-200 focus:ring-zinc-900/10 focus:border-zinc-300 transition-all bg-white"
-                                placeholder="Ej: 15000"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="image" className="text-sm font-medium text-zinc-900">URL de la Imagen</Label>
-                            <Input
-                                id="image"
-                                value={formData.image || ""}
-                                onChange={(e) => handleChange("image", e.target.value)}
-                                className="h-11 rounded-xl border-zinc-200 focus:ring-zinc-900/10 focus:border-zinc-300 transition-all bg-white"
-                                placeholder="https://..."
-                            />
-                        </div>
-
                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="description" className="text-sm font-medium text-zinc-900">Descripción</Label>
                             <Textarea
@@ -124,6 +103,7 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
                                 placeholder="Descripción detallada del producto..."
                             />
                         </div>
+
                     </div>
                 </div>
 

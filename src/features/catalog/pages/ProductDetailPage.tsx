@@ -30,7 +30,7 @@ const getHexForColor = (name: string) => {
 export function ProductDetailPage() {
     const { productId } = useParams();
     const navigate = useNavigate();
-    const { addItems } = useCartStore();
+    const { addItems, items: cartItemsInStore } = useCartStore();
 
     const [selectedQualityIdx, setSelectedQualityIdx] = useState(0);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -141,6 +141,8 @@ export function ProductDetailPage() {
         if (!product) return;
         const cartItems: CartItem[] = [];
 
+        let hasErrors = false;
+
         Object.entries(quantities).forEach(([key, qty]) => {
             if (qty > 0) {
                 const [qIdxStr, colorName, size] = key.split('-');
@@ -151,16 +153,28 @@ export function ProductDetailPage() {
 
                 if (!sizeData) {
                     toast.error(`Variante ${colorName}-${size} no encontrada`);
-                    return;
-                }
-
-                // If asking for more than physical available stock
-                if (qty > sizeData.availableStock) {
-                    toast.error(`No hay suficiente stock de ${colorName} - Talle ${size}. Máx: ${sizeData.availableStock}`);
+                    hasErrors = true;
                     return;
                 }
 
                 const itemId = `${product.id}-${quality.qualityName}-${colorName}-${size}`;
+                
+                // Buscar si ya tenemos unidades de esta variante en el carrito
+                const existingItemInCart = cartItemsInStore.find(item => item.id === itemId);
+                const existingQty = existingItemInCart ? existingItemInCart.quantity : 0;
+                
+                const totalRequestedQty = existingQty + qty;
+
+                // Validamos sumando lo que ya tenemos en el carrito + lo que queremos agregar
+                if (totalRequestedQty > sizeData.availableStock) {
+                    if (existingQty > 0) {
+                        toast.error(`Stock superado en ${colorName} - Talle ${size}. Ya tienes ${existingQty} en la bolsa. Solo puedes agregar ${sizeData.availableStock - existingQty} más.`);
+                    } else {
+                        toast.error(`No hay suficiente stock de ${colorName} - Talle ${size}. Máx disponible: ${sizeData.availableStock}`);
+                    }
+                    hasErrors = true;
+                    return;
+                }
 
                 cartItems.push({
                     id: itemId,
@@ -177,6 +191,11 @@ export function ProductDetailPage() {
                 });
             }
         });
+
+        if (hasErrors) {
+            // Si hubo errores (superó stock), abortamos todo para que el usuario corrija
+            return;
+        }
 
         if (cartItems.length > 0) {
             addItems(cartItems);

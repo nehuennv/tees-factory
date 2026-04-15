@@ -20,7 +20,7 @@ export function PaymentReportPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     // Form states
-    const [method, setMethod] = useState('transfer');
+    const [method, setMethod] = useState('Transferencia');
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState('');
     const [operationNumber, setOperationNumber] = useState('');
@@ -28,7 +28,7 @@ export function PaymentReportPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const resetForm = () => {
-        setMethod('transfer');
+        setMethod('Transferencia');
         setAmount('');
         setDate('');
         setOperationNumber('');
@@ -57,8 +57,8 @@ export function PaymentReportPage() {
             toast.error('El número de operación es obligatorio.');
             return;
         }
-        if (!file) {
-            toast.error('Por favor adjuntá un comprobante.');
+        if (!operationNumber.trim()) {
+            toast.error('El número de operación es obligatorio.');
             return;
         }
 
@@ -66,13 +66,32 @@ export function PaymentReportPage() {
 
         try {
             const formData = new FormData();
-            formData.append('method', method);
+            
+            // Enviamos múltiples versiones de las llaves para satisfacer cualquier validación (DTO o multer)
+            formData.append('monto', amount);
             formData.append('amount', amount);
+            formData.append('amount_reported', amount);
+
+            formData.append('metodo_pago', method);
+            formData.append('method', method);
+            formData.append('payment_method', method);
+
+            formData.append('fecha', date);
             formData.append('date', date);
+            formData.append('payment_date', date);
+
+            formData.append('referencia', operationNumber);
             formData.append('operationNumber', operationNumber);
-            formData.append('receipt', file);
+            formData.append('operation_reference', operationNumber);
+
             if (user?.reference_id) {
+                formData.append('client_id', user.reference_id);
                 formData.append('clientId', user.reference_id);
+            }
+
+            if (file) {
+                formData.append('receipt', file);
+                formData.append('file', file);
             }
 
             await apiClient.post('/payments', formData, {
@@ -131,8 +150,8 @@ export function PaymentReportPage() {
                                             <SelectValue placeholder="Seleccionar método" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="transfer">Transferencia Bancaria</SelectItem>
-                                            <SelectItem value="deposit">Depósito por Cajero</SelectItem>
+                                            <SelectItem value="Transferencia">Transferencia Bancaria</SelectItem>
+                                            <SelectItem value="Deposito">Depósito por Cajero</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -195,7 +214,7 @@ export function PaymentReportPage() {
                                 {/* Comprobante */}
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
-                                        Adjuntar Comprobante <span className="text-red-500">*</span>
+                                        Adjuntar Comprobante <span className="text-zinc-300 font-normal lowercase">(opcional)</span>
                                     </label>
 
                                     <input

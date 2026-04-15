@@ -41,11 +41,7 @@ export function CatalogPage() {
                 .then(res => {
                     const fetchedProducts = res.data
                         // Solo mostrar productos activos (isActive: true o sin campo = activo por defecto)
-                        .filter((p: any) => p.isActive !== false)
-                        .map((p: any) => ({
-                            ...p,
-                            image: p.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=2600&auto=format&fit=crop'
-                        }));
+                        .filter((p: any) => p.isActive !== false);
                     setProducts(fetchedProducts);
                 })
                 .catch(err => console.error("Error fetching products:", err))

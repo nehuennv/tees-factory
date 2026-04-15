@@ -17,10 +17,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AssignSellerModal } from '@/features/admin/components/AssignSellerModal';
 import { EditClientModal } from '@/features/admin/components/EditClientModal';
 import { Modal } from '@/components/shared/Modal';
 import { useOrderDraftStore } from '@/store/orderDraftStore';
+import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
 
@@ -38,8 +38,6 @@ export interface Client {
 }
 
 export interface ClientListProps {
-    role: 'ADMIN' | 'SELLER';
-    currentUserId?: string;
 }
 
 const formatCurrency = (amount: number) => {
@@ -59,7 +57,19 @@ const truncateText = (text: string, maxLength: number = 30) => {
     return text.substring(0, maxLength) + '...';
 };
 
-const AdminClientTable = ({ clients, role, onNewOrder, onEditClient, onDeleteClient }: { clients: Client[], role: 'ADMIN' | 'SELLER', onNewOrder?: (client: Client) => void, onEditClient?: (client: Client) => void, onDeleteClient?: (client: Client) => void }) => {
+const AdminClientTable = ({ 
+    clients, 
+    onNewOrder, 
+    onEditClient, 
+    onDeleteClient,
+    onViewAccount
+}: { 
+    clients: Client[], 
+    onNewOrder?: (client: Client) => void, 
+    onEditClient?: (client: Client) => void, 
+    onDeleteClient?: (client: Client) => void,
+    onViewAccount?: (client: Client) => void
+}) => {
     return (
         <Table>
             <TableHeader>
@@ -130,7 +140,7 @@ const AdminClientTable = ({ clients, role, onNewOrder, onEditClient, onDeleteCli
                                             <div className="h-px bg-zinc-100 my-1 mx-1" />
                                             <DropdownMenuItem 
                                                 className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg"
-                                                onClick={() => toast.info('Redirigiendo al historial financiero del cliente...')}
+                                                onClick={() => onViewAccount?.(client)}
                                             >
                                                 Ver Cuenta Corriente
                                             </DropdownMenuItem>
@@ -140,17 +150,7 @@ const AdminClientTable = ({ clients, role, onNewOrder, onEditClient, onDeleteCli
                                             >
                                                 Editar Datos
                                             </DropdownMenuItem>
-                                            {role === 'ADMIN' && (
-                                                <DropdownMenuItem
-                                                    className="text-xs font-medium text-zinc-700 cursor-pointer focus:bg-zinc-50 py-2 rounded-lg"
-                                                    onClick={() => {
-                                                        // This will be handled by the parent state
-                                                        (window as any).openAssignSellerModal?.(client);
-                                                    }}
-                                                >
-                                                    Asignar a Vendedor
-                                                </DropdownMenuItem>
-                                            )}
+
                                             <div className="h-px bg-zinc-100 my-1 mx-1" />
                                             <DropdownMenuItem
                                                 className="text-xs font-semibold text-red-600 cursor-pointer focus:bg-red-50 focus:text-red-700 py-2 rounded-lg"
@@ -176,7 +176,7 @@ const AdminClientTable = ({ clients, role, onNewOrder, onEditClient, onDeleteCli
     );
 };
 
-export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) => {
+export const ClientList: React.FC<ClientListProps> = () => {
     const navigate = useNavigate();
     const startDraft = useOrderDraftStore((s) => s.startDraft);
 
@@ -187,8 +187,7 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
     const [searchTerm, setSearchTerm] = React.useState('');
     const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
 
-    const [isAssignModalOpen, setIsAssignModalOpen] = React.useState(false);
-    const [selectedClient, setSelectedClient] = React.useState<Client | null>(null);
+
 
     // Estado para EditClientModal
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
@@ -212,24 +211,9 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
             .finally(() => setIsLoading(false));
     }, []);
 
-    // Exponer el modal al componente hijo (AdminClientTable) mediante window para evitar prop drilling complejo en este mock
-    // En una app real usaríamos Context o pasaríamos callbacks.
-    React.useEffect(() => {
-        (window as any).openAssignSellerModal = (client: Client) => {
-            setSelectedClient(client);
-            setIsAssignModalOpen(true);
-        };
-        return () => {
-            delete (window as any).openAssignSellerModal;
-        };
-    }, []);
 
-    const handleAssign = () => {
-        toast.success(`Vendedor actualizado`, {
-            description: `Se ha modificado el representante de ventas asignado.`
-        });
-        setIsAssignModalOpen(false);
-    };
+
+
 
     /**
      * Inicia el flujo de creación de pedido para un cliente.
@@ -244,6 +228,12 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
     const handleEditClient = (client: Client) => {
         setClientToEdit(client);
         setIsEditModalOpen(true);
+    };
+
+    const handleViewAccount = (client: Client) => {
+        const user = useAuthStore.getState().user;
+        const prefix = user?.role === 'ADMIN' ? '/admin' : '/ventas';
+        navigate(`${prefix}/clientes/${client.id}/cuenta`);
     };
 
     const handleDeleteClient = (client: Client) => {
@@ -318,14 +308,7 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
 
     return (
         <div className="w-full flex flex-col gap-5">
-            {selectedClient && (
-                <AssignSellerModal
-                    isOpen={isAssignModalOpen}
-                    onClose={() => setIsAssignModalOpen(false)}
-                    clientName={selectedClient.name}
-                    onAssign={handleAssign}
-                />
-            )}
+
             {/* Controles: Búsqueda y Filtros */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-2">
                 <div className="relative w-full sm:max-w-sm">
@@ -371,7 +354,13 @@ export const ClientList: React.FC<ClientListProps> = ({ role, currentUserId }) =
                     <p className="font-medium animate-pulse">Cargando clientes...</p>
                 </div>
             ) : (
-                <AdminClientTable clients={paginatedClients} role={role} onNewOrder={handleNewOrder} onEditClient={handleEditClient} onDeleteClient={handleDeleteClient} />
+                <AdminClientTable 
+                    clients={paginatedClients} 
+                    onNewOrder={handleNewOrder} 
+                    onEditClient={handleEditClient} 
+                    onDeleteClient={handleDeleteClient}
+                    onViewAccount={handleViewAccount}
+                />
             )}
 
             {/* Paginación */}

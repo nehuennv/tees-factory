@@ -15,7 +15,7 @@ export function TreasuryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
 
     const formatPrice = (price: number) => {
@@ -40,13 +40,23 @@ export function TreasuryPage() {
             const res = await apiClient.get('/payments');
             // Normalize backend field names to frontend expectations:
             // backend: reference → transactionId, paymentDate → date, amount → approvedAmount (for non-PENDING)
-            const normalized = res.data.map((p: any) => ({
-                ...p,
-                transactionId: p.reference ?? p.transactionId ?? '',
-                date: p.paymentDate ?? p.date ?? p.createdAt ?? '',
-                approvedAmount: p.approvedAmount ?? (p.status !== 'PENDING' ? p.amount : undefined),
-                observation: p.observation ?? p.notes ?? undefined,
-            }));
+            const normalized = res.data.map((p: any) => {
+                // Map backend status to our frontend expectations
+                let currentStatus = p.status ?? p.state ?? 'PENDING';
+                if (currentStatus === 'PENDING_REVIEW') currentStatus = 'PENDING';
+
+                return {
+                    ...p,
+                    status: currentStatus,
+                    transactionId: p.operation_reference ?? p.operationNumber ?? p.reference ?? p.transactionId ?? p.id ?? 'S/N',
+                    date: p.payment_date ?? p.paymentDate ?? p.date ?? p.createdAt ?? new Date().toISOString(),
+                    amount: p.amount_reported ?? p.amount ?? 0,
+                    approvedAmount: p.approvedAmount ?? (currentStatus === 'APPROVED' ? (p.amount_reported ?? p.amount) : undefined),
+                    method: p.payment_method ?? p.method ?? 'Transferencia',
+                    receiptUrl: p.receipt_file_url ?? p.receiptUrl ?? p.receipt,
+                    observation: p.observation ?? p.notes ?? undefined,
+                };
+            });
             setPayments(normalized);
         } catch(err) {
             toast.error("Error al cargar pagos");
@@ -135,8 +145,10 @@ export function TreasuryPage() {
     };
 
     const renderTable = () => {
+        const statusOrder: Record<string, number> = { PENDING: 0, APPROVED: 1, REJECTED: 2 };
+
         let filteredPayments = statusFilter === 'ALL'
-            ? payments
+            ? [...payments].sort((a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3))
             : payments.filter(p => p.status === statusFilter);
 
         if (searchQuery) {

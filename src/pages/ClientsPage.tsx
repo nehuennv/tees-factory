@@ -7,14 +7,10 @@ export const ClientsPage: React.FC = () => {
 
     if (!user) return null;
 
-    // Asignamos el rol según si es ADMIN o SELLER.
-    // El componente ClientList espera 'ADMIN' | 'SELLER'.
-    const role = user.role === 'ADMIN' ? 'ADMIN' : 'SELLER';
-
     return (
         <div className="h-full w-full overflow-y-auto bg-zinc-50 p-6">
             <div className="w-full mx-auto pb-20">
-                <ClientList role={role} currentUserId={user.id} />
+                <ClientList />
             </div>
         </div>
     );

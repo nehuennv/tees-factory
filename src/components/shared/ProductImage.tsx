@@ -20,7 +20,12 @@ export function ProductImage({ src, alt, className = '', objectContain = false }
         }
     };
 
-    if (!src || error) {
+    // Normalizar la URL de la imagen para evitar problemas con rutas relativas en URLs profundas
+    const imageUrl = src && !src.startsWith('http') && !src.startsWith('/') 
+        ? `/${src}` 
+        : src;
+
+    if (!imageUrl || error) {
         return (
             <div className={`w-full h-full flex flex-col items-center justify-center text-zinc-300 bg-zinc-50 ${className}`}>
                 <Shirt className="w-12 h-12 mb-2" strokeWidth={1.5} />
@@ -31,10 +36,10 @@ export function ProductImage({ src, alt, className = '', objectContain = false }
 
     return (
         <img
-            src={src}
+            src={imageUrl}
             alt={alt}
             onError={handleError}
-            className={`w-full h-full ${objectContain ? 'object-contain' : 'object-cover'} mix-blend-multiply transition-transform duration-700 group-hover:scale-105 ${className}`}
+            className={`w-full h-full ${objectContain ? 'object-contain' : 'object-cover'} transition-transform duration-700 group-hover:scale-105 ${className}`}
         />
     );
 }
