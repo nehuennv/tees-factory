@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Product } from "@/types/product";
 import apiClient from "@/lib/apiClient";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, X } from "lucide-react";
+import { Loader2, Plus, Trash2, X, ImagePlus, Shirt } from "lucide-react";
+
+const BACKEND_BASE = (import.meta.env.VITE_API_URL as string || 'http://localhost:3000/api').replace(/\/api\/?$/, '');
 
 interface SizeVariant {
     id?: string;
@@ -40,6 +42,9 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
     const [isSaving, setIsSaving] = useState(false);
     const [qualities, setQualities] = useState<QualityTab[]>([]);
     const [activeTab, setActiveTab] = useState<string>("");
+    const [imageUrl, setImageUrl] = useState<string>('');
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Per color new-size inputs: key = `${qualityId}-${colorName}`
     const [newSizeInputs, setNewSizeInputs] = useState<Record<string, string>>({});
@@ -60,6 +65,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                 category: product.category,
                 description: product.description || ""
             });
+            setImageUrl(product.image || '');
             fetchMatrix();
         } else {
             setQualities([]);
@@ -67,6 +73,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
             setNewSizeInputs({});
             setNewColorInputs({});
             setShowNewColorInput({});
+            setImageUrl('');
         }
     }, [isOpen, product]);
 
@@ -82,6 +89,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                 category: data.category,
                 description: data.description || ""
             });
+            setImageUrl(data.image || data.image_url || data.imageUrl || '');
 
             const mapped: QualityTab[] = (data.qualities || []).map((q: any) => ({
                 id: q.id,
@@ -195,6 +203,31 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
         }));
     };
 
+    const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !product) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        setIsUploadingImage(true);
+        try {
+            const res = await apiClient.post(`/products/${product.id}/image`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            const newUrl: string = res.data.imageUrl || res.data.image_url || res.data.image || '';
+            setImageUrl(newUrl);
+            onProductSaved?.({ ...product, ...productDetails, image: newUrl });
+            toast.success("Imagen actualizada correctamente");
+        } catch {
+            toast.error("Error al subir la imagen");
+        } finally {
+            setIsUploadingImage(false);
+            // Reset input para permitir subir el mismo archivo de nuevo si hace falta
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
     const handleSaveAll = async () => {
         if (!product) return;
         
@@ -284,8 +317,64 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
                 <div className="flex-1 overflow-y-auto">
                     {/* Basic Details Section */}
-                    <div className="p-6 pb-2 border-b border-zinc-100 flex flex-col gap-4">
+                    <div className="p-6 pb-4 border-b border-zinc-100 flex flex-col gap-4">
                         <h3 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-2">1. Detalles Básicos</h3>
+
+                        {/* Image Upload */}
+                        <div className="flex items-start gap-4">
+                            <div
+                                className="relative w-24 h-24 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 overflow-hidden flex-shrink-0 cursor-pointer group hover:border-zinc-400 transition-colors"
+                                onClick={() => !isUploadingImage && fileInputRef.current?.click()}
+                                title="Cambiar imagen"
+                            >
+                                {imageUrl ? (
+                                    <img
+                                        src={imageUrl.startsWith('http') ? imageUrl : `${BACKEND_BASE}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`}
+                                        alt="Imagen del producto"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <Shirt className="w-8 h-8 text-zinc-300" />
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    {isUploadingImage
+                                        ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                                        : <ImagePlus className="w-5 h-5 text-white" />
+                                    }
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-1 pt-1">
+                                <span className="text-xs font-semibold text-zinc-600">Imagen del Producto</span>
+                                <p className="text-xs text-zinc-400 leading-relaxed">
+                                    JPG, PNG o WEBP. Se sube al instante<br />sin necesidad de guardar.
+                                </p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isUploadingImage}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="mt-1 h-8 px-3 text-xs rounded-lg border-zinc-200 w-fit"
+                                >
+                                    {isUploadingImage ? (
+                                        <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Subiendo...</>
+                                    ) : (
+                                        <><ImagePlus className="w-3 h-3 mr-1.5" />{imageUrl ? 'Cambiar imagen' : 'Subir imagen'}</>
+                                    )}
+                                </Button>
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageFileChange}
+                            />
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-semibold text-zinc-600">Nombre del Producto *</Label>

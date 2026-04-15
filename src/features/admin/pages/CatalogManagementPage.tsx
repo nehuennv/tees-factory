@@ -3,7 +3,8 @@ import type { Product } from "@/types/product";
 import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Edit2, ChevronDown, SlidersHorizontal, MoreHorizontal, Trash2, Package, Eye, EyeOff, Shirt } from "lucide-react";
+import { Search, Edit2, ChevronDown, MoreHorizontal, Trash2, Package, Eye, EyeOff } from "lucide-react";
+import { ProductImage } from "@/components/shared/ProductImage";
 import { toast } from "sonner";
 import { ProductStockDrawer } from "../components/ProductStockDrawer";
 import { Modal } from "@/components/shared/Modal";
@@ -23,7 +24,12 @@ export function CatalogManagementPage() {
         setIsLoadingProducts(true);
         apiClient.get('/products')
             .then(res => {
-                setProducts(res.data);
+                // Normalizar image_url → image para compatibilidad con el tipo Product
+                const mapped = res.data.map((p: any) => ({
+                    ...p,
+                    image: p.image || p.image_url || p.imageUrl || undefined,
+                }));
+                setProducts(mapped);
             })
             .catch(err => {
                 console.error(err);
@@ -169,18 +175,11 @@ export function CatalogManagementPage() {
                             <TableRow key={product.id} className="hover:bg-zinc-50/50 transition-colors group">
                                 <TableCell>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-lg bg-zinc-100 border border-zinc-200/50 overflow-hidden flex-shrink-0 relative flex items-center justify-center">
-                                            <Shirt className="w-5 h-5 text-zinc-300 absolute" />
-                                            {product.image && (
-                                                <img
-                                                    src={product.image}
-                                                    alt={product.name}
-                                                    className="w-full h-full object-cover relative z-10"
-                                                    onError={(e) => {
-                                                        (e.target as HTMLImageElement).style.display = 'none';
-                                                    }}
-                                                />
-                                            )}
+                                        <div className="w-12 h-12 rounded-lg bg-zinc-100 border border-zinc-200/50 overflow-hidden flex-shrink-0">
+                                            <ProductImage
+                                                src={product.image}
+                                                alt={product.name}
+                                            />
                                         </div>
                                         <div>
                                             <p className="font-semibold text-zinc-900">{product.name}</p>

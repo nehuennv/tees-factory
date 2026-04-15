@@ -8,8 +8,12 @@ interface ProductImageProps {
     objectContain?: boolean;
 }
 
+// Base del backend sin el sufijo /api para construir URLs de /uploads
+const BACKEND_BASE = (import.meta.env.VITE_API_URL as string || 'http://localhost:3000/api').replace(/\/api\/?$/, '');
+
 /**
  * Imagen de producto con fallback elegante.
+ * Resuelve rutas relativas del backend (/uploads/...) automáticamente.
  */
 export function ProductImage({ src, alt, className = '', objectContain = false }: ProductImageProps) {
     const [error, setError] = useState(false);
@@ -20,10 +24,12 @@ export function ProductImage({ src, alt, className = '', objectContain = false }
         }
     };
 
-    // Normalizar la URL de la imagen para evitar problemas con rutas relativas en URLs profundas
-    const imageUrl = src && !src.startsWith('http') && !src.startsWith('/') 
-        ? `/${src}` 
-        : src;
+    // Si la URL es relativa (ej: /uploads/products/xxx.jpg), la completamos con la base del backend
+    const imageUrl = src
+        ? src.startsWith('http')
+            ? src
+            : `${BACKEND_BASE}${src.startsWith('/') ? '' : '/'}${src}`
+        : undefined;
 
     if (!imageUrl || error) {
         return (

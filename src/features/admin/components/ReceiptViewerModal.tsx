@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Receipt, Building2, User, Hash, Calendar, CheckCircle2, XCircle } from 'lucide-react'
-import type { PaymentReport } from '@/mocks/payments'
 
 interface ReceiptViewerModalProps {
     payment: any | null;

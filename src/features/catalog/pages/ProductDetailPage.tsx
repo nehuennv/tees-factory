@@ -68,7 +68,10 @@ export function ProductDetailPage() {
                         colors: Object.values(q.colors),
                     }));
                 }
-                setProduct(data);
+                setProduct({
+                    ...data,
+                    image: data.image || data.image_url || data.imageUrl || undefined,
+                });
             })
             .catch(err => {
                 console.error(err);

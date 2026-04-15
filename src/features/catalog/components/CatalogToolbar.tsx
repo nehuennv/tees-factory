@@ -1,4 +1,4 @@
-import { Search, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface CatalogToolbarProps {

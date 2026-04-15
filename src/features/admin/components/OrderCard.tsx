@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripHorizontal, Package } from 'lucide-react';
+import { GripHorizontal } from 'lucide-react';
 import type { Order } from '@/mocks/orders';
 
 interface OrderCardProps {
@@ -71,7 +71,7 @@ export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardPr
                     <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Items</span>
                         <span className="text-sm font-black text-zinc-700 leading-none">
-                            {(order as any).item_count || (order as any).itemCount || (order as any).totalItems || (order.order_items || order.items || []).length}
+                            {(order as any).item_count || (order as any).itemCount || (order as any).totalItems || ((order as any).order_items || (order as any).items || []).length}
                         </span>
                     </div>
                     <div className="flex flex-col items-end">

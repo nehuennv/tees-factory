@@ -40,8 +40,11 @@ export function CatalogPage() {
             apiClient.get('/products', { params })
                 .then(res => {
                     const fetchedProducts = res.data
-                        // Solo mostrar productos activos (isActive: true o sin campo = activo por defecto)
-                        .filter((p: any) => p.isActive !== false);
+                        .filter((p: any) => p.isActive !== false)
+                        .map((p: any) => ({
+                            ...p,
+                            image: p.image || p.image_url || p.imageUrl || undefined,
+                        }));
                     setProducts(fetchedProducts);
                 })
                 .catch(err => console.error("Error fetching products:", err))

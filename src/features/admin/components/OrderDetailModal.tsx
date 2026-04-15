@@ -32,19 +32,22 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
         if (!isOpen || !order?.id) return;
 
         const items = order.order_items || order.items || order.orderItems || order.orderDetails || [];
-        
-        // If we have an ID but no items, try to fetch the full detail
-        if (items.length === 0 && order.id) {
+
+        if (items.length === 0) {
+            const clientId = order.client_id || order.client?.id;
+            if (!clientId) return; // pedido walk-in sin cliente registrado
+
             setIsFetching(true);
-            apiClient.get(`/orders/${order.id}`)
+            apiClient.get('/orders', { params: { clientId } })
                 .then(res => {
-                    setOrder({ ...order, ...res.data });
+                    const match = (res.data as any[]).find((o: any) => o.id === order.id);
+                    if (match) {
+                        setOrder((prev: any) => ({ ...prev, ...match }));
+                    }
                 })
                 .catch(err => {
                     console.error("Error fetching order details:", err);
-                    if (err.response?.status === 404) {
-                        setError("No se encontraron detalles para este pedido (404)");
-                    }
+                    setError("No se pudieron cargar los productos de este pedido.");
                 })
                 .finally(() => setIsFetching(false));
         }
