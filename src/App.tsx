@@ -5,6 +5,7 @@ import MainLayout from "@/components/layout/MainLayout"
 import { CatalogPage } from "@/features/catalog/pages/CatalogPage"
 import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage"
 import { CheckoutPage } from "@/features/checkout/pages/CheckoutPage"
+import { CheckoutSuccessPage } from "@/features/checkout/pages/CheckoutSuccessPage"
 import { LoginPageB2B } from "@/features/auth/pages/LoginPageB2B"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { useAuthStore } from "@/store/authStore"
@@ -155,6 +156,13 @@ function App() {
             </MainLayout>
           </ProtectedRoute>
         } />
+        <Route path="/portal/checkout/exitoso" element={
+          <ProtectedRoute allowedRoles={['CLIENT']}>
+            <MainLayout hideHeader={true}>
+              <CheckoutSuccessPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
         <Route path="/portal/pagos" element={
           <ProtectedRoute allowedRoles={['CLIENT']}>
             <MainLayout headerProps={{
@@ -213,6 +221,13 @@ function App() {
           <ProtectedRoute allowedRoles={['ADMIN', 'SELLER']}>
             <MainLayout headerProps={{ title: 'Confirmar Pedido', tooltipInfo: 'Revisá el pedido antes de confirmarlo.' }}>
               <CheckoutPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/ventas/checkout/exitoso" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'SELLER']}>
+            <MainLayout hideHeader={true}>
+              <CheckoutSuccessPage />
             </MainLayout>
           </ProtectedRoute>
         } />

@@ -8,9 +8,10 @@ import type { MainHeaderProps } from './main-content/MainHeader';
 interface MainLayoutProps {
     children: React.ReactNode;
     headerProps?: MainHeaderProps;
+    hideHeader?: boolean;
 }
 
-export default function MainLayout({ children, headerProps }: MainLayoutProps) {
+export default function MainLayout({ children, headerProps, hideHeader = false }: MainLayoutProps) {
     const location = useLocation();
 
     return (
@@ -20,7 +21,7 @@ export default function MainLayout({ children, headerProps }: MainLayoutProps) {
 
             {/* Main Content Area */}
             <div className="flex flex-col flex-1 bg-white border border-zinc-200/60 rounded-[24px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative h-full">
-                <MainHeader {...headerProps} />
+                {!hideHeader && <MainHeader {...headerProps} />}
                 <main className="flex-1 flex flex-col relative overflow-hidden bg-[#fafafa]">
                     <motion.div
                         key={location.pathname}

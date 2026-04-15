@@ -3,19 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderDraftStore } from "@/store/orderDraftStore";
 import apiClient from "@/lib/apiClient";
-import { BankDetailsCard } from '@/components/shared/BankDetailsCard';
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import {
-    CheckCircle2,
     Factory,
     Truck,
     ShoppingCart,
     ArrowRight,
-    Package,
-    CreditCard,
-    UploadCloud,
     User
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,9 +23,6 @@ export function CheckoutPage() {
     const [deliveryMethod, setDeliveryMethod] = useState("fabrica");
     const [notes, setNotes] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [orderNumber, setOrderNumber] = useState("");
-    const [finalTotal, setFinalTotal] = useState(0);
 
     const handleConfirmOrder = async () => {
         if (items.length === 0) {
@@ -51,27 +43,35 @@ export function CheckoutPage() {
 
         const payload = {
             clientId: isDraft && draftClientId ? draftClientId : undefined,
-            notes: `Entrega: ${deliveryMethod}. ${notes}`,
             items: items.map(item => ({
                 variantId: item.variantId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice
-            }))
+                quantity: item.quantity
+            })),
+            discountPercentage: 0,
+            observations: `Entrega: ${deliveryMethod}. ${notes}`
         };
 
         try {
             const res = await apiClient.post('/orders', payload);
             
-            // Backend should return order { id }
-            setOrderNumber(res.data.id || "CONFIRMADO");
-            setFinalTotal(totalPrice);
-            setIsSuccess(true);
+            const orderId = res.data.id || "CONFIRMADO";
             
             if (isDraft) {
                 clearDraft();
             } else {
                 clearCart();
             }
+
+            // Redirect to success page
+            const successBase = isDraft ? "/ventas/checkout/exitoso" : "/portal/checkout/exitoso";
+            navigate(successBase, { 
+                state: { 
+                    orderId, 
+                    total: totalPrice, 
+                    clientName: isDraft ? draftClientName : null,
+                    isDraft 
+                } 
+            });
         } catch (error: any) {
             console.error(error);
             if (error.response?.status === 400 || error.response?.status === 409) {
@@ -91,98 +91,10 @@ export function CheckoutPage() {
         }
     };
 
-    // PANTALLA DE ÉXITO (B2B Order Confirmation)
-    if (isSuccess) {
-        return (
-            <div className="flex flex-col items-center justify-center py-12 px-4 min-h-[70vh]">
-                <div className="w-full max-w-2xl bg-white border border-zinc-200 shadow-xl rounded-3xl p-8 md:p-12 animate-in fade-in zoom-in-95 duration-500">
-
-                    {/* Header del Éxito */}
-                    <div className="flex flex-col items-center text-center mb-8">
-                        <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6 border border-emerald-100">
-                            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-                        </div>
-                        <h1 className="text-3xl font-extrabold text-zinc-900 tracking-tight mb-2">¡Pedido Registrado!</h1>
-                        <p className="text-zinc-500 text-lg">
-                            {isDraft && draftClientName
-                                ? <>Pedido <span className="font-bold text-zinc-900 px-1">{orderNumber}</span> registrado para <span className="font-bold text-zinc-900">{draftClientName}</span>.&nbsp;</>
-                                : <>Tu orden de compra <span className="font-bold text-zinc-900 px-1">{orderNumber}</span> ha sido procesada con éxito.</>
-                            }
-                        </p>
-                    </div>
-
-                    {/* Próximos Pasos (Ideal para B2B) */}
-                    <div className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl p-6 text-left mb-8 space-y-6">
-                        <h3 className="font-bold text-zinc-900 text-base border-b border-zinc-200 pb-3">Próximos pasos para el despacho:</h3>
-
-                        <div className="flex gap-4 items-start">
-                            <div className="mt-0.5 w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0 shadow-sm">
-                                <Package className="w-4 h-4 text-zinc-600" />
-                            </div>
-                            <div>
-                                <p className="font-bold text-zinc-900 text-sm">1. Preparación en depósito</p>
-                                <p className="text-sm text-zinc-500 mt-0.5">Ya estamos separando y controlando tu mercadería.</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 items-start">
-                            <div className="mt-0.5 w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0 shadow-sm">
-                                <CreditCard className="w-4 h-4 text-zinc-600" />
-                            </div>
-                            <div className="flex-1">
-                                <p className="font-bold text-zinc-900 text-sm">2. Realiza el pago</p>
-                                <p className="text-sm text-zinc-500 mt-0.5 mb-4">Transfiere el total de <span className="font-bold text-zinc-900">${finalTotal.toLocaleString('es-AR')}</span> a nuestra cuenta:</p>
-                                <BankDetailsCard />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 items-start">
-                            <div className="mt-0.5 w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0 shadow-sm">
-                                <UploadCloud className="w-4 h-4 text-zinc-600" />
-                            </div>
-                            <div>
-                                <p className="font-bold text-zinc-900 text-sm">3. Informa el comprobante</p>
-                                <p className="text-sm text-zinc-500 mt-0.5">Sube el comprobante o dinos el Nro. de transferencia desde tu panel para liberar el envío.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Botones de Acción */}
-                    <div className="flex flex-col sm:flex-row gap-3 w-full">
-                        {isDraft ? (
-                            /* Flujo Seller: volver a la cartera */
-                            <Button
-                                className="flex-1 h-12 text-base rounded-xl font-semibold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors"
-                                onClick={() => navigate("/ventas/clientes")}
-                            >
-                                Volver a Mi Cartera
-                            </Button>
-                        ) : (
-                            /* Flujo Cliente */
-                            <>
-                                <Button
-                                    className="flex-1 h-12 text-base rounded-xl font-semibold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors"
-                                    onClick={() => navigate("/portal/pedidos")}
-                                >
-                                    Ver mis pedidos
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="flex-1 h-12 text-base rounded-xl font-semibold text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 transition-colors"
-                                    onClick={() => navigate("/portal/catalogo")}
-                                >
-                                    Seguir comprando
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
-        <div className="max-w-6xl mx-auto py-6 px-4 md:px-6 animate-in fade-in duration-500">
+        <div className="flex-1 w-full overflow-y-auto custom-scrollbar">
+            <div className="max-w-6xl mx-auto py-6 px-4 md:px-6 animate-in fade-in duration-500">
 
             {/* Banner de contexto: pedido para un cliente (seller flow) */}
             {isDraft && draftClientName && (
@@ -356,5 +268,6 @@ export function CheckoutPage() {
                 </div>
             )}
         </div>
+    </div>
     );
 }

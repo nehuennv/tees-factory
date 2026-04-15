@@ -63,18 +63,23 @@ export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardPr
                 className="p-3 flex flex-col gap-2 cursor-pointer bg-white hover:bg-zinc-50/50 transition-colors"
                 onClick={() => onClick(order)}
             >
-                <span className="text-sm text-zinc-900 font-bold leading-tight line-clamp-2" title={order.clientName}>
-                    {order.clientName}
+                 <span className="text-sm text-zinc-900 font-bold leading-tight line-clamp-2" title={(order as any).client?.company_name || (order as any).company_name || (order as any).clientName || (order as any).client_name || (order as any).client_id}>
+                    {(order as any).client?.company_name || (order as any).company_name || (order as any).clientName || (order as any).client_name || (order as any).client_id || 'Pedido'}
                 </span>
 
                 <div className="flex justify-between items-end mt-1 pt-1 border-t border-zinc-100/50">
-                    <div className="flex items-center gap-1.5 text-zinc-500">
-                        <Package className="h-3.5 w-3.5" />
-                        <span className="text-xs font-semibold">{order.totalItems} prendas</span>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Items</span>
+                        <span className="text-sm font-black text-zinc-700 leading-none">
+                            {(order as any).item_count || (order as any).itemCount || (order as any).totalItems || (order.order_items || order.items || []).length}
+                        </span>
                     </div>
-                    <span className="text-sm font-black text-zinc-900">
-                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(order.totalAmount)}
-                    </span>
+                    <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Total</span>
+                        <span className="text-sm font-black text-zinc-900 leading-none">
+                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format((order as any).total_amount || (order as any).totalAmount || 0)}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
