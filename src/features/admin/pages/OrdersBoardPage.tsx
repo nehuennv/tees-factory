@@ -104,12 +104,14 @@ export function OrdersBoardPage() {
         setIsLoading(true);
         apiClient.get('/orders')
             .then(res => {
+                if (res.data.length > 0) {
+                    console.log('[OrdersBoard] Primer orden recibida:', res.data[0]);
+                }
                 const initial: Record<string, any[]> = { PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
                 res.data.forEach((order: any) => {
                     if (initial[order.status]) {
                         initial[order.status].push(order);
                     } else {
-                        // Fallback
                         initial['PENDING'].push(order);
                     }
                 });

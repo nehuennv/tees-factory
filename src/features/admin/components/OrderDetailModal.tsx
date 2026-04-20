@@ -27,30 +27,23 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
         setError(null);
     }, [initialOrder]);
 
-    // Dynamic detail fetching if items are missing
+    // Fetch full order detail (with items) when modal opens
     useEffect(() => {
         if (!isOpen || !order?.id) return;
 
         const items = order.order_items || order.items || order.orderItems || order.orderDetails || [];
+        if (items.length > 0) return; // ya tenemos los items, no hace falta volver a pedir
 
-        if (items.length === 0) {
-            const clientId = order.client_id || order.client?.id;
-            if (!clientId) return; // pedido walk-in sin cliente registrado
-
-            setIsFetching(true);
-            apiClient.get('/orders', { params: { clientId } })
-                .then(res => {
-                    const match = (res.data as any[]).find((o: any) => o.id === order.id);
-                    if (match) {
-                        setOrder((prev: any) => ({ ...prev, ...match }));
-                    }
-                })
-                .catch(err => {
-                    console.error("Error fetching order details:", err);
-                    setError("No se pudieron cargar los productos de este pedido.");
-                })
-                .finally(() => setIsFetching(false));
-        }
+        setIsFetching(true);
+        apiClient.get(`/orders/${order.id}`)
+            .then(res => {
+                setOrder((prev: any) => ({ ...prev, ...res.data }));
+            })
+            .catch(err => {
+                console.error("Error fetching order details:", err);
+                setError("No se pudieron cargar los productos de este pedido.");
+            })
+            .finally(() => setIsFetching(false));
     }, [isOpen, order?.id]);
 
     if (!order) return null;

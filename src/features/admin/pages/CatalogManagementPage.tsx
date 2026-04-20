@@ -224,7 +224,7 @@ export function CatalogManagementPage() {
                                                 className="cursor-pointer font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 focus:bg-zinc-50"
                                             >
                                                 <Edit2 className="mr-2 h-4 w-4" />
-                                                <span>Editar / Gestionar Matriz</span>
+                                                <span>Gestionar</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator className="bg-zinc-100" />
                                             <DropdownMenuItem
