@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useCallback, useEffect } from 'react';
+import { useState, useMemo, memo, useCallback, useEffect, useRef } from 'react';
 import apiClient from '@/lib/apiClient';
 import {
     DropdownMenu,
@@ -98,7 +98,12 @@ export function OrdersBoardPage() {
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
     const [isFastOrderModalOpen, setIsFastOrderModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [minAmountFilter, setMinAmountFilter] = useState<number | null>(null);
+    const [minAmount, setMinAmount] = useState('');
+    const [maxAmount, setMaxAmount] = useState('');
+    const [amountPopoverOpen, setAmountPopoverOpen] = useState(false);
+    const amountPopoverRef = useRef<HTMLDivElement>(null);
+    const amountBtnRef = useRef<HTMLButtonElement>(null);
+    const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0 });
 
     useEffect(() => {
         setIsLoading(true);
@@ -128,18 +133,21 @@ export function OrdersBoardPage() {
         const lowerSearch = searchTerm.toLowerCase();
         const result: Record<string, any[]> = { PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
 
+        const min = minAmount !== '' ? parseFloat(minAmount) : null;
+        const max = maxAmount !== '' ? parseFloat(maxAmount) : null;
+
         (Object.keys(columns)).forEach(status => {
-            result[status] = columns[status].filter(
-                o => {
-                    const clientNameStr = o.client?.name || o.clientName || "";
-                    const matchesSearch = !searchTerm.trim() || o.id.toLowerCase().includes(lowerSearch) || clientNameStr.toLowerCase().includes(lowerSearch);
-                    const matchesAmount = minAmountFilter === null || o.totalAmount >= minAmountFilter;
-                    return matchesSearch && matchesAmount;
-                }
-            );
+            result[status] = columns[status].filter(o => {
+                const clientNameStr = o.client?.name || o.clientName || "";
+                const matchesSearch = !searchTerm.trim() || o.id.toLowerCase().includes(lowerSearch) || clientNameStr.toLowerCase().includes(lowerSearch);
+                const amount = o.totalAmount ?? 0;
+                const matchesMin = min === null || amount >= min;
+                const matchesMax = max === null || amount <= max;
+                return matchesSearch && matchesMin && matchesMax;
+            });
         });
         return result;
-    }, [columns, searchTerm, minAmountFilter]);
+    }, [columns, searchTerm, minAmount, maxAmount]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -208,15 +216,35 @@ export function OrdersBoardPage() {
 
         if (draggedOrder && draggedOrder.status !== overContainer) {
             const colTitle = COLUMNS.find(c => c.id === overContainer)?.title;
-            
+
             apiClient.patch(`/orders/${draggedOrder.id}/status`, { status: overContainer })
-                .then(() => toast.success(`Pedido movido a ${colTitle}`))
+                .then(() => {
+                    if (overContainer === 'PICKING') {
+                        toast.success('Pedido aprobado — pago conciliado', {
+                            description: 'Se está enviando el email "En Preparación" al cliente automáticamente.',
+                            duration: 6000,
+                        });
+                    } else {
+                        toast.success(`Pedido movido a ${colTitle}`);
+                    }
+                })
                 .catch(err => {
                     console.error(err);
                     toast.error("Error al mover el pedido. Refresque la página.");
                 });
         }
     }, [activeOrder, columns, findContainer]);
+
+    useEffect(() => {
+        if (!amountPopoverOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (amountPopoverRef.current && !amountPopoverRef.current.contains(e.target as Node)) {
+                setAmountPopoverOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [amountPopoverOpen]);
 
     const dropAnimation = {
         sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
@@ -237,27 +265,40 @@ export function OrdersBoardPage() {
                     />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center justify-center rounded-xl h-10 px-4 text-sm font-medium text-zinc-600 border border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-zinc-200 focus:ring-offset-2">
-                            {minAmountFilter === null ? 'Filtro Monto' : `> $${minAmountFilter / 1000}k`} <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 bg-white border border-zinc-200 rounded-xl shadow-lg p-1">
-                            <DropdownMenuItem onClick={() => setMinAmountFilter(null)} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 focus:bg-zinc-100 focus:text-zinc-900 outline-none">
-                                Ver Todos
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setMinAmountFilter(1000000)} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 focus:bg-zinc-100 focus:text-zinc-900 outline-none">
-                                Mayores a $1.000.000
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setMinAmountFilter(2000000)} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 focus:bg-zinc-100 focus:text-zinc-900 outline-none">
-                                Mayores a $2.000.000
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Filtro Monto — popover con min/max */}
+                    <div className="relative shrink-0" ref={amountPopoverRef}>
+                        <button
+                            ref={amountBtnRef}
+                            onClick={() => {
+                                const rect = amountBtnRef.current?.getBoundingClientRect();
+                                if (rect) {
+                                    setPopoverPos({
+                                        top: rect.bottom + 8,
+                                        right: window.innerWidth - rect.right,
+                                    });
+                                }
+                                setAmountPopoverOpen(v => !v);
+                            }}
+                            className={`flex items-center justify-center rounded-xl h-10 px-4 text-sm font-medium border transition-colors shadow-sm whitespace-nowrap focus:outline-none ${
+                                minAmount || maxAmount
+                                    ? 'bg-zinc-900 text-white border-zinc-900'
+                                    : 'text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50'
+                            }`}
+                        >
+                            {minAmount || maxAmount
+                                ? `$${minAmount || '0'} — $${maxAmount || '∞'}`
+                                : 'Filtro Monto'
+                            }
+                            <ChevronDown className="w-3 h-3 ml-2 opacity-60" />
+                        </button>
+                    </div>
                     <div className="w-px h-6 bg-zinc-200 mx-1 hidden sm:block shrink-0"></div>
                     <button
                         onClick={() => {
                             setSearchTerm('');
-                            setMinAmountFilter(null);
+                            setMinAmount('');
+                            setMaxAmount('');
+                            setAmountPopoverOpen(false);
                         }}
                         className="flex items-center justify-center rounded-xl h-10 px-4 text-sm font-medium text-zinc-500 hover:text-zinc-900 whitespace-nowrap shrink-0 transition-colors">
                         Limpiar filtros
@@ -316,6 +357,55 @@ export function OrdersBoardPage() {
                 isOpen={isFastOrderModalOpen}
                 onClose={() => setIsFastOrderModalOpen(false)}
             />
+
+            {/* Popover de filtro monto — fixed para escapar del overflow */}
+            {amountPopoverOpen && (
+                <div
+                    ref={amountPopoverRef}
+                    style={{ position: 'fixed', top: popoverPos.top, right: popoverPos.right, zIndex: 9999 }}
+                    className="bg-white border border-zinc-200 rounded-2xl shadow-xl p-4 w-64"
+                >
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Rango de monto ($)</p>
+                    <div className="flex flex-col gap-2.5">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-zinc-600">Mínimo</label>
+                            <input
+                                type="number"
+                                min={0}
+                                placeholder="Ej: 500000"
+                                value={minAmount}
+                                onChange={e => setMinAmount(e.target.value)}
+                                className="h-9 rounded-lg border border-zinc-200 px-3 text-sm bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-zinc-600">Máximo</label>
+                            <input
+                                type="number"
+                                min={0}
+                                placeholder="Ej: 3000000"
+                                value={maxAmount}
+                                onChange={e => setMaxAmount(e.target.value)}
+                                className="h-9 rounded-lg border border-zinc-200 px-3 text-sm bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                        <button
+                            onClick={() => { setMinAmount(''); setMaxAmount(''); setAmountPopoverOpen(false); }}
+                            className="flex-1 h-8 rounded-lg border border-zinc-200 text-xs font-semibold text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 transition-colors"
+                        >
+                            Limpiar
+                        </button>
+                        <button
+                            onClick={() => setAmountPopoverOpen(false)}
+                            className="flex-1 h-8 rounded-lg bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 transition-colors"
+                        >
+                            Aplicar
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

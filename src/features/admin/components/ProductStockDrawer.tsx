@@ -134,7 +134,21 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
         }));
     };
 
-    const handleRemoveSize = (qualityId: string, colorName: string, sizeIdx: number) => {
+    const handleRemoveSize = async (qualityId: string, colorName: string, sizeIdx: number) => {
+        const quality = qualities.find(q => q.id === qualityId);
+        const color = quality?.colors.find(c => c.colorName === colorName);
+        const variant = color?.sizes[sizeIdx];
+
+        if (variant?.id && product) {
+            try {
+                await apiClient.delete(`/products/${product.id}/variants/${variant.id}`);
+            } catch (err: any) {
+                const msg = err?.response?.data?.error || err?.response?.data?.message || "Error al eliminar la variante";
+                toast.error(msg);
+                return;
+            }
+        }
+
         setQualities(prev => prev.map(q => {
             if (q.id !== qualityId) return q;
             return {
@@ -170,7 +184,27 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
         setNewSizeInputs(prev => ({ ...prev, [key]: "" }));
     };
 
-    const handleRemoveColor = (qualityId: string, colorName: string) => {
+    const handleRemoveColor = async (qualityId: string, colorName: string) => {
+        if (!product) return;
+
+        const quality = qualities.find(q => q.id === qualityId);
+        const color = quality?.colors.find(c => c.colorName === colorName);
+        const persistedVariants = color?.sizes.filter(s => s.id) ?? [];
+
+        if (persistedVariants.length > 0) {
+            try {
+                await Promise.all(
+                    persistedVariants.map(s =>
+                        apiClient.delete(`/products/${product.id}/variants/${s.id}`)
+                    )
+                );
+            } catch (err: any) {
+                const msg = err?.response?.data?.error || err?.response?.data?.message || "Error al eliminar las variantes del color";
+                toast.error(msg);
+                return;
+            }
+        }
+
         setQualities(prev => prev.map(q => {
             if (q.id !== qualityId) return q;
             return { ...q, colors: q.colors.filter(c => c.colorName !== colorName) };

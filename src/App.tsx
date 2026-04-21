@@ -232,6 +232,14 @@ function App() {
           </ProtectedRoute>
         } />
 
+        <Route path="/ventas/logistica" element={
+          <ProtectedRoute allowedRoles={['SELLER']}>
+            <MainLayout headerProps={{ title: 'Tablero de Pedidos', tooltipInfo: 'Arrastrá las tarjetas para actualizar el estado logístico de los pedidos.' }}>
+              <OrdersBoardPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+
         {/* Catch-all route mapping to root to rely on Role routing or authentication state */}
         <Route path="*" element={<RootRedirect />} />
       </Routes>

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripHorizontal } from 'lucide-react';
+import { GripHorizontal, Calendar } from 'lucide-react';
 import type { Order } from '@/mocks/orders';
 
 interface OrderCardProps {
@@ -35,7 +35,7 @@ export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardPr
             <div
                 ref={setNodeRef}
                 style={style}
-                className="w-full bg-zinc-50 border-2 border-zinc-300 border-dashed rounded-xl h-[116px] opacity-60"
+                className="w-full bg-zinc-50 border-2 border-zinc-300 border-dashed rounded-xl h-[132px] opacity-60"
             />
         );
     }
@@ -67,7 +67,16 @@ export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardPr
                     {(order as any).client?.company_name || (order as any).company_name || (order as any).clientName || (order as any).client_name || (order as any).client_id || 'Pedido'}
                 </span>
 
-                <div className="flex justify-between items-end mt-1 pt-1 border-t border-zinc-100/50">
+                <div className="flex items-center gap-1 text-zinc-400">
+                    <Calendar className="w-3 h-3 shrink-0" />
+                    <span className="text-[11px] font-medium">
+                        {(order as any).created_at || (order as any).createdAt
+                            ? new Date((order as any).created_at || (order as any).createdAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : '—'}
+                    </span>
+                </div>
+
+                <div className="flex justify-between items-end pt-1 border-t border-zinc-100/50">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Items</span>
                         <span className="text-sm font-black text-zinc-700 leading-none">

@@ -74,14 +74,16 @@ export function CheckoutPage() {
             });
         } catch (error: any) {
             console.error(error);
-            if (error.response?.status === 400 || error.response?.status === 409) {
-                toast.error("Inventario insuficiente", {
-                    description: error.response?.data?.error || "Alguien acaba de comprar el stock de un artículo que seleccionaste. Revisa tu pedido.",
+            if (error.response?.status === 409) {
+                const catalogPath = isDraft ? "/ventas/catalogo" : "/portal/catalogo";
+                toast.error("Stock insuficiente", {
+                    description: error.response?.data?.error || "Alguien acaba de comprar el stock de un artículo que seleccionaste. Volvés al catálogo para revisar tu pedido.",
                     duration: 5000,
-                    action: {
-                        label: "Volver a Editar",
-                        onClick: () => navigate("/portal/catalogo"),
-                    },
+                });
+                navigate(catalogPath);
+            } else if (error.response?.status === 400) {
+                toast.error("Pedido inválido", {
+                    description: error.response?.data?.error || error.response?.data?.message || "Revisá los datos del pedido e intentá nuevamente.",
                 });
             } else {
                 toast.error("Error al procesar el pedido. Intenta nuevamente.");

@@ -32,6 +32,7 @@ const NAV_ITEMS: NavItemConfig[] = [
 
     // SELLER
     { to: '/ventas/clientes', icon: Users, label: 'Mi Cartera de Clientes', allowedRoles: ['SELLER'] },
+    { to: '/ventas/logistica', icon: ClipboardCheck, label: 'Tablero de Pedidos', allowedRoles: ['SELLER'] },
 ];
 
 export default function Sidebar() {
