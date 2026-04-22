@@ -89,7 +89,7 @@ export function ProductDetailPage() {
         if (!activeQuality) return SIZES_FALLBACK;
         const set = new Set<string>();
         activeQuality.colors?.forEach((c: any) => {
-            c.sizes?.forEach((s: any) => set.add(s.size));
+            c.sizes?.forEach((s: any) => set.add(s.size?.toString().trim().toUpperCase()));
         });
         const arr = Array.from(set);
         return arr.length > 0 ? arr : SIZES_FALLBACK;
@@ -152,7 +152,7 @@ export function ProductDetailPage() {
                 const qIdx = parseInt(qIdxStr, 10);
                 const quality = product.qualities[qIdx];
                 const colorData = quality.colors.find((c: any) => c.colorName === colorName);
-                const sizeData = colorData?.sizes?.find((s: any) => s.size === size);
+                const sizeData = colorData?.sizes?.find((s: any) => s.size?.toString().trim().toUpperCase() === size);
 
                 if (!sizeData) {
                     toast.error(`Variante ${colorName}-${size} no encontrada`);
@@ -368,7 +368,7 @@ export function ProductDetailPage() {
                                         </td>
 
                                         {activeSizes.map((size: string) => {
-                                            const sizeData = color.sizes?.find((s: any) => s.size === size);
+                                            const sizeData = color.sizes?.find((s: any) => s.size?.toString().trim().toUpperCase() === size);
                                             const maxStock = sizeData?.availableStock || 0;
                                             const inputDisabled = maxStock === 0;
 

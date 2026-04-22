@@ -8,7 +8,9 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package } from 'lucide-react';
+import { Package, FileDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface OrderDetailModalProps {
     order: any | null;
@@ -20,6 +22,25 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
     const [order, setOrder] = useState<any>(initialOrder);
     const [isFetching, setIsFetching] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+    const handleDownloadPdf = async () => {
+        if (!order?.id) return;
+        setIsDownloadingPdf(true);
+        try {
+            const response = await apiClient.get(`/orders/${order.id}/pdf`, { responseType: 'blob' });
+            const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `remito-${order.id.slice(0, 8).toUpperCase()}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error('No se pudo generar el remito PDF');
+        } finally {
+            setIsDownloadingPdf(false);
+        }
+    };
 
     // Sync local state with prop
     useEffect(() => {
@@ -159,6 +180,19 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
                             </span>
                         </div>
                     </div>
+
+                    <Button
+                        onClick={handleDownloadPdf}
+                        disabled={isDownloadingPdf}
+                        variant="outline"
+                        className="w-full rounded-xl border-zinc-200 h-11 font-bold gap-2"
+                    >
+                        {isDownloadingPdf
+                            ? <span className="w-4 h-4 rounded-full border-2 border-zinc-400 border-t-transparent animate-spin" />
+                            : <FileDown className="w-4 h-4" />
+                        }
+                        Descargar Remito PDF
+                    </Button>
                 </div>
             </DialogContent>
         </Dialog>

@@ -21,13 +21,31 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, PackageOpen, Truck, CheckCircle2, Clock } from 'lucide-react';
+import { Eye, PackageOpen, Truck, CheckCircle2, Clock, FileDown } from 'lucide-react';
 
 export function ClientOrdersPage() {
     const { user } = useAuthStore();
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+    const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+    const handleDownloadPdf = async (orderId: string) => {
+        setIsDownloadingPdf(true);
+        try {
+            const response = await apiClient.get(`/orders/${orderId}/pdf`, { responseType: 'blob' });
+            const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `remito-${orderId.slice(0, 8).toUpperCase()}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error('No se pudo generar el remito PDF');
+        } finally {
+            setIsDownloadingPdf(false);
+        }
+    };
 
     useEffect(() => {
         if (!user?.reference_id) {
@@ -241,12 +259,26 @@ export function ClientOrdersPage() {
                             <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total del Pedido</span>
                             <span className="text-2xl font-black text-zinc-900">{selectedOrder ? formatPrice(selectedOrder.totalAmount) : '$0'}</span>
                         </div>
-                        <Button
-                            onClick={() => setSelectedOrder(null)}
-                            className="w-full rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white h-12 font-bold transition-all"
-                        >
-                            Cerrar Remito
-                        </Button>
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={() => handleDownloadPdf(selectedOrder?.id)}
+                                disabled={isDownloadingPdf}
+                                variant="outline"
+                                className="flex-1 rounded-xl border-zinc-200 h-12 font-bold gap-2"
+                            >
+                                {isDownloadingPdf
+                                    ? <span className="w-4 h-4 rounded-full border-2 border-zinc-400 border-t-transparent animate-spin" />
+                                    : <FileDown className="w-4 h-4" />
+                                }
+                                Descargar PDF
+                            </Button>
+                            <Button
+                                onClick={() => setSelectedOrder(null)}
+                                className="flex-1 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white h-12 font-bold transition-all"
+                            >
+                                Cerrar
+                            </Button>
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>

@@ -99,7 +99,7 @@ export function CatalogPage() {
                     totalUnits={`${totalUnits} un.`}
                     subtotal={formatPrice(totalPrice)}
                     onAction={handleCheckout}
-                    actionLabel={draftIsActive ? 'CONFIRMAR PEDIDO' : 'REVISAR PEDIDO'}
+                    actionLabel="Continuar"
                 />
             )}
         </div>

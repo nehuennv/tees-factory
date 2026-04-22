@@ -88,16 +88,31 @@ export function TreasuryPage() {
         const payment = payments.find(p => p.id === id);
         if (!payment) return;
 
+        if (!reason || reason.trim().length === 0) {
+            toast.error('El motivo de rechazo es obligatorio');
+            return;
+        }
+
         // Optimistic update
         setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'REJECTED' } : p));
 
         try {
-            await apiClient.patch(`/payments/${id}/status`, { status: "REJECTED", reason });
-            toast.success(`Pago rechazado`);
-        } catch (error) {
+            await apiClient.post(`/payments/${id}/reject`, { reason: reason.trim() });
+            toast.success('Pago rechazado · Email enviado al cliente');
+        } catch (error: any) {
             // Rollback si el API falla
             setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'PENDING' } : p));
-            toast.error(`Error al rechazar el pago`);
+
+            const status = error?.response?.status;
+            if (status === 400) {
+                toast.error('El motivo de rechazo es obligatorio');
+            } else if (status === 404) {
+                toast.error('El pago no existe o ya fue procesado por otro administrador');
+            } else if (status === 403) {
+                toast.error('No tenés permisos para realizar esta acción');
+            } else {
+                toast.error('Error al rechazar el pago');
+            }
             console.error(error);
         }
     };
