@@ -15,6 +15,8 @@ import apiClient from '@/lib/apiClient';
 // Brand Accent Colors
 const COLORS = ['#42318B', '#C44A87', '#2DBDD0', '#EFBC4E'];
 
+const LIST_ITEMS = 4;
+
 // ── Tipos para los KPIs del backend ────────────────────────────
 interface DashboardKpis {
     totalDebt: number;
@@ -55,10 +57,12 @@ function calcPctChange(current: number, previous: number): number | null {
     return ((current - previous) / previous) * 100;
 }
 
-function PctBadge({ pct, color }: { pct: number | null; color: string }) {
+function PctBadge({ pct, color, invertTrend = false }: { pct: number | null; color: string; invertTrend?: boolean }) {
     if (pct === null) return null;
     const isPositive = pct >= 0;
-    const Icon = isPositive ? TrendingUp : TrendingDown;
+    // Para deuda: subir es malo → invertimos el ícono
+    const isGood = invertTrend ? !isPositive : isPositive;
+    const Icon = isGood ? TrendingDown : TrendingUp;
     const label = `${isPositive ? '+' : ''}${pct.toFixed(1)}% vs mes anterior`;
     return (
         <p
@@ -157,9 +161,14 @@ export function AdminDashboardPage() {
             .catch(() => setCategoryData(defaultCategory))
             .finally(() => setIsCategoryLoading(false));
 
-        // Recent Payments (últimos 5 pendientes)
-        apiClient.get('/payments', { params: { limit: 5, status: 'PENDING_REVIEW' } })
-            .then(({ data }) => setRecentPayments(Array.isArray(data) ? data.slice(0, 5) : []))
+        // Últimos movimientos: trae los más recientes, pendientes primero
+        apiClient.get('/payments', { params: { limit: 20 } })
+            .then(({ data }) => {
+                if (!Array.isArray(data)) { setRecentPayments([]); return; }
+                const pending = data.filter((p: RecentPayment) => p.status === 'PENDING_REVIEW' || p.status === 'PENDING');
+                const rest = data.filter((p: RecentPayment) => p.status !== 'PENDING_REVIEW' && p.status !== 'PENDING');
+                setRecentPayments([...pending, ...rest].slice(0, LIST_ITEMS));
+            })
             .catch(() => setRecentPayments([]))
             .finally(() => setIsPaymentsLoading(false));
     }, []);
@@ -169,8 +178,8 @@ export function AdminDashboardPage() {
     const totalRevenue = kpis?.currentMonthRevenue ?? 0;
     const pendingPayments = kpis?.pendingPaymentsCount ?? 0;
     const preparingOrders = kpis?.preparingOrdersCount ?? 0;
-    const topDebtors = kpis?.topDebtors ?? [];
-    const criticalStock = kpis?.criticalStock ?? [];
+    const topDebtors = [...(kpis?.topDebtors ?? [])].sort((a, b) => b.debt - a.debt).slice(0, LIST_ITEMS);
+    const criticalStock = [...(kpis?.criticalStock ?? [])].sort((a, b) => a.stock - b.stock).slice(0, LIST_ITEMS);
 
     const revenuePct = calcPctChange(totalRevenue, kpis?.previousMonthRevenue ?? 0);
     const debtPct = calcPctChange(totalDebt, kpis?.previousMonthDebt ?? 0);
@@ -183,96 +192,109 @@ export function AdminDashboardPage() {
             <div className="w-full space-y-6 lg:space-y-8">
 
                 {/* ── Row 1: KPI Cards ── */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75 fill-mode-both">
+                <motion.div
+                    className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.09 } } }}
+                >
 
-                    {/* Deuda Total */}
-                    <Card className="shadow-sm border-zinc-200 rounded-xl overflow-hidden bg-white transition-shadow duration-300 hover:shadow-md group">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-semibold text-zinc-500 uppercase tracking-wide group-hover:text-zinc-700 transition-colors">
-                                Deuda Total
-                            </CardTitle>
-                            <div className="p-2 rounded-lg transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: '#C44A8715' }}>
-                                <Wallet className="h-4 w-4" color="#C44A87" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {isKpisLoading
-                                ? <><SkeletonBlock className="h-8 w-32 mb-2" /><SkeletonBlock className="h-5 w-40" /></>
-                                : <>
-                                    <div className="text-2xl font-bold text-zinc-900">{formatCurrency(totalDebt)}</div>
-                                    <PctBadge pct={debtPct} color="#C44A87" />
-                                </>
-                            }
-                        </CardContent>
-                    </Card>
+                    {/* Deuda de Clientes */}
+                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } } }}>
+                        <Card className="shadow-sm border-zinc-200 rounded-xl overflow-hidden bg-white transition-shadow duration-300 hover:shadow-md group">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-semibold text-zinc-500 uppercase tracking-wide group-hover:text-zinc-700 transition-colors">
+                                    Deuda de Clientes
+                                </CardTitle>
+                                <div className="p-2 rounded-lg transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: '#C44A8715' }}>
+                                    <Wallet className="h-4 w-4" color="#C44A87" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {isKpisLoading
+                                    ? <><SkeletonBlock className="h-8 w-32 mb-2" /><SkeletonBlock className="h-5 w-40" /></>
+                                    : <>
+                                        <div className="text-2xl font-bold text-zinc-900">{formatCurrency(totalDebt)}</div>
+                                        <PctBadge pct={debtPct} color="#C44A87" invertTrend />
+                                    </>
+                                }
+                            </CardContent>
+                        </Card>
+                    </motion.div>
 
                     {/* Facturación Mes Actual */}
-                    <Card className="shadow-sm border-zinc-200 rounded-xl overflow-hidden bg-white transition-shadow duration-300 hover:shadow-md group">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-semibold text-zinc-500 uppercase tracking-wide group-hover:text-zinc-700 transition-colors">
-                                Facturación Mes Actual
-                            </CardTitle>
-                            <div className="p-2 rounded-lg transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: '#2DBDD015' }}>
-                                <TrendingUp className="h-4 w-4" color="#2DBDD0" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {isKpisLoading
-                                ? <><SkeletonBlock className="h-8 w-32 mb-2" /><SkeletonBlock className="h-5 w-40" /></>
-                                : <>
-                                    <div className="text-2xl font-bold text-zinc-900">{formatCurrency(totalRevenue)}</div>
-                                    <PctBadge pct={revenuePct} color="#2DBDD0" />
-                                </>
-                            }
-                        </CardContent>
-                    </Card>
+                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } } }}>
+                        <Card className="shadow-sm border-zinc-200 rounded-xl overflow-hidden bg-white transition-shadow duration-300 hover:shadow-md group">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-semibold text-zinc-500 uppercase tracking-wide group-hover:text-zinc-700 transition-colors">
+                                    Facturación Mes Actual
+                                </CardTitle>
+                                <div className="p-2 rounded-lg transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: '#2DBDD015' }}>
+                                    <TrendingUp className="h-4 w-4" color="#2DBDD0" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {isKpisLoading
+                                    ? <><SkeletonBlock className="h-8 w-32 mb-2" /><SkeletonBlock className="h-5 w-40" /></>
+                                    : <>
+                                        <div className="text-2xl font-bold text-zinc-900">{formatCurrency(totalRevenue)}</div>
+                                        <PctBadge pct={revenuePct} color="#2DBDD0" />
+                                    </>
+                                }
+                            </CardContent>
+                        </Card>
+                    </motion.div>
 
                     {/* Pagos Pendientes */}
-                    <Card className="shadow-sm border-zinc-200 rounded-xl overflow-hidden bg-white transition-shadow duration-300 hover:shadow-md group">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-semibold text-zinc-500 uppercase tracking-wide group-hover:text-zinc-700 transition-colors">
-                                Pagos Pendientes
-                            </CardTitle>
-                            <div className="p-2 rounded-lg transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: '#EFBC4E15' }}>
-                                <Receipt className="h-4 w-4" color="#EFBC4E" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {isKpisLoading
-                                ? <><SkeletonBlock className="h-8 w-16 mb-2" /><SkeletonBlock className="h-5 w-36" /></>
-                                : <>
-                                    <div className="text-2xl font-bold text-zinc-900">{pendingPayments}</div>
-                                    <p className="text-xs text-[#EFBC4E] mt-2 font-medium bg-[#EFBC4E]/10 inline-flex px-1.5 py-0.5 rounded-md">
-                                        Esperando conciliación
-                                    </p>
-                                </>
-                            }
-                        </CardContent>
-                    </Card>
+                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } } }}>
+                        <Card className="shadow-sm border-zinc-200 rounded-xl overflow-hidden bg-white transition-shadow duration-300 hover:shadow-md group">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-semibold text-zinc-500 uppercase tracking-wide group-hover:text-zinc-700 transition-colors">
+                                    Pagos Pendientes
+                                </CardTitle>
+                                <div className="p-2 rounded-lg transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: '#EFBC4E15' }}>
+                                    <Receipt className="h-4 w-4" color="#EFBC4E" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {isKpisLoading
+                                    ? <><SkeletonBlock className="h-8 w-16 mb-2" /><SkeletonBlock className="h-5 w-36" /></>
+                                    : <>
+                                        <div className="text-2xl font-bold text-zinc-900">{pendingPayments}</div>
+                                        <p className="text-xs text-[#EFBC4E] mt-2 font-medium bg-[#EFBC4E]/10 inline-flex px-1.5 py-0.5 rounded-md">
+                                            Esperando conciliación
+                                        </p>
+                                    </>
+                                }
+                            </CardContent>
+                        </Card>
+                    </motion.div>
 
                     {/* Pedidos en Preparación */}
-                    <Card className="shadow-sm border-zinc-200 rounded-xl overflow-hidden bg-white transition-shadow duration-300 hover:shadow-md group">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-semibold text-zinc-500 uppercase tracking-wide group-hover:text-zinc-700 transition-colors">
-                                Pedidos en Preparación
-                            </CardTitle>
-                            <div className="p-2 rounded-lg transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: '#42318B15' }}>
-                                <Package className="h-4 w-4" color="#42318B" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {isKpisLoading
-                                ? <><SkeletonBlock className="h-8 w-16 mb-2" /><SkeletonBlock className="h-5 w-36" /></>
-                                : <>
-                                    <div className="text-2xl font-bold text-zinc-900">{preparingOrders}</div>
-                                    <p className="text-xs text-[#42318B] mt-2 font-medium bg-[#42318B]/10 inline-flex px-1.5 py-0.5 rounded-md">
-                                        En área de logística
-                                    </p>
-                                </>
-                            }
-                        </CardContent>
-                    </Card>
-                </div>
+                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } } }}>
+                        <Card className="shadow-sm border-zinc-200 rounded-xl overflow-hidden bg-white transition-shadow duration-300 hover:shadow-md group">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-semibold text-zinc-500 uppercase tracking-wide group-hover:text-zinc-700 transition-colors">
+                                    Pedidos en Preparación
+                                </CardTitle>
+                                <div className="p-2 rounded-lg transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: '#42318B15' }}>
+                                    <Package className="h-4 w-4" color="#42318B" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {isKpisLoading
+                                    ? <><SkeletonBlock className="h-8 w-16 mb-2" /><SkeletonBlock className="h-5 w-36" /></>
+                                    : <>
+                                        <div className="text-2xl font-bold text-zinc-900">{preparingOrders}</div>
+                                        <p className="text-xs text-[#42318B] mt-2 font-medium bg-[#42318B]/10 inline-flex px-1.5 py-0.5 rounded-md">
+                                            En área de logística
+                                        </p>
+                                    </>
+                                }
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                </motion.div>
 
                 {/* ── Row 2: Gráficos ── */}
                 <div className="grid gap-4 md:grid-cols-3">
@@ -352,10 +374,18 @@ export function AdminDashboardPage() {
                                             <SkeletonBlock className="h-40 w-40 rounded-full" />
                                             <SkeletonBlock className="h-4 w-32" />
                                         </div>
+                                    ) : !categoryData.some(d => d.value > 0) ? (
+                                        <div className="flex flex-col items-center justify-center h-full gap-3 text-zinc-400">
+                                            <div className="w-20 h-20 rounded-full border-4 border-dashed border-zinc-200 flex items-center justify-center">
+                                                <Package className="w-8 h-8 text-zinc-300" />
+                                            </div>
+                                            <p className="text-sm font-medium text-zinc-400">Sin datos de categorías</p>
+                                        </div>
                                     ) : (
                                         <>
+                                            <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.35, ease: 'easeOut' }}>
                                             <ResponsiveContainer width="99%" height={240}>
-                                                <PieChart className="hover:scale-105 transition-transform duration-500">
+                                                <PieChart>
                                                     <Pie
                                                         data={categoryData}
                                                         cx="50%"
@@ -376,6 +406,7 @@ export function AdminDashboardPage() {
                                                     <RechartsTooltip content={<CustomPieTooltip />} />
                                                 </PieChart>
                                             </ResponsiveContainer>
+                                            </motion.div>
                                             <div className="flex justify-center space-x-5 mt-6">
                                                 {categoryData.map((item, index) => (
                                                     <div key={item.name} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
@@ -538,9 +569,23 @@ export function AdminDashboardPage() {
                                                 <span className="text-sm font-medium text-zinc-900 truncate max-w-[140px] group-hover:text-[#2DBDD0] transition-colors" title={payment.clientName}>
                                                     {payment.clientName}
                                                 </span>
-                                                <div className="flex items-center text-xs text-zinc-500 gap-1.5 mt-1 font-medium group-hover:text-zinc-600 transition-colors">
-                                                    <AlertCircle className="w-3 h-3 shrink-0 text-zinc-400 group-hover:text-[#2DBDD0]" />
-                                                    <span>{payment.method}</span>
+                                                <div className="flex items-center gap-1.5 mt-1">
+                                                    {(() => {
+                                                        const s = payment.status;
+                                                        const isPending = s === 'PENDING' || s === 'PENDING_REVIEW';
+                                                        const isApproved = s === 'APPROVED';
+                                                        const isRejected = s === 'REJECTED';
+                                                        return (
+                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
+                                                                isPending ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                                                                isApproved ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                                                                isRejected ? 'bg-red-50 text-red-600 border border-red-100' :
+                                                                'bg-zinc-100 text-zinc-500'
+                                                            }`}>
+                                                                {isPending ? 'Pendiente' : isApproved ? 'Aprobado' : isRejected ? 'Rechazado' : s}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 lg:gap-3">

@@ -33,9 +33,10 @@ export function ProductImage({ src, alt, className = '', objectContain = false }
 
     if (!imageUrl || error) {
         return (
-            <div className={`w-full h-full flex flex-col items-center justify-center text-zinc-300 bg-zinc-50 ${className}`}>
-                <Shirt className="w-12 h-12 mb-2" strokeWidth={1.5} />
-                <span className="text-[10px] font-semibold tracking-wider">SIN FOTO</span>
+            <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-50 ${className}`}>
+                <div className="flex items-center justify-center w-[48%] h-[48%] max-w-[72px] max-h-[72px] min-w-[22px] min-h-[22px] bg-white rounded-2xl shadow-sm border border-zinc-200/60">
+                    <Shirt className="w-[55%] h-[55%] text-zinc-400" strokeWidth={1.5} />
+                </div>
             </div>
         );
     }

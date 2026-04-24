@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Product } from "@/types/product";
 import apiClient from "@/lib/apiClient";
+import { CategorySelect } from "./CategorySelect";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
     const [productDetails, setProductDetails] = useState({
         name: "",
         category: "",
+        categoryId: "",
         description: ""
     });
 
@@ -63,6 +65,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
             setProductDetails({
                 name: product.name,
                 category: product.category,
+                categoryId: product.categoryId || "",
                 description: product.description || ""
             });
             setImageUrl(product.image || '');
@@ -86,7 +89,8 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
             setProductDetails({
                 name: data.name,
-                category: data.category,
+                category: data.category || "",
+                categoryId: data.categoryId || "",
                 description: data.description || ""
             });
             setImageUrl(data.image || data.image_url || data.imageUrl || '');
@@ -265,7 +269,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
     const handleSaveAll = async () => {
         if (!product) return;
         
-        if (!productDetails.name || !productDetails.category) {
+        if (!productDetails.name || !productDetails.categoryId) {
             toast.error("Por favor completa el nombre y la categoría.");
             return;
         }
@@ -288,10 +292,9 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
         }
 
         try {
-            // 0. Guardar detalles del producto
             await apiClient.patch(`/products/${product.id}`, {
                 name: productDetails.name,
-                category: productDetails.category,
+                categoryId: productDetails.categoryId,
                 description: productDetails.description,
             });
 
@@ -319,6 +322,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                 ...product,
                 name: productDetails.name,
                 category: productDetails.category,
+                categoryId: productDetails.categoryId,
                 description: productDetails.description,
                 totalStock: newTotalStock
             });
@@ -357,7 +361,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                         {/* Image Upload */}
                         <div className="flex items-start gap-4">
                             <div
-                                className="relative w-24 h-24 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 overflow-hidden flex-shrink-0 cursor-pointer group hover:border-zinc-400 transition-colors"
+                                className="relative w-24 h-24 rounded-xl border-2 border-dashed border-zinc-200 overflow-hidden flex-shrink-0 cursor-pointer group hover:border-zinc-400 transition-colors"
                                 onClick={() => !isUploadingImage && fileInputRef.current?.click()}
                                 title="Cambiar imagen"
                             >
@@ -369,8 +373,10 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <Shirt className="w-8 h-8 text-zinc-300" />
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-50">
+                                        <div className="flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-sm border border-zinc-200/60">
+                                            <Shirt className="w-5 h-5 text-zinc-400" strokeWidth={1.5} />
+                                        </div>
                                     </div>
                                 )}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -420,10 +426,11 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-semibold text-zinc-600">Categoría *</Label>
-                                <Input
-                                    value={productDetails.category}
-                                    onChange={e => setProductDetails(prev => ({ ...prev, category: e.target.value }))}
-                                    className="h-9 text-sm rounded-lg border-zinc-200"
+                                <CategorySelect
+                                    value={productDetails.categoryId}
+                                    onChange={(id, name) => setProductDetails(prev => ({ ...prev, categoryId: id, category: name }))}
+                                    disabled={isSaving}
+                                    className="h-9 text-sm"
                                 />
                             </div>
                             <div className="col-span-1 md:col-span-2 space-y-1.5">

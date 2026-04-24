@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { Input } from '@/components/ui/input';
+import { CategorySelect } from './CategorySelect';
 import apiClient from '@/lib/apiClient';
 import { toast } from 'sonner';
 
@@ -14,7 +15,7 @@ export function CreateProductModal({ isOpen, onClose, onProductCreated }: Create
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
-        category: '',
+        categoryId: '',
         description: '',
     });
 
@@ -22,11 +23,11 @@ export function CreateProductModal({ isOpen, onClose, onProductCreated }: Create
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const resetForm = () => setFormData({ name: '', category: '', description: '' });
+    const resetForm = () => setFormData({ name: '', categoryId: '', description: '' });
 
 
     const handleSave = () => {
-        if (!formData.name || !formData.category) {
+        if (!formData.name || !formData.categoryId) {
             toast.error('Completá los campos obligatorios (*)');
             return;
         }
@@ -35,7 +36,7 @@ export function CreateProductModal({ isOpen, onClose, onProductCreated }: Create
 
         apiClient.post('/products', {
             name: formData.name,
-            category: formData.category,
+            categoryId: formData.categoryId,
             description: formData.description,
         })
             .then((res) => {
@@ -66,8 +67,7 @@ export function CreateProductModal({ isOpen, onClose, onProductCreated }: Create
                 label: 'Crear Producto',
                 onClick: handleSave,
                 isLoading: isLoading,
-                disabled: isLoading || !formData.name || !formData.category,
-
+                disabled: isLoading || !formData.name || !formData.categoryId,
             }}
             secondaryAction={{
                 label: 'Cancelar',
@@ -90,20 +90,15 @@ export function CreateProductModal({ isOpen, onClose, onProductCreated }: Create
                     />
                 </div>
 
-                <div className="flex gap-4">
-                    <div className="flex flex-col gap-2 flex-1">
-                        <label htmlFor="category" className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                            Categoría <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                            id="category"
-                            name="category"
-                            placeholder="Ej. Remeras, Buzos..."
-                            value={formData.category}
-                            onChange={handleChange}
-                            className="rounded-xl bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-900"
-                        />
-                    </div>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                        Categoría <span className="text-red-500">*</span>
+                    </label>
+                    <CategorySelect
+                        value={formData.categoryId}
+                        onChange={(id) => setFormData(prev => ({ ...prev, categoryId: id }))}
+                        disabled={isLoading}
+                    />
                 </div>
 
                 <div className="flex flex-col gap-2">

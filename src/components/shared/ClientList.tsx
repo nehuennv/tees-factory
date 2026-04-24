@@ -47,9 +47,16 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
-// Truco de UI: Sacar iniciales para darle un avatar al cliente sin necesitar fotos
 const getInitials = (name: string) => {
-    return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+    if (!name) return '?';
+    return name.split(' ').slice(0, 2).map(n => n?.[0] ?? '').join('').toUpperCase() || '?';
+};
+
+const AVATAR_COLORS = ['#42318B', '#C44A87', '#2DBDD0', '#EFBC4E', '#10b981', '#6366f1'];
+const getAvatarColor = (name: string) => {
+    if (!name) return AVATAR_COLORS[0];
+    const hash = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 };
 
 const truncateText = (text: string, maxLength: number = 30) => {
@@ -83,12 +90,15 @@ const AdminClientTable = ({
             </TableHeader>
             <TableBody>
                 {clients.length > 0 ? clients.map((client: Client) => {
-                    const isDebt = client.balance < 0;
+                    const isDebt = client.balance > 0;
                     return (
                         <TableRow key={client.id}>
                             <TableCell>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-xs font-bold text-zinc-600 shrink-0">
+                                    <div
+                                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                                        style={{ backgroundColor: getAvatarColor(client.name) }}
+                                    >
                                         {getInitials(client.name)}
                                     </div>
                                     <div className="flex flex-col">
@@ -268,9 +278,9 @@ export const ClientList: React.FC<ClientListProps> = () => {
 
         // Filtrado por status
         if (statusFilter === 'DEBT') {
-            result = result.filter(c => c.balance < 0);
+            result = result.filter(c => c.balance > 0);
         } else if (statusFilter === 'ACTIVE') {
-            result = result.filter(c => c.balance >= 0);
+            result = result.filter(c => c.balance <= 0);
         }
 
         if (searchTerm) {
@@ -288,7 +298,7 @@ export const ClientList: React.FC<ClientListProps> = () => {
         });
 
         return result;
-    }, [clients, searchTerm, sortOrder]);
+    }, [clients, searchTerm, sortOrder, statusFilter]);
 
     const totalPages = Math.ceil(filteredAndSortedClients.length / itemsPerPage) || 1;
     const paginatedClients = filteredAndSortedClients.slice(
@@ -299,7 +309,7 @@ export const ClientList: React.FC<ClientListProps> = () => {
     // Reinicia a la página 1 cuando se busca o cambia el orden
     React.useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, sortOrder]);
+    }, [searchTerm, sortOrder, statusFilter]);
 
     const toggleSort = () => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
 
@@ -349,9 +359,22 @@ export const ClientList: React.FC<ClientListProps> = () => {
 
             {/* Vista unificada: Tabla para ambos roles */}
             {isLoading ? (
-                <div className="flex flex-col items-center justify-center p-12 text-zinc-500 bg-white rounded-2xl border border-zinc-200 shadow-sm">
-                    <span className="w-8 h-8 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin mb-4" />
-                    <p className="font-medium animate-pulse">Cargando clientes...</p>
+                <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-zinc-100 last:border-0">
+                            <div className="w-8 h-8 rounded-full bg-zinc-100 animate-pulse shrink-0" />
+                            <div className="flex-1 flex flex-col gap-2">
+                                <div className="h-3.5 bg-zinc-100 rounded animate-pulse w-1/3" />
+                                <div className="h-3 bg-zinc-100 rounded animate-pulse w-1/4" />
+                            </div>
+                            <div className="hidden md:flex flex-col gap-2 w-[18%]">
+                                <div className="h-3.5 bg-zinc-100 rounded animate-pulse" />
+                                <div className="h-3 bg-zinc-100 rounded animate-pulse w-3/4" />
+                            </div>
+                            <div className="hidden lg:block w-[20%] h-3 bg-zinc-100 rounded animate-pulse" />
+                            <div className="ml-auto h-6 w-20 bg-zinc-100 rounded-lg animate-pulse" />
+                        </div>
+                    ))}
                 </div>
             ) : (
                 <AdminClientTable 

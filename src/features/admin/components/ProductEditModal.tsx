@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { CategorySelect } from "./CategorySelect";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
 
@@ -31,17 +32,15 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
     };
 
     const handleSave = async () => {
-        if (!formData.name || !formData.category) {
+        if (!formData.name || !formData.categoryId) {
             toast.error("Por favor completa los campos obligatorios.");
             return;
         }
 
         try {
-            // Según docs/backend-endpoints-doc.md y Integracion_Frontend_Backend.md,
-            // el backend actual no soporta el campo 'image' en productos.
             await apiClient.patch(`/products/${product.id}`, {
                 name: formData.name,
-                category: formData.category,
+                categoryId: formData.categoryId,
                 description: formData.description,
             });
 
@@ -83,13 +82,10 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="category" className="text-sm font-medium text-zinc-900">Categoría *</Label>
-                            <Input
-                                id="category"
-                                value={formData.category || ""}
-                                onChange={(e) => handleChange("category", e.target.value)}
-                                className="h-11 rounded-xl border-zinc-200 focus:ring-zinc-900/10 focus:border-zinc-300 transition-all bg-white"
-                                placeholder="Ej: Remeras"
+                            <Label className="text-sm font-medium text-zinc-900">Categoría *</Label>
+                            <CategorySelect
+                                value={formData.categoryId || ""}
+                                onChange={(id, name) => setFormData(prev => ({ ...prev, categoryId: id, category: name }))}
                             />
                         </div>
 

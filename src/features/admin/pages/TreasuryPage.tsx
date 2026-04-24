@@ -161,10 +161,13 @@ export function TreasuryPage() {
 
     const renderTable = () => {
         const statusOrder: Record<string, number> = { PENDING: 0, APPROVED: 1, REJECTED: 2 };
+        const byDateDesc = (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime();
 
         let filteredPayments = statusFilter === 'ALL'
-            ? [...payments].sort((a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3))
-            : payments.filter(p => p.status === statusFilter);
+            ? [...payments].sort((a, b) =>
+                (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3) || byDateDesc(a, b)
+            )
+            : payments.filter(p => p.status === statusFilter).sort(byDateDesc);
 
         if (searchQuery) {
             const query = searchQuery.toLowerCase();

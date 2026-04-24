@@ -9,6 +9,7 @@ export interface Product {
     id: string;
     name: string;
     category: string;
+    categoryId?: string;
     basePrice: number;
     totalStock: number;
     isActive?: boolean;
@@ -30,6 +31,7 @@ export interface ProductDetail {
     id: string;
     name: string;
     category: string;
+    categoryId?: string;
     qualities: ProductQuality[];
 }
 
