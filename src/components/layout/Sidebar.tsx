@@ -19,10 +19,10 @@ type NavItemConfig = {
 const NAV_ITEMS: NavItemConfig[] = [
     // ADMIN
     { to: '/admin', icon: LayoutGrid, label: 'Dashboard', allowedRoles: ['ADMIN'] },
-    { to: '/admin/logistica', icon: ClipboardCheck, label: 'Tablero de Preparación', allowedRoles: ['ADMIN'] },
+    { to: '/admin/logistica', icon: ClipboardCheck, label: 'Pedidos', allowedRoles: ['ADMIN'] },
     { to: '/admin/tesoreria', icon: Wallet, label: 'Tesorería', allowedRoles: ['ADMIN'] },
     { to: '/admin/clientes', icon: Users, label: 'Clientes', allowedRoles: ['ADMIN'] },
-    { to: '/admin/inventario', icon: Database, label: 'Inventario/Catálogo', aliases: ['/admin/inventario'], allowedRoles: ['ADMIN'] },
+    { to: '/admin/inventario', icon: Database, label: 'Inventario', aliases: ['/admin/inventario'], allowedRoles: ['ADMIN'] },
 
     // CLIENT
     { to: '/portal', icon: LayoutGrid, label: 'Resumen/Deuda', allowedRoles: ['CLIENT'] },

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ActionListCard } from '../components/ActionListCard';
-import { Wallet, TrendingUp, TrendingDown, Receipt, Package, MessageCircle, AlertCircle } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Receipt, Package, MessageCircle } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell,

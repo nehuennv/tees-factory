@@ -78,9 +78,9 @@ export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardPr
 
                 <div className="flex justify-between items-end pt-1 border-t border-zinc-100/50">
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Items</span>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Prendas</span>
                         <span className="text-sm font-black text-zinc-700 leading-none">
-                            {(order as any).item_count || (order as any).itemCount || (order as any).totalItems || ((order as any).order_items || (order as any).items || []).length}
+                            {((order as any).order_items || (order as any).items || []).reduce((acc: number, item: any) => acc + (item.quantity || item.qty || 0), 0) || (order as any).item_count || (order as any).itemCount || (order as any).totalItems || 0}
                         </span>
                     </div>
                     <div className="flex flex-col items-end">

@@ -6,7 +6,8 @@
       "Bash(npx tsc:*)",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(xargs grep *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(find /d/vantra-projects/tees-factory/src -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec grep -l \"item.*count\\\\|quantity.*sum\\\\|order.*items\\\\|prendas\" {} \\\\;)"
     ]
   }
 }

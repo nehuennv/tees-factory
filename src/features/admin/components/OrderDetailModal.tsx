@@ -171,7 +171,7 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
                     <div className="flex justify-between items-center bg-zinc-900 px-6 py-4 rounded-xl shadow-lg shadow-zinc-200">
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-0.5">Total Artículos</span>
-                            <span className="text-sm font-bold text-white">{(order as any).item_count || (order as any).itemCount || (order as any).totalItems || items.length} prendas</span>
+                            <span className="text-sm font-bold text-white">{items.reduce((acc: number, item: any) => acc + (item.quantity || item.qty || 0), 0) || (order as any).item_count || (order as any).itemCount || (order as any).totalItems || 0} prendas</span>
                         </div>
                         <div className="flex flex-col items-end">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-0.5">Monto Final</span>
