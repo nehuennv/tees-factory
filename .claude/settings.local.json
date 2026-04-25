@@ -12,7 +12,8 @@
       "Bash(curl -s https://scd-backend.alfgxs.easypanel.host/api/orders -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjJjYTA4ZTA2LTM2ZmEtNGM1Mi04ODM5LTNmMWRhYzI5Zjk5ZiIsImVtYWlsIjoiYWRtaW5AaGVjdG9yLmNvbSIsInJvbGUiOiJBRE1JTiIsInJlZmVyZW5jZV9pZCI6bnVsbCwiaWF0IjoxNzc3MDY0MzM5LCJleHAiOjE3Nzc2NjkxMzl9.ck_UmGw_Yko6PGX6BoDG3pCOt6oTbYMEjXy3i1H9gMc')",
       "Bash(curl -s -w '\\\\n--- HTTP STATUS: %{http_code} ---\\\\n' https://scd-backend.alfgxs.easypanel.host/api/orders/d91df950-c7b0-4adb-998c-0bbb1aafe756 -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjJjYTA4ZTA2LTM2ZmEtNGM1Mi04ODM5LTNmMWRhYzI5Zjk5ZiIsImVtYWlsIjoiYWRtaW5AaGVjdG9yLmNvbSIsInJvbGUiOiJBRE1JTiIsInJlZmVyZW5jZV9pZCI6bnVsbCwiaWF0IjoxNzc3MDY0MzM5LCJleHAiOjE3Nzc2NjkxMzl9.ck_UmGw_Yko6PGX6BoDG3pCOt6oTbYMEjXy3i1H9gMc')",
       "Bash(python3 -m json.tool)",
-      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); console.log\\(JSON.stringify\\(JSON.parse\\(d\\)[0], null, 2\\)\\)\")"
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); console.log\\(JSON.stringify\\(JSON.parse\\(d\\)[0], null, 2\\)\\)\")",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -12,6 +12,7 @@ export interface OrderItem {
 
 export interface Order {
     id: string;
+    orderNumber?: string | number;
     clientName: string;
     date: string;
     totalItems: number;
