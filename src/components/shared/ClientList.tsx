@@ -23,7 +23,7 @@ import { Modal } from '@/components/shared/Modal';
 import { useOrderDraftStore } from '@/store/orderDraftStore';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
-
+import type { Client } from '@/types/client';
 
 export type { Client } from '@/types/client';
 
