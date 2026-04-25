@@ -4,6 +4,13 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripHorizontal, Calendar } from 'lucide-react';
 import type { Order } from '@/mocks/orders';
 
+const STATUS_STYLES: Record<string, { cardBorder: string; handleBg: string; numberColor: string }> = {
+    PENDING:   { cardBorder: 'border-l-[3px] border-l-zinc-300',    handleBg: 'bg-zinc-50/80 hover:bg-zinc-100',          numberColor: 'text-zinc-500' },
+    PICKING:   { cardBorder: 'border-l-[3px] border-l-blue-400',    handleBg: 'bg-blue-50/70 hover:bg-blue-100/60',       numberColor: 'text-blue-500' },
+    SHIPPED:   { cardBorder: 'border-l-[3px] border-l-amber-400',   handleBg: 'bg-amber-50/70 hover:bg-amber-100/60',     numberColor: 'text-amber-600' },
+    DELIVERED: { cardBorder: 'border-l-[3px] border-l-emerald-400', handleBg: 'bg-emerald-50/70 hover:bg-emerald-100/60', numberColor: 'text-emerald-600' },
+};
+
 interface OrderCardProps {
     order: Order;
     onClick: (order: Order) => void;
@@ -30,6 +37,8 @@ export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardPr
         transition,
     };
 
+    const statusStyle = STATUS_STYLES[(order as any).status] ?? STATUS_STYLES.PENDING;
+
     if (isDragging) {
         return (
             <div
@@ -44,16 +53,16 @@ export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardPr
         <div
             ref={setNodeRef}
             style={style}
-            className="bg-white border border-zinc-200 rounded-xl shadow-sm hover:shadow-md hover:border-zinc-300 transition-all group flex flex-col overflow-hidden"
+            className={`bg-white border border-zinc-200 rounded-xl shadow-sm hover:shadow-md hover:border-zinc-300 transition-all group flex flex-col overflow-hidden ${statusStyle.cardBorder}`}
         >
             {/* DRAG HANDLE: Toda la barra superior ahora es el área de agarre */}
             <div
-                className="bg-zinc-50/80 hover:bg-zinc-100 border-b border-zinc-100 px-3 py-2.5 flex justify-between items-center cursor-grab active:cursor-grabbing transition-colors"
+                className={`border-b border-zinc-100 px-3 py-2.5 flex justify-between items-center cursor-grab active:cursor-grabbing transition-colors ${statusStyle.handleBg}`}
                 {...attributes}
                 {...listeners}
             >
-                <span className="text-xs font-black text-zinc-500 tracking-wider uppercase">
-                    {order.id}
+                <span className={`text-xs font-black tracking-wider uppercase ${statusStyle.numberColor}`}>
+                    #{order.orderNumber || order.id?.slice(0, 8)}
                 </span>
                 <GripHorizontal className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600 transition-colors" />
             </div>

@@ -30,13 +30,15 @@ type ColumnDef = {
     id: string;
     title: string;
     colorClass: string;
+    dotClass: string;
+    badgeClass: string;
 };
 
 const COLUMNS: ColumnDef[] = [
-    { id: 'PENDING', title: 'Pendientes', colorClass: 'bg-zinc-100/50' },
-    { id: 'PICKING', title: 'Aprobados', colorClass: 'bg-blue-50/40' },
-    { id: 'SHIPPED', title: 'Despachados', colorClass: 'bg-amber-50/40' },
-    { id: 'DELIVERED', title: 'Entregados', colorClass: 'bg-emerald-50/40' },
+    { id: 'PENDING',   title: 'Pendientes',  colorClass: 'bg-zinc-100/50',    dotClass: 'bg-zinc-400',    badgeClass: 'bg-zinc-100 text-zinc-500 border-zinc-200' },
+    { id: 'PICKING',   title: 'Aprobados',   colorClass: 'bg-blue-50/40',     dotClass: 'bg-blue-500',    badgeClass: 'bg-blue-100 text-blue-600 border-blue-200' },
+    { id: 'SHIPPED',   title: 'Despachados', colorClass: 'bg-amber-50/40',    dotClass: 'bg-amber-500',   badgeClass: 'bg-amber-100 text-amber-700 border-amber-200' },
+    { id: 'DELIVERED', title: 'Entregados',  colorClass: 'bg-emerald-50/40',  dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
 ];
 
 const BoardColumn = memo(function BoardColumn({
@@ -64,8 +66,11 @@ const BoardColumn = memo(function BoardColumn({
             className={`flex flex-col rounded-xl p-4 h-full shadow-sm transition-colors duration-200 border border-zinc-200/60 ${highlightStyle}`}
         >
             <div className="flex items-center justify-between mb-4 px-1 shrink-0">
-                <h2 className="font-bold text-zinc-800 tracking-tight">{column.title}</h2>
-                <span className="bg-white text-zinc-500 text-xs font-bold px-2.5 py-1 rounded-full border border-zinc-200 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${column.dotClass}`} />
+                    <h2 className="font-bold text-zinc-800 tracking-tight">{column.title}</h2>
+                </div>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shadow-sm ${column.badgeClass}`}>
                     {orders.length}
                 </span>
             </div>

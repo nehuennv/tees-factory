@@ -61,7 +61,7 @@ export function CheckoutPage() {
         try {
             const res = await apiClient.post('/orders', payload);
             
-            const orderId = res.data.id || "CONFIRMADO";
+            const orderId = res.data.orderNumber || res.data.id || "CONFIRMADO";
             
             if (isDraft) {
                 clearDraft();

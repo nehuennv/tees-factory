@@ -156,7 +156,7 @@ export function AdminDashboardPage() {
         const defaultCategory = [
             { name: "Remeras", value: 0 }, { name: "Pantalones", value: 0 }, { name: "Buzos", value: 0 }
         ];
-        apiClient.get('/dashboard/category-distribution')
+        apiClient.get('/dashboard/category-chart')
             .then(({ data }) => setCategoryData(Array.isArray(data) && data.length > 0 ? data : defaultCategory))
             .catch(() => setCategoryData(defaultCategory))
             .finally(() => setIsCategoryLoading(false));
@@ -436,18 +436,9 @@ export function AdminDashboardPage() {
                             title="Top Deudores"
                             actionText="Ver todos los clientes"
                             actionRoute="/admin/clientes"
-                            fakeContinuationItems={Array.from({ length: 1 }).map((_, i) => (
-                                <div key={`fake-debtor-${i}`} className="flex items-center justify-between h-[60px]" style={{ opacity: 0.4 }}>
-                                    <div className="flex flex-col gap-1.5 w-[60%]">
-                                        <div className="h-4 bg-zinc-200/80 rounded w-full" />
-                                        <div className="h-3 bg-zinc-100 rounded w-2/3" />
-                                    </div>
-                                    <div className="h-8 w-8 bg-zinc-100 rounded-full" />
-                                </div>
-                            ))}
                         >
                             {isKpisLoading
-                                ? Array.from({ length: 3 }).map((_, i) => (
+                                ? Array.from({ length: LIST_ITEMS }).map((_, i) => (
                                     <div key={i} className="flex items-center justify-between h-[60px] gap-3">
                                         <div className="flex flex-col gap-1.5 flex-1">
                                             <SkeletonBlock className="h-4 w-3/4" />
@@ -456,9 +447,8 @@ export function AdminDashboardPage() {
                                         <SkeletonBlock className="h-8 w-8 rounded-full" />
                                     </div>
                                 ))
-                                : topDebtors.length === 0
-                                    ? <p className="text-sm text-zinc-400 py-4 text-center">Sin deudores registrados</p>
-                                    : topDebtors.map((client) => (
+                                : <>
+                                    {topDebtors.map((client) => (
                                         <div key={client.id} className="flex items-center justify-between group p-2 -mx-2 h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-zinc-900 truncate max-w-[150px] group-hover:text-[#C44A87] transition-colors" title={client.name}>
@@ -470,7 +460,17 @@ export function AdminDashboardPage() {
                                                 <MessageCircle className="h-4 w-4" />
                                             </Button>
                                         </div>
-                                    ))
+                                    ))}
+                                    {Array.from({ length: LIST_ITEMS - topDebtors.length }).map((_, i) => (
+                                        <div key={`fill-debtor-${i}`} className="flex items-center justify-between h-[60px] gap-3">
+                                            <div className="flex flex-col gap-1.5 flex-1">
+                                                <SkeletonBlock className="h-4 w-3/4" />
+                                                <SkeletonBlock className="h-3 w-1/2" />
+                                            </div>
+                                            <SkeletonBlock className="h-8 w-8 rounded-full" />
+                                        </div>
+                                    ))}
+                                </>
                             }
                         </ActionListCard>
                     </motion.div>
@@ -485,18 +485,9 @@ export function AdminDashboardPage() {
                             title="Alertas de Stock"
                             actionText="Ver todo el inventario"
                             actionRoute="/admin/inventario"
-                            fakeContinuationItems={Array.from({ length: 1 }).map((_, i) => (
-                                <div key={`fake-stock-${i}`} className="flex items-center gap-3 h-[60px]" style={{ opacity: 0.4 }}>
-                                    <div className="w-10 h-10 rounded-md bg-zinc-200/80 shrink-0" />
-                                    <div className="flex-1 flex flex-col gap-1.5">
-                                        <div className="h-4 bg-zinc-200/80 rounded w-3/4" />
-                                        <div className="h-5 bg-zinc-100 rounded w-1/3 mt-0.5" />
-                                    </div>
-                                </div>
-                            ))}
                         >
                             {isKpisLoading
-                                ? Array.from({ length: 3 }).map((_, i) => (
+                                ? Array.from({ length: LIST_ITEMS }).map((_, i) => (
                                     <div key={i} className="flex items-center gap-3 h-[60px]">
                                         <SkeletonBlock className="w-10 h-10 rounded-md shrink-0" />
                                         <div className="flex-1 flex flex-col gap-1.5">
@@ -505,9 +496,8 @@ export function AdminDashboardPage() {
                                         </div>
                                     </div>
                                 ))
-                                : criticalStock.length === 0
-                                    ? <p className="text-sm text-zinc-400 py-4 text-center">Sin alertas de stock</p>
-                                    : criticalStock.map((product) => (
+                                : <>
+                                    {criticalStock.map((product) => (
                                         <div key={product.id} className="flex items-center gap-3 group p-2 -mx-2 h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
                                             <div className="w-10 h-10 rounded-md bg-zinc-100 border border-zinc-200 overflow-hidden shrink-0 group-hover:border-[#EFBC4E] transition-colors flex items-center justify-center">
                                                 <Package className="w-5 h-5 text-zinc-400" />
@@ -523,7 +513,17 @@ export function AdminDashboardPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                    ))
+                                    ))}
+                                    {Array.from({ length: LIST_ITEMS - criticalStock.length }).map((_, i) => (
+                                        <div key={`fill-stock-${i}`} className="flex items-center gap-3 h-[60px]">
+                                            <SkeletonBlock className="w-10 h-10 rounded-md shrink-0" />
+                                            <div className="flex-1 flex flex-col gap-1.5">
+                                                <SkeletonBlock className="h-4 w-3/4" />
+                                                <SkeletonBlock className="h-5 w-1/3" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </>
                             }
                         </ActionListCard>
                     </motion.div>
@@ -538,21 +538,9 @@ export function AdminDashboardPage() {
                             title="Últimos Movimientos"
                             actionText="Ver todos los movimientos"
                             actionRoute="/admin/tesoreria"
-                            fakeContinuationItems={Array.from({ length: 1 }).map((_, i) => (
-                                <div key={`fake-mov-${i}`} className="flex items-center justify-between h-[60px]" style={{ opacity: 0.4 }}>
-                                    <div className="flex flex-col gap-1.5 w-1/2">
-                                        <div className="h-4 bg-zinc-200/80 rounded w-full" />
-                                        <div className="h-3 bg-zinc-100 rounded w-1/2" />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-4 bg-zinc-200/80 rounded w-16" />
-                                        <div className="h-7 w-16 bg-zinc-100 rounded-md" />
-                                    </div>
-                                </div>
-                            ))}
                         >
                             {isPaymentsLoading
-                                ? Array.from({ length: 3 }).map((_, i) => (
+                                ? Array.from({ length: LIST_ITEMS }).map((_, i) => (
                                     <div key={i} className="flex items-center justify-between h-[60px] gap-3">
                                         <div className="flex flex-col gap-1.5 flex-1">
                                             <SkeletonBlock className="h-4 w-3/4" />
@@ -561,9 +549,8 @@ export function AdminDashboardPage() {
                                         <SkeletonBlock className="h-7 w-16 rounded-md" />
                                     </div>
                                 ))
-                                : recentPayments.length === 0
-                                    ? <p className="text-sm text-zinc-400 py-4 text-center">Sin movimientos pendientes</p>
-                                    : recentPayments.map((payment) => (
+                                : <>
+                                    {recentPayments.map((payment) => (
                                         <div key={payment.id} className="flex items-center justify-between group p-2 -mx-2 h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-zinc-900 truncate max-w-[140px] group-hover:text-[#2DBDD0] transition-colors" title={payment.clientName}>
@@ -602,7 +589,17 @@ export function AdminDashboardPage() {
                                                 </Button>
                                             </div>
                                         </div>
-                                    ))
+                                    ))}
+                                    {Array.from({ length: LIST_ITEMS - recentPayments.length }).map((_, i) => (
+                                        <div key={`fill-mov-${i}`} className="flex items-center justify-between h-[60px] gap-3">
+                                            <div className="flex flex-col gap-1.5 flex-1">
+                                                <SkeletonBlock className="h-4 w-3/4" />
+                                                <SkeletonBlock className="h-3 w-1/2" />
+                                            </div>
+                                            <SkeletonBlock className="h-7 w-16 rounded-md" />
+                                        </div>
+                                    ))}
+                                </>
                             }
                         </ActionListCard>
                     </motion.div>

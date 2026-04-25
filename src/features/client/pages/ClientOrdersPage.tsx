@@ -30,14 +30,14 @@ export function ClientOrdersPage() {
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
     const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-    const handleDownloadPdf = async (orderId: string) => {
+    const handleDownloadPdf = async (orderId: string, orderNumber?: string) => {
         setIsDownloadingPdf(true);
         try {
             const response = await apiClient.get(`/orders/${orderId}/pdf`, { responseType: 'blob' });
             const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
             const a = document.createElement('a');
             a.href = url;
-            a.download = `remito-${orderId.slice(0, 8).toUpperCase()}.pdf`;
+            a.download = `remito-${orderNumber || orderId.slice(0, 8).toUpperCase()}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {
@@ -158,7 +158,7 @@ export function ClientOrdersPage() {
                                         return (
                                             <TableRow key={order.id} className="hover:bg-zinc-50/50 transition-colors">
                                                 <TableCell className="font-bold text-zinc-900 whitespace-nowrap">
-                                                    {order.id.slice(0,8).toUpperCase()}
+                                                    {order.orderNumber || order.id?.slice(0, 8).toUpperCase()}
                                                 </TableCell>
                                                 <TableCell className="text-sm text-zinc-500 font-medium whitespace-nowrap">
                                                     {formatDate(order.createdAt || new Date().toISOString())}
@@ -199,7 +199,7 @@ export function ClientOrdersPage() {
                     <div className="p-6 border-b border-zinc-100 shrink-0 bg-white">
                         <SheetHeader>
                             <SheetTitle className="text-xl font-black tracking-tight">
-                                Detalle de Pedido {selectedOrder?.id}
+                                Detalle de Pedido #{selectedOrder?.orderNumber || selectedOrder?.id?.slice(0, 8).toUpperCase()}
                             </SheetTitle>
                             <SheetDescription className="text-zinc-500 font-medium text-xs">
                                 Resumen tipo remito de los artículos comprados.
@@ -261,7 +261,7 @@ export function ClientOrdersPage() {
                         </div>
                         <div className="flex gap-3">
                             <Button
-                                onClick={() => handleDownloadPdf(selectedOrder?.id)}
+                                onClick={() => handleDownloadPdf(selectedOrder?.id, selectedOrder?.orderNumber)}
                                 disabled={isDownloadingPdf}
                                 variant="outline"
                                 className="flex-1 rounded-xl border-zinc-200 h-12 font-bold gap-2"

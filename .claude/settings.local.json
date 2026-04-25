@@ -7,7 +7,12 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(xargs grep *)",
       "Bash(npx vite *)",
-      "Bash(find /d/vantra-projects/tees-factory/src -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec grep -l \"item.*count\\\\|quantity.*sum\\\\|order.*items\\\\|prendas\" {} \\\\;)"
+      "Bash(find /d/vantra-projects/tees-factory/src -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec grep -l \"item.*count\\\\|quantity.*sum\\\\|order.*items\\\\|prendas\" {} \\\\;)",
+      "Bash(curl -s -X POST https://scd-backend.alfgxs.easypanel.host/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@hector.com\",\"password\":\"Admin1234!\"}')",
+      "Bash(curl -s https://scd-backend.alfgxs.easypanel.host/api/orders -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjJjYTA4ZTA2LTM2ZmEtNGM1Mi04ODM5LTNmMWRhYzI5Zjk5ZiIsImVtYWlsIjoiYWRtaW5AaGVjdG9yLmNvbSIsInJvbGUiOiJBRE1JTiIsInJlZmVyZW5jZV9pZCI6bnVsbCwiaWF0IjoxNzc3MDY0MzM5LCJleHAiOjE3Nzc2NjkxMzl9.ck_UmGw_Yko6PGX6BoDG3pCOt6oTbYMEjXy3i1H9gMc')",
+      "Bash(curl -s -w '\\\\n--- HTTP STATUS: %{http_code} ---\\\\n' https://scd-backend.alfgxs.easypanel.host/api/orders/d91df950-c7b0-4adb-998c-0bbb1aafe756 -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjJjYTA4ZTA2LTM2ZmEtNGM1Mi04ODM5LTNmMWRhYzI5Zjk5ZiIsImVtYWlsIjoiYWRtaW5AaGVjdG9yLmNvbSIsInJvbGUiOiJBRE1JTiIsInJlZmVyZW5jZV9pZCI6bnVsbCwiaWF0IjoxNzc3MDY0MzM5LCJleHAiOjE3Nzc2NjkxMzl9.ck_UmGw_Yko6PGX6BoDG3pCOt6oTbYMEjXy3i1H9gMc')",
+      "Bash(python3 -m json.tool)",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); console.log\\(JSON.stringify\\(JSON.parse\\(d\\)[0], null, 2\\)\\)\")"
     ]
   }
 }

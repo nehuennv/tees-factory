@@ -32,7 +32,7 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
             const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
             const a = document.createElement('a');
             a.href = url;
-            a.download = `remito-${order.id.slice(0, 8).toUpperCase()}.pdf`;
+            a.download = `remito-${order.orderNumber || order.id.slice(0, 8).toUpperCase()}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {
@@ -91,7 +91,7 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-3 flex-wrap">
                             <DialogTitle className="text-2xl font-black tracking-tight text-zinc-900">
-                                Pedido #{order.id?.slice(0, 8).toUpperCase() || '---'}
+                                Pedido #{order.orderNumber || order.id?.slice(0, 8).toUpperCase() || '---'}
                             </DialogTitle>
                             <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${statusInfo.color}`}>
                                 {statusInfo.label}
