@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingBag, TableProperties } from 'lucide-react';
+import { ShoppingBag, TableProperties, ChevronDown, CheckCircle2, ArrowRight, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/formatters';
 import { useCartStore, type CartItem } from '@/store/cartStore';
+import { useOrderDraftStore } from '@/store/orderDraftStore';
 import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
 import { ProductImage } from '@/components/shared/ProductImage';
@@ -31,11 +32,16 @@ export function ProductDetailPage() {
     const { productId } = useParams();
     const navigate = useNavigate();
     const { addItems, items: cartItemsInStore } = useCartStore();
+    const draftIsActive = useOrderDraftStore((s) => s.isActive);
+    const draftClientId = useOrderDraftStore((s) => s.clientId);
 
     const [selectedQualityIdx, setSelectedQualityIdx] = useState(0);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [product, setProduct] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [justAdded, setJustAdded] = useState(false);
+    const [addedUnits, setAddedUnits] = useState(0);
+    const [descExpanded, setDescExpanded] = useState(false);
 
     useEffect(() => {
         setIsLoading(true);
@@ -202,7 +208,9 @@ export function ProductDetailPage() {
 
         if (cartItems.length > 0) {
             addItems(cartItems);
-            toast.success(`${cartItems.length} variantes agregadas al pedido`);
+            const units = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+            setAddedUnits(units);
+            setJustAdded(true);
             setQuantities({});
         }
     };
@@ -287,13 +295,28 @@ export function ProductDetailPage() {
                             </div>
                         </div>
 
-                        {/* Descripción sin recortes y con wrap asegurado */}
-                        <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Descripción del Producto</h4>
-                            <p className="text-[15px] text-zinc-500 leading-relaxed font-medium break-words">
-                                {product.description}
-                            </p>
-                        </div>
+                        {/* Descripción con colapso si es muy larga */}
+                        {product.description && (
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Descripción del Producto</h4>
+                                <div className="relative">
+                                    <p className={`text-[15px] text-zinc-500 leading-relaxed font-medium break-words transition-all ${descExpanded ? '' : 'line-clamp-4'}`}>
+                                        {product.description}
+                                    </p>
+                                    {!descExpanded && product.description.length > 200 && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
+                                    )}
+                                </div>
+                                {product.description.length > 200 && (
+                                    <button
+                                        onClick={() => setDescExpanded(v => !v)}
+                                        className="flex items-center gap-1 text-xs font-semibold text-zinc-400 hover:text-zinc-700 transition-colors"
+                                    >
+                                        {descExpanded ? <><ChevronUp className="w-3 h-3" /> Ver menos</> : <><ChevronDown className="w-3 h-3" /> Ver más</>}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -336,35 +359,37 @@ export function ProductDetailPage() {
                         </div>
                     </div>
 
-                    {/* The Matrix Table (flex-1 overflow-auto aisla el scroll solo a la tabla) */}
+                    {/* The Matrix Table */}
                     <div className="flex-1 overflow-auto">
-                        <table className="w-full text-left border-collapse min-w-[600px]">
+                        <table className="text-left border-collapse" style={{ width: 'max-content', minWidth: '100%' }}>
                             <thead>
                                 <tr className="border-b border-zinc-100 bg-zinc-50/30 sticky top-0 z-10 backdrop-blur-sm">
-                                    <th className="py-4 px-6 text-xs font-bold text-zinc-400 uppercase tracking-widest w-[180px]">
+                                    <th className="py-4 px-5 text-xs font-bold text-zinc-400 uppercase tracking-widest" style={{ minWidth: 140 }}>
                                         Color / Talle
                                     </th>
                                     {activeSizes.map((size: string) => (
-                                        <th key={size} className="py-4 px-3 text-xs font-bold text-zinc-400 uppercase tracking-widest text-center w-20">
+                                        <th key={size} className="py-4 px-2 text-xs font-bold text-zinc-400 uppercase tracking-widest text-center" style={{ minWidth: 64 }}>
                                             {size}
                                         </th>
                                     ))}
-                                    <th className="py-4 px-6 text-xs font-bold text-zinc-400 uppercase tracking-widest text-right">
-                                        Subtotal
+                                    <th className="py-4 px-5 text-xs font-bold text-zinc-400 uppercase tracking-widest text-right" style={{ minWidth: 72 }}>
+                                        Uds.
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
                                 {activeQuality.colors?.map((color: any) => (
                                     <tr key={color.colorName} className="hover:bg-zinc-50/50 transition-colors">
-                                        <td className="py-4 px-6 flex items-center gap-3">
-                                            <div
-                                                className="w-4 h-4 rounded-full border border-zinc-200/80 shadow-inner"
-                                                style={{ backgroundColor: getHexForColor(color.colorName) }}
-                                            />
-                                            <span className="text-sm font-semibold text-zinc-700">
-                                                {color.colorName}
-                                            </span>
+                                        <td className="py-3 px-5">
+                                            <div className="flex items-center gap-2.5">
+                                                <div
+                                                    className="w-3.5 h-3.5 rounded-full border border-zinc-200/80 shadow-inner shrink-0"
+                                                    style={{ backgroundColor: getHexForColor(color.colorName) }}
+                                                />
+                                                <span className="text-sm font-semibold text-zinc-700 whitespace-nowrap">
+                                                    {color.colorName}
+                                                </span>
+                                            </div>
                                         </td>
 
                                         {activeSizes.map((size: string) => {
@@ -373,7 +398,7 @@ export function ProductDetailPage() {
                                             const inputDisabled = maxStock === 0;
 
                                             return (
-                                                <td key={size} className="py-4 px-3 align-middle text-center">
+                                                <td key={size} className="py-3 px-2 align-middle text-center">
                                                     <input
                                                         type="number"
                                                         min="0"
@@ -382,18 +407,18 @@ export function ProductDetailPage() {
                                                         title={inputDisabled ? "Sin stock" : `Máx: ${maxStock}`}
                                                         value={getQuantity(color.colorName, size)}
                                                         onChange={(e) => handleQuantityChange(color.colorName, size, e.target.value)}
-                                                        placeholder={inputDisabled ? "-" : "0"}
-                                                        className={`w-14 h-11 text-center bg-zinc-50 border border-transparent 
-                                                            ${inputDisabled ? 'opacity-50 cursor-not-allowed text-zinc-400 bg-zinc-100' : 'hover:bg-zinc-100 focus:bg-white focus:border-zinc-300 text-zinc-900'} 
+                                                        placeholder={inputDisabled ? "–" : "0"}
+                                                        className={`w-12 h-10 text-center bg-zinc-50 border border-transparent
+                                                            ${inputDisabled ? 'opacity-40 cursor-not-allowed text-zinc-400 bg-zinc-100' : 'hover:bg-zinc-100 focus:bg-white focus:border-zinc-300 text-zinc-900'}
                                                             rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all outline-none mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-zinc-300 placeholder:font-normal`}
                                                     />
                                                 </td>
                                             );
                                         })}
 
-                                        <td className="py-4 px-6 text-right">
-                                            <span className="text-sm font-bold text-zinc-400">
-                                                {getRowTotal(color.colorName)}
+                                        <td className="py-3 px-5 text-right">
+                                            <span className="text-sm font-bold text-zinc-400 tabular-nums">
+                                                {getRowTotal(color.colorName) || '–'}
                                             </span>
                                         </td>
                                     </tr>
@@ -402,38 +427,78 @@ export function ProductDetailPage() {
                         </table>
                     </div>
 
-                    {/* Footer Totals (shrink-0 asegura que siempre esté visible en la base de la tarjeta) */}
-                    <div className="shrink-0 border-t border-zinc-200/80 bg-white p-4 lg:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 bg-zinc-50 px-5 py-2.5 rounded-xl border border-zinc-100 w-full sm:w-auto">
+                    {/* Footer */}
+                    {justAdded ? (
+                        <div className="shrink-0 border-t border-emerald-100 bg-emerald-50 px-4 lg:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:min-h-[72px]">
                             <div className="flex items-center gap-3">
-                                <div className="p-1.5 bg-white rounded-lg shadow-sm border border-zinc-100">
-                                    <TableProperties className="w-4 h-4 text-zinc-500" />
+                                <div className="w-9 h-9 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[9px] text-zinc-500 font-bold tracking-wider uppercase">
-                                        Prendas Totales
+                                <div className="flex flex-col leading-tight">
+                                    <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
+                                        ¿Qué querés hacer ahora?
                                     </span>
-                                    <span className="text-sm font-bold text-zinc-900">{totalUnits} un.</span>
+                                    <span className="text-sm font-bold text-emerald-900">{addedUnits} unidades agregadas al pedido</span>
                                 </div>
                             </div>
-
-                            <div className="w-px h-6 bg-zinc-200"></div>
-
-                            <div className="flex flex-col">
-                                <span className="text-[9px] text-zinc-500 font-bold tracking-wider uppercase">
-                                    Subtotal Estimado
-                                </span>
-                                <span className="text-base font-black text-zinc-900 tracking-tight">{formatPrice(totalPrice)}</span>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        if (draftIsActive && draftClientId) {
+                                            navigate(`/ventas/pedido/${draftClientId}`);
+                                        } else {
+                                            navigate('/portal/catalogo');
+                                        }
+                                    }}
+                                    className="flex-1 sm:flex-none rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-100 h-11 font-semibold gap-2"
+                                >
+                                    <ShoppingBag className="w-4 h-4" />
+                                    Seguir agregando
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        if (draftIsActive) {
+                                            navigate('/ventas/checkout');
+                                        } else {
+                                            navigate('/portal/checkout');
+                                        }
+                                    }}
+                                    className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11 font-bold gap-2"
+                                >
+                                    Ver pedido
+                                    <ArrowRight className="w-4 h-4" />
+                                </Button>
                             </div>
                         </div>
-
-                        <Button
-                            onClick={handleAddToCart}
-                            className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl px-8 h-12 font-bold shadow-sm flex items-center justify-center gap-2 transition-all">
-                            <ShoppingBag className="w-4 h-4" />
-                            Añadir al Pedido
-                        </Button>
-                    </div>
+                    ) : (
+                        <div className="shrink-0 border-t border-zinc-200/80 bg-white px-4 lg:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:min-h-[72px]">
+                            <div className="flex items-center gap-4 w-full sm:w-auto">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center shrink-0">
+                                        <TableProperties className="w-4 h-4 text-zinc-600" />
+                                    </div>
+                                    <div className="flex flex-col leading-tight">
+                                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Prendas Totales</span>
+                                        <span className="text-sm font-bold text-zinc-900">{totalUnits} un.</span>
+                                    </div>
+                                </div>
+                                <div className="w-px h-8 bg-zinc-200" />
+                                <div className="flex flex-col leading-tight">
+                                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Subtotal Estimado</span>
+                                    <span className="text-base font-black text-zinc-900 tracking-tight">{formatPrice(totalPrice)}</span>
+                                </div>
+                            </div>
+                            <Button
+                                onClick={handleAddToCart}
+                                disabled={totalUnits === 0}
+                                className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white rounded-xl px-8 h-11 font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
+                            >
+                                <ShoppingBag className="w-4 h-4" />
+                                Añadir al Pedido
+                            </Button>
+                        </div>
+                    )}
 
                 </div>
 

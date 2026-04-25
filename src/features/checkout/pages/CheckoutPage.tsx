@@ -18,6 +18,8 @@ import {
     FileText,
     Package,
     CheckCircle2,
+    Bike,
+    Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,13 +29,28 @@ export function CheckoutPage() {
     const { isActive: isDraft, clientName: draftClientName, clientId: draftClientId, clearDraft } = useOrderDraftStore();
 
     const [deliveryMethod, setDeliveryMethod] = useState("fabrica");
+    const [expressType, setExpressType] = useState<'moto' | 'correo' | ''>('');
     const [notes, setNotes] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
+    const deliveryLabel = deliveryMethod === 'fabrica'
+        ? 'Retiro por Fábrica'
+        : expressType === 'moto'
+            ? 'Envío por Expreso · Moto Mensajería'
+            : expressType === 'correo'
+                ? 'Envío por Expreso · Correo (Andreani / CA)'
+                : 'Envío por Expreso';
+
     const handleConfirmOrder = async () => {
         if (items.length === 0) {
             toast.error("El carrito está vacío");
+            return;
+        }
+        if (deliveryMethod === 'transporte' && !expressType) {
+            toast.error("Seleccioná el tipo de envío", {
+                description: "Elegí entre Moto Mensajería o Correo para continuar."
+            });
             return;
         }
 
@@ -55,7 +72,7 @@ export function CheckoutPage() {
                 quantity: item.quantity
             })),
             discountPercentage: 0,
-            observations: `Entrega: ${deliveryMethod}. ${notes}`
+            observations: `Entrega: ${deliveryLabel}. ${notes}`
         };
 
         try {
@@ -144,43 +161,117 @@ export function CheckoutPage() {
 
                         {/* Delivery Method Card */}
                         <div className="bg-white rounded-3xl border border-zinc-200 p-6 sm:p-8 shadow-sm">
-                            <h2 className="text-xl font-bold text-zinc-900 mb-6">Método de Entrega</h2>
+                            <div className="mb-6">
+                                <h2 className="text-xl font-bold text-zinc-900">Método de Entrega</h2>
+                                <p className="text-sm text-zinc-400 mt-1">¿Cómo querés recibir tu pedido?</p>
+                            </div>
 
-                            <RadioGroup value={deliveryMethod} onValueChange={setDeliveryMethod} className="grid sm:grid-cols-2 gap-4">
-                                {/* Option 1 */}
+                            <RadioGroup
+                                value={deliveryMethod}
+                                onValueChange={(v) => { setDeliveryMethod(v); setExpressType(''); }}
+                                className="grid sm:grid-cols-2 gap-3"
+                            >
+                                {/* Retiro por Fábrica */}
                                 <div>
                                     <RadioGroupItem value="fabrica" id="fabrica" className="peer sr-only" />
                                     <label
                                         htmlFor="fabrica"
-                                        className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-5 hover:bg-zinc-50 cursor-pointer peer-data-[state=checked]:border-zinc-900 peer-data-[state=checked]:ring-1 peer-data-[state=checked]:ring-zinc-900 transition-all font-normal"
+                                        className="flex items-center gap-4 rounded-2xl border-2 border-zinc-200 bg-white p-4 hover:bg-zinc-50 cursor-pointer peer-data-[state=checked]:border-zinc-900 peer-data-[state=checked]:bg-zinc-50 transition-all font-normal"
                                     >
-                                        <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 border border-zinc-200 shadow-sm">
+                                        <div className="w-11 h-11 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-700 border border-zinc-200 shrink-0">
                                             <Factory className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <div className="font-bold text-zinc-900">Retiro por Fábrica</div>
-                                            <div className="text-sm text-zinc-500 mt-1 leading-snug">Acordá el retiro en nuestras instalaciones.</div>
+                                            <div className="font-bold text-zinc-900 text-sm">Retiro por Fábrica</div>
+                                            <div className="text-xs text-zinc-500 mt-0.5 leading-snug">Acordá el retiro en nuestras instalaciones</div>
                                         </div>
                                     </label>
                                 </div>
 
-                                {/* Option 2 */}
+                                {/* Envío por Expreso */}
                                 <div>
                                     <RadioGroupItem value="transporte" id="transporte" className="peer sr-only" />
                                     <label
                                         htmlFor="transporte"
-                                        className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-5 hover:bg-zinc-50 cursor-pointer peer-data-[state=checked]:border-zinc-900 peer-data-[state=checked]:ring-1 peer-data-[state=checked]:ring-zinc-900 transition-all font-normal"
+                                        className="flex items-center gap-4 rounded-2xl border-2 border-zinc-200 bg-white p-4 hover:bg-zinc-50 cursor-pointer peer-data-[state=checked]:border-zinc-900 peer-data-[state=checked]:bg-zinc-50 transition-all font-normal"
                                     >
-                                        <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 border border-zinc-200 shadow-sm">
+                                        <div className="w-11 h-11 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-700 border border-zinc-200 shrink-0">
                                             <Truck className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <div className="font-bold text-zinc-900">Envío por Expreso</div>
-                                            <div className="text-sm text-zinc-500 mt-1 leading-snug">Despachamos por tu transporte de confianza.</div>
+                                            <div className="font-bold text-zinc-900 text-sm">Envío por Expreso</div>
+                                            <div className="text-xs text-zinc-500 mt-0.5 leading-snug">Despachamos por tu transporte de confianza</div>
                                         </div>
                                     </label>
                                 </div>
                             </RadioGroup>
+
+                            {/* Sub-opciones de expreso */}
+                            {deliveryMethod === 'transporte' && (
+                                <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="flex items-center gap-2 mb-3 pl-1">
+                                        <div className="w-px h-4 bg-zinc-300 ml-1" />
+                                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">¿Cómo enviamos?</span>
+                                    </div>
+                                    <div className="grid sm:grid-cols-2 gap-3 pl-0">
+                                        {/* Moto Mensajería */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setExpressType('moto')}
+                                            className={`flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition-all ${
+                                                expressType === 'moto'
+                                                    ? 'border-zinc-900 bg-zinc-900 text-white'
+                                                    : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300 text-zinc-900'
+                                            }`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
+                                                expressType === 'moto'
+                                                    ? 'bg-white/15 border-white/20'
+                                                    : 'bg-white border-zinc-200'
+                                            }`}>
+                                                <Bike className={`w-4.5 h-4.5 ${expressType === 'moto' ? 'text-white' : 'text-zinc-600'}`} />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm leading-tight">Moto Mensajería</div>
+                                                <div className={`text-xs mt-0.5 leading-snug ${expressType === 'moto' ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                                                    CABA y GBA
+                                                </div>
+                                            </div>
+                                            {expressType === 'moto' && (
+                                                <CheckCircle2 className="w-4 h-4 text-white ml-auto shrink-0" />
+                                            )}
+                                        </button>
+
+                                        {/* Correo */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setExpressType('correo')}
+                                            className={`flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition-all ${
+                                                expressType === 'correo'
+                                                    ? 'border-zinc-900 bg-zinc-900 text-white'
+                                                    : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300 text-zinc-900'
+                                            }`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
+                                                expressType === 'correo'
+                                                    ? 'bg-white/15 border-white/20'
+                                                    : 'bg-white border-zinc-200'
+                                            }`}>
+                                                <Globe className={`w-4.5 h-4.5 ${expressType === 'correo' ? 'text-white' : 'text-zinc-600'}`} />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm leading-tight">Correo</div>
+                                                <div className={`text-xs mt-0.5 leading-snug ${expressType === 'correo' ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                                                    Andreani / Correo Argentino · Interior
+                                                </div>
+                                            </div>
+                                            {expressType === 'correo' && (
+                                                <CheckCircle2 className="w-4 h-4 text-white ml-auto shrink-0" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Observations Card */}
@@ -257,8 +348,16 @@ export function CheckoutPage() {
 
                             {/* Action Button */}
                             <Button
-                                className="w-full h-14 bg-zinc-900 text-white rounded-xl text-lg font-bold hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg mt-auto relative overflow-hidden"
-                                onClick={() => setIsPreviewOpen(true)}
+                                className="w-full h-14 bg-zinc-900 text-white rounded-xl text-lg font-bold hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg mt-auto relative overflow-hidden disabled:opacity-50"
+                                onClick={() => {
+                                    if (deliveryMethod === 'transporte' && !expressType) {
+                                        toast.error("Seleccioná el tipo de envío", {
+                                            description: "Elegí entre Moto Mensajería o Correo para continuar."
+                                        });
+                                        return;
+                                    }
+                                    setIsPreviewOpen(true);
+                                }}
                                 disabled={isLoading}
                             >
                                 <div className="flex items-center gap-2">
@@ -352,14 +451,16 @@ export function CheckoutPage() {
                             <div className="w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center shrink-0 mt-0.5">
                                 {deliveryMethod === 'fabrica'
                                     ? <Factory className="w-4 h-4 text-zinc-600" />
-                                    : <Truck className="w-4 h-4 text-zinc-600" />
+                                    : expressType === 'moto'
+                                        ? <Bike className="w-4 h-4 text-zinc-600" />
+                                        : expressType === 'correo'
+                                            ? <Globe className="w-4 h-4 text-zinc-600" />
+                                            : <Truck className="w-4 h-4 text-zinc-600" />
                                 }
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1"><MapPin className="w-3 h-3" /> Entrega</p>
-                                <p className="text-sm font-semibold text-zinc-900 mt-0.5">
-                                    {deliveryMethod === 'fabrica' ? 'Retiro por Fábrica' : 'Envío por Expreso'}
-                                </p>
+                                <p className="text-sm font-semibold text-zinc-900 mt-0.5">{deliveryLabel}</p>
                             </div>
                         </div>
                         <div className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3.5 flex items-start gap-3">

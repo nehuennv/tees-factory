@@ -3,14 +3,18 @@ import type { Product } from "@/types/product";
 import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Edit2, ChevronDown, MoreHorizontal, Trash2, Package, Eye, EyeOff } from "lucide-react";
+import { Search, Edit2, ChevronDown, MoreHorizontal, Trash2, Package, Eye, EyeOff, Tag } from "lucide-react";
 import { ProductImage } from "@/components/shared/ProductImage";
 import { toast } from "sonner";
 import { ProductStockDrawer } from "../components/ProductStockDrawer";
 import { Modal } from "@/components/shared/Modal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatPrice } from "@/lib/formatters";
+
+const toTitleCase = (str: string | undefined) =>
+    str ? str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) : '';
 import { CreateProductModal } from "../components/CreateProductModal";
+import { CategoryManagerModal } from "../components/CategoryManagerModal";
 
 interface AdminProduct extends Product {
     isActive: boolean;
@@ -41,6 +45,7 @@ export function CatalogManagementPage() {
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
@@ -129,13 +134,13 @@ export function CatalogManagementPage() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
-                                    {categoryFilter === 'ALL' ? 'Categoría' : categoryFilter} <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
+                                    {categoryFilter === 'ALL' ? 'Categoría' : toTitleCase(categoryFilter)} <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40 bg-white border border-zinc-200 rounded-xl shadow-lg p-1">
                                 <DropdownMenuItem onClick={() => setCategoryFilter('ALL')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Todas</DropdownMenuItem>
                                 {Array.from(new Set(products.map(p => p.category))).map(cat => (
-                                    <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">{cat}</DropdownMenuItem>
+                                    <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">{toTitleCase(cat)}</DropdownMenuItem>
                                 ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -153,6 +158,10 @@ export function CatalogManagementPage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <div className="w-px h-6 bg-zinc-200 mx-1 hidden sm:block shrink-0"></div>
+                        <Button variant="outline" onClick={() => setIsCategoryManagerOpen(true)} className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
+                            <Tag className="w-4 h-4 mr-2" />
+                            Categorías
+                        </Button>
                         <Button onClick={() => setIsCreateModalOpen(true)} className="rounded-xl h-10 px-4 bg-zinc-900 text-white hover:bg-zinc-800 whitespace-nowrap shrink-0 shadow-sm font-semibold ml-2">
                             + Nuevo Producto
                         </Button>
@@ -184,7 +193,7 @@ export function CatalogManagementPage() {
                                         <div>
                                             <p className="font-semibold text-zinc-900">{product.name}</p>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-zinc-500 text-xs font-medium bg-zinc-100 px-2 py-0.5 rounded-full">{product.category}</span>
+                                                <span className="text-zinc-500 text-xs font-medium bg-zinc-100 px-2 py-0.5 rounded-full">{toTitleCase(product.category)}</span>
                                                 <span className="text-zinc-400 text-xs">{product.id}</span>
                                             </div>
                                         </div>
@@ -294,6 +303,10 @@ export function CatalogManagementPage() {
                     onClick: () => { setIsDeleteModalOpen(false); setProductToDelete(null); },
                 }}
             />
+            <CategoryManagerModal
+                isOpen={isCategoryManagerOpen}
+                onClose={() => setIsCategoryManagerOpen(false)}
+            />
             <CreateProductModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
@@ -304,6 +317,10 @@ export function CatalogManagementPage() {
                         basePrice: newProduct.basePrice ?? 0,
                         totalStock: newProduct.totalStock ?? 0,
                     }]);
+                }}
+                onGoToProduct={(newProduct) => {
+                    setIsCreateModalOpen(false);
+                    setSelectedProduct(newProduct);
                 }}
             />
         </div>

@@ -9,9 +9,42 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, X, ImagePlus, Shirt } from "lucide-react";
+import { Loader2, Plus, Trash2, X, ImagePlus, Shirt, Search, ChevronDown } from "lucide-react";
 
 const BACKEND_BASE = (import.meta.env.VITE_API_URL as string || 'http://localhost:3000/api').replace(/\/api\/?$/, '');
+
+const PREDEFINED_COLORS = [
+    { name: "Melange 5%",      hex: "#e8e8e8" },
+    { name: "Melange 25%",     hex: "#c0c0c0" },
+    { name: "Negro Melange",   hex: "#2d2d2d" },
+    { name: "Gris Oscuro",     hex: "#4a4a4a" },
+    { name: "Classic Grey",    hex: "#9e9e9e" },
+    { name: "Stone Wash",      hex: "#8b8680" },
+    { name: "Negro",           hex: "#1a1a1a" },
+    { name: "Blanco",          hex: "#ffffff" },
+    { name: "Crema",           hex: "#f5f0e8" },
+    { name: "Arena",           hex: "#c2b280" },
+    { name: "Celeste",         hex: "#87ceeb" },
+    { name: "Turquesa",        hex: "#35c4b8" },
+    { name: "Azul Gastado",    hex: "#6b8fa3" },
+    { name: "Azul Francia",    hex: "#002395" },
+    { name: "Azul Oscuro",     hex: "#003087" },
+    { name: "Verde Salvia",    hex: "#8f9779" },
+    { name: "Verde Pistacho",  hex: "#93c572" },
+    { name: "Verde Oliva",     hex: "#708238" },
+    { name: "Verde Benetton",  hex: "#2e7d32" },
+    { name: "Verde Inglés",    hex: "#1b4332" },
+    { name: "Amarillo Suave",  hex: "#f5deb3" },
+    { name: "Mostaza Dulce",   hex: "#d4ac0d" },
+    { name: "Rosa",            hex: "#f9a8c0" },
+    { name: "Coral",           hex: "#ff6b6b" },
+    { name: "Naranja",         hex: "#ff8c00" },
+    { name: "Rojo",            hex: "#dc143c" },
+    { name: "Bordo",           hex: "#6d0026" },
+    { name: "Fucsia",          hex: "#e5007d" },
+    { name: "Violeta",         hex: "#7b2d8b" },
+    { name: "Chocolate",       hex: "#5c3317" },
+];
 
 interface SizeVariant {
     id?: string;
@@ -49,9 +82,9 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
     // Per color new-size inputs: key = `${qualityId}-${colorName}`
     const [newSizeInputs, setNewSizeInputs] = useState<Record<string, string>>({});
-    // Per quality new-color inputs
-    const [newColorInputs, setNewColorInputs] = useState<Record<string, string>>({});
-    const [showNewColorInput, setShowNewColorInput] = useState<Record<string, boolean>>({});
+    // Per quality color picker state
+    const [showColorPicker, setShowColorPicker] = useState<Record<string, boolean>>({});
+    const [colorSearch, setColorSearch] = useState<Record<string, string>>({});
 
     const [productDetails, setProductDetails] = useState({
         name: "",
@@ -74,8 +107,8 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
             setQualities([]);
             setActiveTab("");
             setNewSizeInputs({});
-            setNewColorInputs({});
-            setShowNewColorInput({});
+            setShowColorPicker({});
+            setColorSearch({});
             setImageUrl('');
         }
     }, [isOpen, product]);
@@ -215,21 +248,21 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
         }));
     };
 
-    const handleAddColor = (qualityId: string) => {
-        const colorName = (newColorInputs[qualityId] || "").trim();
-        if (!colorName) return;
+    const handleAddColor = (qualityId: string, colorName: string) => {
+        const name = colorName.trim();
+        if (!name) return;
 
         setQualities(prev => prev.map(q => {
             if (q.id !== qualityId) return q;
-            if (q.colors.some(c => c.colorName.toLowerCase() === colorName.toLowerCase())) {
-                toast.error(`El color "${colorName}" ya existe en esta calidad.`);
+            if (q.colors.some(c => c.colorName.toLowerCase() === name.toLowerCase())) {
+                toast.error(`El color "${name}" ya existe en esta calidad.`);
                 return q;
             }
-            return { ...q, colors: [...q.colors, { colorName, sizes: [] }] };
+            return { ...q, colors: [...q.colors, { colorName: name, sizes: [] }] };
         }));
 
-        setNewColorInputs(prev => ({ ...prev, [qualityId]: "" }));
-        setShowNewColorInput(prev => ({ ...prev, [qualityId]: false }));
+        setColorSearch(prev => ({ ...prev, [qualityId]: "" }));
+        setShowColorPicker(prev => ({ ...prev, [qualityId]: false }));
     };
 
 
@@ -621,59 +654,96 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                         );
                                     })}
 
-                                    {/* Add color */}
-                                    <div>
-                                        {showNewColorInput[quality.id] ? (
-                                            <div className="flex items-center gap-2">
-                                                <Input
-                                                    placeholder="Ej: Bordo, Azul Marino, Verde Botella..."
-                                                    value={newColorInputs[quality.id] || ""}
-                                                    onChange={(e) =>
-                                                        setNewColorInputs(prev => ({
-                                                            ...prev,
-                                                            [quality.id]: e.target.value,
-                                                        }))
-                                                    }
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === "Enter") handleAddColor(quality.id);
-                                                    }}
-                                                    className="h-9 text-sm rounded-xl border-zinc-200 bg-zinc-50 flex-1"
-                                                    autoFocus
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => handleAddColor(quality.id)}
-                                                    className="h-9 px-4 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 text-xs font-semibold"
-                                                >
-                                                    Agregar
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() =>
-                                                        setShowNewColorInput(prev => ({
-                                                            ...prev,
-                                                            [quality.id]: false,
-                                                        }))
-                                                    }
-                                                    className="h-9 px-3 rounded-xl text-zinc-500 hover:text-zinc-900"
-                                                >
-                                                    Cancelar
-                                                </Button>
+                                    {/* Add color picker */}
+                                    <div className="relative">
+                                        {showColorPicker[quality.id] ? (
+                                            <div className="border border-zinc-200 rounded-xl bg-white shadow-md overflow-hidden">
+                                                {/* Search */}
+                                                <div className="flex items-center gap-2 px-3 py-2.5 border-b border-zinc-100">
+                                                    <Search className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                                    <input
+                                                        autoFocus
+                                                        placeholder="Buscar color o escribir uno nuevo..."
+                                                        value={colorSearch[quality.id] || ""}
+                                                        onChange={e => setColorSearch(prev => ({ ...prev, [quality.id]: e.target.value }))}
+                                                        onKeyDown={e => {
+                                                            if (e.key === "Enter") {
+                                                                const search = (colorSearch[quality.id] || "").trim();
+                                                                if (search) handleAddColor(quality.id, search);
+                                                            }
+                                                            if (e.key === "Escape") {
+                                                                setShowColorPicker(prev => ({ ...prev, [quality.id]: false }));
+                                                                setColorSearch(prev => ({ ...prev, [quality.id]: "" }));
+                                                            }
+                                                        }}
+                                                        className="flex-1 text-sm outline-none bg-transparent placeholder:text-zinc-400 text-zinc-800"
+                                                    />
+                                                    <button
+                                                        onClick={() => {
+                                                            setShowColorPicker(prev => ({ ...prev, [quality.id]: false }));
+                                                            setColorSearch(prev => ({ ...prev, [quality.id]: "" }));
+                                                        }}
+                                                        className="text-zinc-400 hover:text-zinc-700 transition-colors"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+
+                                                {/* Color list */}
+                                                <div className="max-h-52 overflow-y-auto p-1.5 flex flex-col gap-0.5">
+                                                    {(() => {
+                                                        const search = (colorSearch[quality.id] || "").toLowerCase().trim();
+                                                        const usedColors = new Set(quality.colors.map(c => c.colorName.toLowerCase()));
+                                                        const filtered = PREDEFINED_COLORS.filter(c =>
+                                                            c.name.toLowerCase().includes(search) && !usedColors.has(c.name.toLowerCase())
+                                                        );
+                                                        const showCustom = search && !PREDEFINED_COLORS.some(c => c.name.toLowerCase() === search) && !usedColors.has(search);
+
+                                                        return (
+                                                            <>
+                                                                {filtered.map(color => (
+                                                                    <button
+                                                                        key={color.name}
+                                                                        onClick={() => handleAddColor(quality.id, color.name)}
+                                                                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-50 transition-colors text-left w-full group"
+                                                                    >
+                                                                        <span
+                                                                            className="w-4 h-4 rounded-full border border-zinc-200/80 shrink-0 shadow-sm"
+                                                                            style={{ backgroundColor: color.hex }}
+                                                                        />
+                                                                        <span className="text-sm text-zinc-700 font-medium group-hover:text-zinc-900">{color.name}</span>
+                                                                    </button>
+                                                                ))}
+                                                                {showCustom && (
+                                                                    <button
+                                                                        onClick={() => handleAddColor(quality.id, (colorSearch[quality.id] || "").trim())}
+                                                                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-900 hover:text-white transition-colors text-left w-full group border border-dashed border-zinc-300 mt-1"
+                                                                    >
+                                                                        <Plus className="w-4 h-4 text-zinc-400 group-hover:text-white shrink-0" />
+                                                                        <span className="text-sm font-semibold text-zinc-600 group-hover:text-white">
+                                                                            Agregar "{(colorSearch[quality.id] || "").trim()}"
+                                                                        </span>
+                                                                    </button>
+                                                                )}
+                                                                {filtered.length === 0 && !showCustom && (
+                                                                    <p className="text-xs text-zinc-400 text-center py-3 italic">
+                                                                        {usedColors.has(search) ? `"${colorSearch[quality.id]}" ya fue agregado` : "Sin resultados"}
+                                                                    </p>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
                                             </div>
                                         ) : (
                                             <Button
                                                 variant="outline"
-                                                onClick={() =>
-                                                    setShowNewColorInput(prev => ({
-                                                        ...prev,
-                                                        [quality.id]: true,
-                                                    }))
-                                                }
+                                                onClick={() => setShowColorPicker(prev => ({ ...prev, [quality.id]: true }))}
                                                 className="w-full h-9 rounded-xl border-dashed border-zinc-300 text-zinc-500 hover:text-zinc-900 hover:border-zinc-400 text-xs font-medium"
                                             >
                                                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                                                 Agregar color
+                                                <ChevronDown className="w-3 h-3 ml-auto text-zinc-400" />
                                             </Button>
                                         )}
                                     </div>

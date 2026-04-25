@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 
 interface Category { id: string; name: string; }
 
+const toTitleCase = (str: string) =>
+    str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
 interface CategorySelectProps {
     value: string;
     onChange: (id: string, name: string) => void;
@@ -69,7 +72,7 @@ export function CategorySelect({ value, onChange, disabled, className }: Categor
     return (
         <div className="flex flex-col gap-2">
             <Select
-                value={value || undefined}
+                value={value}
                 onValueChange={handleSelectChange}
                 disabled={disabled}
             >
@@ -79,7 +82,7 @@ export function CategorySelect({ value, onChange, disabled, className }: Categor
                 <SelectContent className="rounded-xl border-zinc-200 shadow-lg">
                     {categories.map(cat => (
                         <SelectItem key={cat.id} value={cat.id} className="rounded-lg cursor-pointer text-sm">
-                            {cat.name}
+                            {toTitleCase(cat.name)}
                         </SelectItem>
                     ))}
                     <SelectSeparator />

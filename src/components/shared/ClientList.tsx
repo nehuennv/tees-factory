@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useDeferredValue, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@/lib/apiClient';
 import { ShoppingBag, MoreHorizontal, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
@@ -18,24 +18,14 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EditClientModal } from '@/features/admin/components/EditClientModal';
+import { ClientDetailModal } from '@/features/admin/components/ClientDetailModal';
 import { Modal } from '@/components/shared/Modal';
 import { useOrderDraftStore } from '@/store/orderDraftStore';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
 
-export interface Client {
-    id: string;
-    name: string;
-    cuit: string;
-    email: string;
-    phone: string;
-    address: string;
-    balance: number;
-    sellerId: string;
-    isActive: boolean;
-    notes?: string;
-}
+export type { Client } from '@/types/client';
 
 export interface ClientListProps {
 }
@@ -64,18 +54,20 @@ const truncateText = (text: string, maxLength: number = 30) => {
     return text.substring(0, maxLength) + '...';
 };
 
-const AdminClientTable = ({ 
-    clients, 
-    onNewOrder, 
-    onEditClient, 
+const AdminClientTable = memo(({
+    clients,
+    onNewOrder,
+    onEditClient,
     onDeleteClient,
-    onViewAccount
-}: { 
-    clients: Client[], 
-    onNewOrder?: (client: Client) => void, 
-    onEditClient?: (client: Client) => void, 
+    onViewAccount,
+    onViewDetail,
+}: {
+    clients: Client[],
+    onNewOrder?: (client: Client) => void,
+    onEditClient?: (client: Client) => void,
     onDeleteClient?: (client: Client) => void,
-    onViewAccount?: (client: Client) => void
+    onViewAccount?: (client: Client) => void,
+    onViewDetail?: (client: Client) => void,
 }) => {
     return (
         <Table>
@@ -92,7 +84,11 @@ const AdminClientTable = ({
                 {clients.length > 0 ? clients.map((client: Client) => {
                     const isDebt = client.balance > 0;
                     return (
-                        <TableRow key={client.id}>
+                        <TableRow
+                            key={client.id}
+                            className="cursor-pointer hover:bg-zinc-50/80 transition-colors"
+                            onClick={() => onViewDetail?.(client)}
+                        >
                             <TableCell>
                                 <div className="flex items-center gap-3">
                                     <div
@@ -130,7 +126,7 @@ const AdminClientTable = ({
                                     {formatCurrency(client.balance)}
                                 </div>
                             </TableCell>
-                            <TableCell className="text-right pr-4">
+                            <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -184,7 +180,7 @@ const AdminClientTable = ({
             </TableBody>
         </Table>
     );
-};
+});
 
 export const ClientList: React.FC<ClientListProps> = () => {
     const navigate = useNavigate();
@@ -195,9 +191,14 @@ export const ClientList: React.FC<ClientListProps> = () => {
 
     const [currentPage, setCurrentPage] = React.useState(1);
     const [searchTerm, setSearchTerm] = React.useState('');
+    const deferredSearch = useDeferredValue(searchTerm);
     const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
 
 
+
+    // Estado para ClientDetailModal
+    const [isDetailModalOpen, setIsDetailModalOpen] = React.useState(false);
+    const [clientToView, setClientToView] = React.useState<Client | null>(null);
 
     // Estado para EditClientModal
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
@@ -225,31 +226,31 @@ export const ClientList: React.FC<ClientListProps> = () => {
 
 
 
-    /**
-     * Inicia el flujo de creación de pedido para un cliente.
-     * 1. Registra el contexto del draft (para quién es el pedido)
-     * 2. Navega al catálogo contextual del seller
-     */
-    const handleNewOrder = (client: Client) => {
+    const handleViewDetail = useCallback((client: Client) => {
+        setClientToView(client);
+        setIsDetailModalOpen(true);
+    }, []);
+
+    const handleNewOrder = useCallback((client: Client) => {
         startDraft(client.id, client.name);
         navigate(`/ventas/pedido/${client.id}`);
-    };
+    }, [startDraft, navigate]);
 
-    const handleEditClient = (client: Client) => {
+    const handleEditClient = useCallback((client: Client) => {
         setClientToEdit(client);
         setIsEditModalOpen(true);
-    };
+    }, []);
 
-    const handleViewAccount = (client: Client) => {
+    const handleViewAccount = useCallback((client: Client) => {
         const user = useAuthStore.getState().user;
         const prefix = user?.role === 'ADMIN' ? '/admin' : '/ventas';
         navigate(`${prefix}/clientes/${client.id}/cuenta`);
-    };
+    }, [navigate]);
 
-    const handleDeleteClient = (client: Client) => {
+    const handleDeleteClient = useCallback((client: Client) => {
         setClientToDelete(client);
         setIsDeleteModalOpen(true);
-    };
+    }, []);
 
     const confirmDeleteClient = async () => {
         if (!clientToDelete) return;
@@ -276,19 +277,18 @@ export const ClientList: React.FC<ClientListProps> = () => {
     const filteredAndSortedClients = React.useMemo(() => {
         let result = [...clients];
 
-        // Filtrado por status
         if (statusFilter === 'DEBT') {
             result = result.filter(c => c.balance > 0);
         } else if (statusFilter === 'ACTIVE') {
             result = result.filter(c => c.balance <= 0);
         }
 
-        if (searchTerm) {
-            const lowerQuery = searchTerm.toLowerCase();
+        if (deferredSearch) {
+            const lowerQuery = deferredSearch.toLowerCase();
             result = result.filter(c =>
-                c.name.toLowerCase().includes(lowerQuery) ||
-                c.cuit.includes(lowerQuery) ||
-                c.email.toLowerCase().includes(lowerQuery)
+                c.name?.toLowerCase().includes(lowerQuery) ||
+                c.cuit?.includes(lowerQuery) ||
+                c.email?.toLowerCase().includes(lowerQuery)
             );
         }
 
@@ -298,7 +298,7 @@ export const ClientList: React.FC<ClientListProps> = () => {
         });
 
         return result;
-    }, [clients, searchTerm, sortOrder, statusFilter]);
+    }, [clients, deferredSearch, sortOrder, statusFilter]);
 
     const totalPages = Math.ceil(filteredAndSortedClients.length / itemsPerPage) || 1;
     const paginatedClients = filteredAndSortedClients.slice(
@@ -309,7 +309,7 @@ export const ClientList: React.FC<ClientListProps> = () => {
     // Reinicia a la página 1 cuando se busca o cambia el orden
     React.useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, sortOrder, statusFilter]);
+    }, [deferredSearch, sortOrder, statusFilter]);
 
     const toggleSort = () => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
 
@@ -377,12 +377,13 @@ export const ClientList: React.FC<ClientListProps> = () => {
                     ))}
                 </div>
             ) : (
-                <AdminClientTable 
-                    clients={paginatedClients} 
-                    onNewOrder={handleNewOrder} 
-                    onEditClient={handleEditClient} 
+                <AdminClientTable
+                    clients={paginatedClients}
+                    onNewOrder={handleNewOrder}
+                    onEditClient={handleEditClient}
                     onDeleteClient={handleDeleteClient}
                     onViewAccount={handleViewAccount}
+                    onViewDetail={handleViewDetail}
                 />
             )}
 
@@ -429,6 +430,14 @@ export const ClientList: React.FC<ClientListProps> = () => {
                     </div>
                 </div>
             )}
+
+            <ClientDetailModal
+                isOpen={isDetailModalOpen}
+                onClose={() => { setIsDetailModalOpen(false); setClientToView(null); }}
+                client={clientToView}
+                onEdit={(c) => { setClientToEdit(c); setIsEditModalOpen(true); }}
+                onDelete={(c) => { setClientToDelete(c); setIsDeleteModalOpen(true); }}
+            />
 
             <EditClientModal
                 isOpen={isEditModalOpen}

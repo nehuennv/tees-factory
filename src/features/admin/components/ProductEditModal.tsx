@@ -90,11 +90,17 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="description" className="text-sm font-medium text-zinc-900">Descripción</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="description" className="text-sm font-medium text-zinc-900">Descripción</Label>
+                                <span className={`text-xs font-medium ${(formData.description?.length || 0) >= 500 ? 'text-red-500' : 'text-zinc-400'}`}>
+                                    {formData.description?.length || 0}/500
+                                </span>
+                            </div>
                             <Textarea
                                 id="description"
                                 value={formData.description || ""}
                                 onChange={(e) => handleChange("description", e.target.value)}
+                                maxLength={500}
                                 className="min-h-[100px] resize-none rounded-xl border-zinc-200 focus:ring-zinc-900/10 focus:border-zinc-300 transition-all bg-white"
                                 placeholder="Descripción detallada del producto..."
                             />
