@@ -188,8 +188,8 @@ export function AdminDashboardPage() {
         new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
 
     return (
-        <div className="h-full w-full overflow-y-auto bg-zinc-50 p-4 md:p-6 pb-2">
-            <div className="w-full space-y-6 lg:space-y-8">
+        <div className="h-full w-full overflow-y-auto bg-zinc-50 p-4">
+            <div className="min-h-full flex flex-col gap-4">
 
                 {/* ── Row 1: KPI Cards ── */}
                 <motion.div
@@ -215,7 +215,10 @@ export function AdminDashboardPage() {
                                     ? <><SkeletonBlock className="h-8 w-32 mb-2" /><SkeletonBlock className="h-5 w-40" /></>
                                     : <>
                                         <div className="text-2xl font-bold text-zinc-900">{formatCurrency(totalDebt)}</div>
-                                        <PctBadge pct={debtPct} color="#C44A87" invertTrend />
+                                        {debtPct !== null
+                                            ? <PctBadge pct={debtPct} color="#C44A87" invertTrend />
+                                            : <p className="text-xs mt-2 font-medium inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ color: '#C44A87', backgroundColor: '#C44A871A' }}>Total acumulada</p>
+                                        }
                                     </>
                                 }
                             </CardContent>
@@ -238,7 +241,10 @@ export function AdminDashboardPage() {
                                     ? <><SkeletonBlock className="h-8 w-32 mb-2" /><SkeletonBlock className="h-5 w-40" /></>
                                     : <>
                                         <div className="text-2xl font-bold text-zinc-900">{formatCurrency(totalRevenue)}</div>
-                                        <PctBadge pct={revenuePct} color="#2DBDD0" />
+                                        {revenuePct !== null
+                                            ? <PctBadge pct={revenuePct} color="#2DBDD0" />
+                                            : <p className="text-xs mt-2 font-medium inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ color: '#2DBDD0', backgroundColor: '#2DBDD01A' }}>Mes en curso</p>
+                                        }
                                     </>
                                 }
                             </CardContent>
@@ -297,27 +303,27 @@ export function AdminDashboardPage() {
                 </motion.div>
 
                 {/* ── Row 2: Gráficos ── */}
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="flex-1 min-h-0 grid gap-4 md:grid-cols-3" style={{ minHeight: 240 }}>
 
                     {/* Gráfico Ingresos - últimos 6 meses */}
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, ease: "easeOut" }}
-                        className="col-span-1 md:col-span-2 xl:col-span-2"
+                        className="col-span-1 md:col-span-2 flex flex-col"
                     >
-                        <Card className="h-full shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center space-y-0 border-b border-zinc-100 py-5 px-6">
+                        <Card className="flex-1 flex flex-col shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
+                            <CardHeader className="shrink-0 flex flex-row items-center space-y-0 border-b border-zinc-100 py-4 px-6">
                                 <CardTitle className="text-base font-bold text-zinc-900">Ingresos de los últimos 6 meses</CardTitle>
                             </CardHeader>
-                            <CardContent className="pl-0 pb-2 pt-6">
-                                <div className="h-[280px] w-full mt-2">
+                            <CardContent className="flex-1 min-h-0 pl-0 pb-3 pt-2">
+                                <div className="h-full w-full">
                                     {isRevenueLoading ? (
                                         <div className="h-full flex items-center justify-center">
                                             <SkeletonBlock className="h-full w-full mx-6" />
                                         </div>
                                     ) : (
-                                        <ResponsiveContainer width="99%" height={280}>
+                                        <ResponsiveContainer width="99%" height="100%">
                                             <AreaChart data={revenueData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                                                 <defs>
                                                     <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
@@ -361,21 +367,21 @@ export function AdminDashboardPage() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-                        className="col-span-1"
+                        className="col-span-1 flex flex-col"
                     >
-                        <Card className="shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center space-y-0 border-b border-zinc-100 py-5 px-6">
+                        <Card className="flex-1 flex flex-col shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
+                            <CardHeader className="shrink-0 flex flex-row items-center space-y-0 border-b border-zinc-100 py-4 px-6">
                                 <CardTitle className="text-base font-bold text-zinc-900">Distribución por Categoría</CardTitle>
                             </CardHeader>
-                            <CardContent className="pt-6">
-                                <div className="h-[280px] w-full flex flex-col justify-center mt-2 relative">
+                            <CardContent className="flex-1 min-h-0 pt-2 pb-3">
+                                <div className="h-full w-full flex flex-col">
                                     {isCategoryLoading ? (
-                                        <div className="flex flex-col items-center gap-4">
+                                        <div className="flex-1 flex flex-col items-center justify-center gap-4">
                                             <SkeletonBlock className="h-40 w-40 rounded-full" />
                                             <SkeletonBlock className="h-4 w-32" />
                                         </div>
                                     ) : !categoryData.some(d => d.value > 0) ? (
-                                        <div className="flex flex-col items-center justify-center h-full gap-3 text-zinc-400">
+                                        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-zinc-400">
                                             <div className="w-20 h-20 rounded-full border-4 border-dashed border-zinc-200 flex items-center justify-center">
                                                 <Package className="w-8 h-8 text-zinc-300" />
                                             </div>
@@ -383,8 +389,8 @@ export function AdminDashboardPage() {
                                         </div>
                                     ) : (
                                         <>
-                                            <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.35, ease: 'easeOut' }}>
-                                            <ResponsiveContainer width="99%" height={240}>
+                                            <motion.div className="flex-1 min-h-0" whileHover={{ scale: 1.03 }} transition={{ duration: 0.35, ease: 'easeOut' }}>
+                                            <ResponsiveContainer width="99%" height="100%">
                                                 <PieChart>
                                                     <Pie
                                                         data={categoryData}
@@ -407,7 +413,7 @@ export function AdminDashboardPage() {
                                                 </PieChart>
                                             </ResponsiveContainer>
                                             </motion.div>
-                                            <div className="flex justify-center space-x-5 mt-6">
+                                            <div className="shrink-0 flex justify-center space-x-5 mt-2">
                                                 {categoryData.map((item, index) => (
                                                     <div key={item.name} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index] }} />
@@ -424,13 +430,14 @@ export function AdminDashboardPage() {
                 </div>
 
                 {/* ── Row 3: Action Lists ── */}
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 
                     {/* Top Deudores */}
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
+                        className="flex flex-col"
                     >
                         <ActionListCard
                             title="Top Deudores"
@@ -480,6 +487,7 @@ export function AdminDashboardPage() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, ease: "easeOut", delay: 0.5 }}
+                        className="flex flex-col"
                     >
                         <ActionListCard
                             title="Alertas de Stock"
@@ -533,6 +541,7 @@ export function AdminDashboardPage() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, ease: "easeOut", delay: 0.6 }}
+                        className="flex flex-col"
                     >
                         <ActionListCard
                             title="Últimos Movimientos"

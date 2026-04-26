@@ -99,7 +99,9 @@ export function CheckoutPage() {
         } catch (error: any) {
             console.error(error);
             if (error.response?.status === 409) {
-                const catalogPath = isDraft ? "/ventas/catalogo" : "/portal/catalogo";
+                const catalogPath = isDraft && draftClientId
+                    ? `/ventas/pedido/${draftClientId}`
+                    : "/portal/catalogo";
                 toast.error("Stock insuficiente", {
                     description: error.response?.data?.error || "Alguien acaba de comprar el stock de un artículo que seleccionaste. Volvés al catálogo para revisar tu pedido.",
                     duration: 5000,

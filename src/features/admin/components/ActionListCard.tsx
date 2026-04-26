@@ -22,7 +22,7 @@ export function ActionListCard({
     const navigate = useNavigate();
 
     return (
-        <Card className="flex flex-col overflow-hidden bg-white border border-zinc-200 shadow-sm rounded-xl hover:shadow-md transition-shadow duration-300">
+        <Card className="flex-1 flex flex-col overflow-hidden bg-white border border-zinc-200 shadow-sm rounded-xl hover:shadow-md transition-shadow duration-300">
             {/* HEADER: Con un fondo muy sutil para separarlo del contenido */}
             <CardHeader className="border-b border-zinc-100 bg-zinc-50/50 py-3.5 px-5">
                 <CardTitle className="text-sm font-bold text-zinc-900 tracking-tight">
