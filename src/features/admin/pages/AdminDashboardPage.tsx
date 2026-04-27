@@ -188,12 +188,12 @@ export function AdminDashboardPage() {
         new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
 
     return (
-        <div className="h-full w-full overflow-y-auto bg-zinc-50 p-4">
-            <div className="min-h-full flex flex-col gap-4">
+        <div className="h-full w-full overflow-y-auto bg-zinc-50 p-2 xl:p-4">
+            <div className="min-h-full flex flex-col gap-2 xl:gap-4">
 
                 {/* ── Row 1: KPI Cards ── */}
                 <motion.div
-                    className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    className="grid gap-2 xl:gap-4 sm:grid-cols-2 lg:grid-cols-4"
                     initial="hidden"
                     animate="visible"
                     variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.09 } } }}
@@ -214,7 +214,7 @@ export function AdminDashboardPage() {
                                 {isKpisLoading
                                     ? <><SkeletonBlock className="h-8 w-32 mb-2" /><SkeletonBlock className="h-5 w-40" /></>
                                     : <>
-                                        <div className="text-2xl font-bold text-zinc-900">{formatCurrency(totalDebt)}</div>
+                                        <div className="text-xl xl:text-2xl font-bold text-zinc-900">{formatCurrency(totalDebt)}</div>
                                         {debtPct !== null
                                             ? <PctBadge pct={debtPct} color="#C44A87" invertTrend />
                                             : <p className="text-xs mt-2 font-medium inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ color: '#C44A87', backgroundColor: '#C44A871A' }}>Total acumulada</p>
@@ -240,7 +240,7 @@ export function AdminDashboardPage() {
                                 {isKpisLoading
                                     ? <><SkeletonBlock className="h-8 w-32 mb-2" /><SkeletonBlock className="h-5 w-40" /></>
                                     : <>
-                                        <div className="text-2xl font-bold text-zinc-900">{formatCurrency(totalRevenue)}</div>
+                                        <div className="text-xl xl:text-2xl font-bold text-zinc-900">{formatCurrency(totalRevenue)}</div>
                                         {revenuePct !== null
                                             ? <PctBadge pct={revenuePct} color="#2DBDD0" />
                                             : <p className="text-xs mt-2 font-medium inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ color: '#2DBDD0', backgroundColor: '#2DBDD01A' }}>Mes en curso</p>
@@ -266,7 +266,7 @@ export function AdminDashboardPage() {
                                 {isKpisLoading
                                     ? <><SkeletonBlock className="h-8 w-16 mb-2" /><SkeletonBlock className="h-5 w-36" /></>
                                     : <>
-                                        <div className="text-2xl font-bold text-zinc-900">{pendingPayments}</div>
+                                        <div className="text-xl xl:text-2xl font-bold text-zinc-900">{pendingPayments}</div>
                                         <p className="text-xs text-[#EFBC4E] mt-2 font-medium bg-[#EFBC4E]/10 inline-flex px-1.5 py-0.5 rounded-md">
                                             Esperando conciliación
                                         </p>
@@ -291,7 +291,7 @@ export function AdminDashboardPage() {
                                 {isKpisLoading
                                     ? <><SkeletonBlock className="h-8 w-16 mb-2" /><SkeletonBlock className="h-5 w-36" /></>
                                     : <>
-                                        <div className="text-2xl font-bold text-zinc-900">{preparingOrders}</div>
+                                        <div className="text-xl xl:text-2xl font-bold text-zinc-900">{preparingOrders}</div>
                                         <p className="text-xs text-[#42318B] mt-2 font-medium bg-[#42318B]/10 inline-flex px-1.5 py-0.5 rounded-md">
                                             En área de logística
                                         </p>
@@ -303,7 +303,7 @@ export function AdminDashboardPage() {
                 </motion.div>
 
                 {/* ── Row 2: Gráficos ── */}
-                <div className="flex-1 min-h-0 grid gap-4 md:grid-cols-3" style={{ minHeight: 240 }}>
+                <div className="flex-1 min-h-0 grid gap-2 xl:gap-4 md:grid-cols-3" style={{ minHeight: 'clamp(180px, 22vh, 280px)' }}>
 
                     {/* Gráfico Ingresos - últimos 6 meses */}
                     <motion.div
@@ -313,7 +313,7 @@ export function AdminDashboardPage() {
                         className="col-span-1 md:col-span-2 flex flex-col"
                     >
                         <Card className="flex-1 flex flex-col shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
-                            <CardHeader className="shrink-0 flex flex-row items-center space-y-0 border-b border-zinc-100 py-4 px-6">
+                            <CardHeader className="shrink-0 flex flex-row items-center space-y-0 border-b border-zinc-100 py-2 px-4 xl:py-4 xl:px-6">
                                 <CardTitle className="text-base font-bold text-zinc-900">Ingresos de los últimos 6 meses</CardTitle>
                             </CardHeader>
                             <CardContent className="flex-1 min-h-0 pl-0 pb-3 pt-2">
@@ -370,7 +370,7 @@ export function AdminDashboardPage() {
                         className="col-span-1 flex flex-col"
                     >
                         <Card className="flex-1 flex flex-col shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
-                            <CardHeader className="shrink-0 flex flex-row items-center space-y-0 border-b border-zinc-100 py-4 px-6">
+                            <CardHeader className="shrink-0 flex flex-row items-center space-y-0 border-b border-zinc-100 py-2 px-4 xl:py-4 xl:px-6">
                                 <CardTitle className="text-base font-bold text-zinc-900">Distribución por Categoría</CardTitle>
                             </CardHeader>
                             <CardContent className="flex-1 min-h-0 pt-2 pb-3">
@@ -430,7 +430,7 @@ export function AdminDashboardPage() {
                 </div>
 
                 {/* ── Row 3: Action Lists ── */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-2 xl:gap-4 md:grid-cols-2 lg:grid-cols-3">
 
                     {/* Top Deudores */}
                     <motion.div
@@ -446,7 +446,7 @@ export function AdminDashboardPage() {
                         >
                             {isKpisLoading
                                 ? Array.from({ length: LIST_ITEMS }).map((_, i) => (
-                                    <div key={i} className="flex items-center justify-between h-[60px] gap-3">
+                                    <div key={i} className="flex items-center justify-between h-[48px] xl:h-[60px] gap-3">
                                         <div className="flex flex-col gap-1.5 flex-1">
                                             <SkeletonBlock className="h-4 w-3/4" />
                                             <SkeletonBlock className="h-3 w-1/2" />
@@ -456,7 +456,7 @@ export function AdminDashboardPage() {
                                 ))
                                 : <>
                                     {topDebtors.map((client) => (
-                                        <div key={client.id} className="flex items-center justify-between group p-2 -mx-2 h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
+                                        <div key={client.id} className="flex items-center justify-between group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-zinc-900 truncate max-w-[150px] group-hover:text-[#C44A87] transition-colors" title={client.name}>
                                                     {client.name}
@@ -469,7 +469,7 @@ export function AdminDashboardPage() {
                                         </div>
                                     ))}
                                     {Array.from({ length: LIST_ITEMS - topDebtors.length }).map((_, i) => (
-                                        <div key={`fill-debtor-${i}`} className="flex items-center justify-between h-[60px] gap-3">
+                                        <div key={`fill-debtor-${i}`} className="flex items-center justify-between h-[48px] xl:h-[60px] gap-3">
                                             <div className="flex flex-col gap-1.5 flex-1">
                                                 <SkeletonBlock className="h-4 w-3/4" />
                                                 <SkeletonBlock className="h-3 w-1/2" />
@@ -496,7 +496,7 @@ export function AdminDashboardPage() {
                         >
                             {isKpisLoading
                                 ? Array.from({ length: LIST_ITEMS }).map((_, i) => (
-                                    <div key={i} className="flex items-center gap-3 h-[60px]">
+                                    <div key={i} className="flex items-center gap-3 h-[48px] xl:h-[60px]">
                                         <SkeletonBlock className="w-10 h-10 rounded-md shrink-0" />
                                         <div className="flex-1 flex flex-col gap-1.5">
                                             <SkeletonBlock className="h-4 w-3/4" />
@@ -506,7 +506,7 @@ export function AdminDashboardPage() {
                                 ))
                                 : <>
                                     {criticalStock.map((product) => (
-                                        <div key={product.id} className="flex items-center gap-3 group p-2 -mx-2 h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
+                                        <div key={product.id} className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
                                             <div className="w-10 h-10 rounded-md bg-zinc-100 border border-zinc-200 overflow-hidden shrink-0 group-hover:border-[#EFBC4E] transition-colors flex items-center justify-center">
                                                 <Package className="w-5 h-5 text-zinc-400" />
                                             </div>
@@ -523,7 +523,7 @@ export function AdminDashboardPage() {
                                         </div>
                                     ))}
                                     {Array.from({ length: LIST_ITEMS - criticalStock.length }).map((_, i) => (
-                                        <div key={`fill-stock-${i}`} className="flex items-center gap-3 h-[60px]">
+                                        <div key={`fill-stock-${i}`} className="flex items-center gap-3 h-[48px] xl:h-[60px]">
                                             <SkeletonBlock className="w-10 h-10 rounded-md shrink-0" />
                                             <div className="flex-1 flex flex-col gap-1.5">
                                                 <SkeletonBlock className="h-4 w-3/4" />
@@ -550,7 +550,7 @@ export function AdminDashboardPage() {
                         >
                             {isPaymentsLoading
                                 ? Array.from({ length: LIST_ITEMS }).map((_, i) => (
-                                    <div key={i} className="flex items-center justify-between h-[60px] gap-3">
+                                    <div key={i} className="flex items-center justify-between h-[48px] xl:h-[60px] gap-3">
                                         <div className="flex flex-col gap-1.5 flex-1">
                                             <SkeletonBlock className="h-4 w-3/4" />
                                             <SkeletonBlock className="h-3 w-1/2" />
@@ -560,7 +560,7 @@ export function AdminDashboardPage() {
                                 ))
                                 : <>
                                     {recentPayments.map((payment) => (
-                                        <div key={payment.id} className="flex items-center justify-between group p-2 -mx-2 h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
+                                        <div key={payment.id} className="flex items-center justify-between group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-zinc-900 truncate max-w-[140px] group-hover:text-[#2DBDD0] transition-colors" title={payment.clientName}>
                                                     {payment.clientName}
@@ -600,7 +600,7 @@ export function AdminDashboardPage() {
                                         </div>
                                     ))}
                                     {Array.from({ length: LIST_ITEMS - recentPayments.length }).map((_, i) => (
-                                        <div key={`fill-mov-${i}`} className="flex items-center justify-between h-[60px] gap-3">
+                                        <div key={`fill-mov-${i}`} className="flex items-center justify-between h-[48px] xl:h-[60px] gap-3">
                                             <div className="flex flex-col gap-1.5 flex-1">
                                                 <SkeletonBlock className="h-4 w-3/4" />
                                                 <SkeletonBlock className="h-3 w-1/2" />

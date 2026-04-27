@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { PaymentReportModal } from '../components/PaymentReportModal';
 import { formatPrice } from '@/lib/formatters';
 import apiClient from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -21,11 +21,11 @@ import {
     Clock,
     XCircle
 } from 'lucide-react';
-
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 export function CurrentAccountPage() {
     const { clientId } = useParams();
+    const navigate = useNavigate();
     const { user } = useAuthStore();
     const [clientName, setClientName] = useState<string>('');
     
@@ -148,8 +148,8 @@ export function CurrentAccountPage() {
     };
 
     return (
-        <div className="h-full w-full overflow-y-auto bg-zinc-50/50 p-4 md:p-6 lg:p-8 animate-in fade-in duration-500">
-            <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 pb-20">
+        <div className="h-full w-full overflow-y-auto bg-zinc-50/50 p-6 animate-in fade-in duration-500">
+            <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 pb-10">
 
                 {/* Hero Card Mejorada con borde dinámico */}
                 <Card className={`shadow-md overflow-hidden rounded-3xl border border-zinc-200 border-l-[8px] ${cardBorderColor}`}>
@@ -178,18 +178,21 @@ export function CurrentAccountPage() {
                                         <h4 className="text-sm font-bold text-zinc-900">¿Realizaste un pago?</h4>
                                         <p className="text-xs text-zinc-500 leading-tight">Infórmalo ahora para agilizar el despacho de tus pedidos.</p>
                                     </div>
-                                    <PaymentReportModal />
+                                    <Button
+                                        onClick={() => navigate('/portal/pagos')}
+                                        className="w-full rounded-xl bg-zinc-900 border-zinc-900 text-white hover:bg-zinc-800 h-10 font-bold transition-all shadow-md shadow-zinc-200"
+                                    >
+                                        Informar Pago Ahora
+                                    </Button>
                                 </div>
                             )}
                         </div>
                     </div>
                 </Card>
 
-                {/* Tabla de Movimientos en formato SaaS */}
-                <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both">
-                    <h2 className="text-xl font-bold tracking-tight text-zinc-900 px-1">
-                        Historial de Operaciones
-                    </h2>
+                {/* Tabla de Movimientos */}
+                <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both">
+                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Movimientos</p>
 
                     <Card className="border-zinc-200 shadow-sm rounded-2xl overflow-hidden bg-white">
                         <div className="overflow-x-auto">

@@ -36,24 +36,27 @@ export function TreasuryPage() {
 
     const loadPayments = async () => {
         setIsLoading(true);
+        const backendOrigin = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '');
         try {
             const res = await apiClient.get('/payments');
-            // Normalize backend field names to frontend expectations:
-            // backend: reference → transactionId, paymentDate → date, amount → approvedAmount (for non-PENDING)
             const normalized = res.data.map((p: any) => {
-                // Map backend status to our frontend expectations
                 let currentStatus = p.status ?? p.state ?? 'PENDING';
                 if (currentStatus === 'PENDING_REVIEW') currentStatus = 'PENDING';
+
+                const rawReceiptUrl = p.receipt_file_url ?? p.receiptUrl ?? p.receipt ?? p.receipt_url ?? p.receiptFile ?? null;
+                const receiptUrl = rawReceiptUrl
+                    ? (rawReceiptUrl.startsWith('http') ? rawReceiptUrl : `${backendOrigin}${rawReceiptUrl}`)
+                    : null;
 
                 return {
                     ...p,
                     status: currentStatus,
-                    transactionId: p.operation_reference ?? p.operationNumber ?? p.reference ?? p.transactionId ?? p.id ?? 'S/N',
+                    transactionId: p.reference ?? p.operation_reference ?? p.operationNumber ?? p.transactionId ?? p.id ?? 'S/N',
                     date: p.payment_date ?? p.paymentDate ?? p.date ?? p.createdAt ?? new Date().toISOString(),
                     amount: p.amount_reported ?? p.amount ?? 0,
                     approvedAmount: p.approvedAmount ?? (currentStatus === 'APPROVED' ? (p.amount_reported ?? p.amount) : undefined),
-                    method: p.payment_method ?? p.method ?? 'Transferencia',
-                    receiptUrl: p.receipt_file_url ?? p.receiptUrl ?? p.receipt,
+                    method: p.payment_method ?? p.method ?? 'TRANSFER',
+                    receiptUrl,
                     observation: p.observation ?? p.notes ?? undefined,
                 };
             });

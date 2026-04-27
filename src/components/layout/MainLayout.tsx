@@ -15,7 +15,7 @@ export default function MainLayout({ children, headerProps, hideHeader = false }
     const location = useLocation();
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-zinc-100/60 p-4 gap-4">
+        <div className="flex h-screen w-full overflow-hidden bg-zinc-100/60 p-2 gap-2 lg:p-3 lg:gap-3 xl:p-4 xl:gap-4">
             {/* Sidebar - injected here */}
             <Sidebar />
 

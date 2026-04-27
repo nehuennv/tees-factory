@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Receipt, Building2, User, Hash, Calendar, CheckCircle2, XCircle } from 'lucide-react'
+import { Receipt, Building2, User, Hash, Calendar, CheckCircle2, XCircle, ExternalLink } from 'lucide-react'
 
 interface ReceiptViewerModalProps {
     payment: any | null;
@@ -236,13 +236,45 @@ export function ReceiptViewerModal({ payment, isOpen, onClose, onApprove, onReje
                     {/* RIGHT COL: Receipt Viewer (Clear mode) */}
                     <div className="bg-zinc-50/50 flex flex-col items-center justify-center p-8 relative overflow-y-auto">
                         {payment.receiptUrl && !imageError ? (
-                            <div className="w-full h-full relative flex items-center justify-center rounded-xl bg-white shadow-sm border border-zinc-200/80 p-2">
-                                <img
-                                    src={payment.receiptUrl}
-                                    alt={`Comprobante ${payment.transactionId}`}
-                                    onError={() => setImageError(true)}
-                                    className="max-w-full max-h-full object-contain rounded-lg"
-                                />
+                            (() => {
+                                const isPdf = payment.receiptUrl.toLowerCase().includes('.pdf');
+                                return (
+                                    <div className="w-full h-full relative flex items-center justify-center rounded-xl bg-white shadow-sm border border-zinc-200/80 p-2">
+                                        {isPdf ? (
+                                            <iframe
+                                                src={payment.receiptUrl}
+                                                title={`Comprobante ${payment.transactionId}`}
+                                                className="w-full h-full rounded-lg"
+                                            />
+                                        ) : (
+                                            <img
+                                                src={payment.receiptUrl}
+                                                alt={`Comprobante ${payment.transactionId}`}
+                                                onError={() => setImageError(true)}
+                                                className="max-w-full max-h-full object-contain rounded-lg"
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })()
+                        ) : payment.receiptUrl && imageError ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4">
+                                <div className="w-14 h-14 bg-zinc-100 rounded-full flex items-center justify-center">
+                                    <Receipt className="w-7 h-7 text-zinc-400" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-sm font-semibold text-zinc-700">No se pudo previsualizar</p>
+                                    <p className="text-xs text-zinc-500 mt-1">El archivo existe pero no puede mostrarse aquí.</p>
+                                </div>
+                                <a
+                                    href={payment.receiptUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white text-sm font-semibold rounded-lg hover:bg-zinc-800 transition-colors"
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Abrir comprobante
+                                </a>
                             </div>
                         ) : (
                             <div className="w-full h-full flex items-center justify-center p-4">
@@ -254,11 +286,23 @@ export function ReceiptViewerModal({ payment, isOpen, onClose, onApprove, onReje
                             </div>
                         )}
 
-                        <div className="absolute top-4 left-4 py-1.5 px-3 bg-white shadow-sm rounded-lg border border-zinc-200/80">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-                                <Receipt className="w-3.5 h-3.5" />
-                                Archivo Adjunto
-                            </span>
+                        <div className="absolute top-4 left-4 flex items-center gap-2">
+                            <div className="py-1.5 px-3 bg-white shadow-sm rounded-lg border border-zinc-200/80">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                                    <Receipt className="w-3.5 h-3.5" />
+                                    Archivo Adjunto
+                                </span>
+                            </div>
+                            {payment.receiptUrl && !imageError && (
+                                <a
+                                    href={payment.receiptUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="py-1.5 px-3 bg-white shadow-sm rounded-lg border border-zinc-200/80 text-[10px] font-bold text-zinc-500 uppercase tracking-widest hover:text-zinc-900 hover:border-zinc-300 transition-colors"
+                                >
+                                    Abrir ↗
+                                </a>
+                            )}
                         </div>
                     </div>
 

@@ -9,6 +9,7 @@ import logoUrl from '@/assets/logo/LogoTeesFactorynegro.png';
 import { useAuthStore } from '@/store/authStore';
 import type { Role } from '@/store/authStore';
 import { Modal } from '@/components/shared/Modal';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
@@ -104,21 +105,22 @@ export default function Sidebar() {
 
     return (
         <>
+            <TooltipProvider delayDuration={300} disableHoverableContent>
             <aside
                 style={{ width: collapsed ? 72 : 240, transition: `width ${DUR}ms ${EASE}` }}
-                className="h-full bg-white border border-zinc-200/60 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col py-5 flex-shrink-0 z-20 overflow-hidden"
+                className="h-full bg-white border border-zinc-200/60 rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col py-3 xl:py-5 flex-shrink-0 z-20 overflow-hidden"
             >
 
                 {/* ── Header ──────────────────────────────────────── */}
                 <div
-                    className="mx-2 flex items-center rounded-xl mb-5"
-                    style={{ ...rowPadding, paddingTop: 8, paddingBottom: 8 }}
+                    className="mx-2 flex items-center rounded-xl mb-3 xl:mb-5"
+                    style={{ paddingLeft: collapsed ? 0 : 10, paddingRight: collapsed ? 0 : 10, justifyContent: collapsed ? 'center' : 'flex-start', paddingTop: 8, paddingBottom: 8, transition: paddingTransition() }}
                 >
                     <div className="w-[34px] h-[34px] bg-[#181516] rounded-[10px] flex items-center justify-center flex-shrink-0 p-[7px]">
                         <img src={logoUrl} alt="Tees Factory" className="w-full h-full object-contain" />
                     </div>
                     <span
-                        className="text-[13.5px] font-bold text-zinc-900 leading-none"
+                        className="text-[11px] xl:text-[13.5px] font-bold text-zinc-900 leading-none"
                         style={textFade(130)}
                     >
                         Tees Factory
@@ -126,7 +128,7 @@ export default function Sidebar() {
                 </div>
 
                 {/* ── Divider ─────────────────────────────────────── */}
-                <div className="mx-3 mb-3 h-px bg-zinc-100" />
+                <div className="mx-3 mb-2 xl:mb-3 h-px bg-zinc-100" />
 
                 {/* ── Nav ─────────────────────────────────────────── */}
                 <nav className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
@@ -153,66 +155,91 @@ export default function Sidebar() {
                 </nav>
 
                 {/* ── Divider ─────────────────────────────────────── */}
-                <div className="mx-3 mt-3 mb-3 h-px bg-zinc-100" />
+                <div className="mx-3 mt-2 mb-2 xl:mt-3 xl:mb-3 h-px bg-zinc-100" />
 
                 {/* ── Bottom ──────────────────────────────────────── */}
                 <div className="flex flex-col gap-0.5">
 
                     {/* User */}
-                    <div
-                        className="mx-2 flex items-center rounded-xl cursor-pointer hover:bg-zinc-50 transition-colors duration-150"
-                        style={{ ...rowPadding, paddingTop: 8, paddingBottom: 8 }}
-                    >
-                        <div className="relative flex-shrink-0">
-                            <img
-                                src={`https://ui-avatars.com/api/?name=${username}&background=f4f4f5&color=18181b&bold=true`}
-                                alt="Perfil"
-                                className="w-[34px] h-[34px] rounded-full object-cover border border-zinc-200 flex-shrink-0"
-                            />
-                            <span className="absolute bottom-0 right-0 w-[9px] h-[9px] rounded-full bg-emerald-400 border-2 border-white" />
-                        </div>
-                        <div style={textFade(140)} className="min-w-0">
-                            <p className="text-[12px] font-semibold text-zinc-800 truncate leading-snug">{username}</p>
-                            <p className="text-[10.5px] text-zinc-400 truncate leading-snug">{roleLabel}</p>
-                        </div>
-                    </div>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div
+                                className="mx-2 flex items-center rounded-xl cursor-pointer hover:bg-zinc-50 transition-colors duration-150"
+                                style={{ paddingLeft: collapsed ? 0 : 10, paddingRight: collapsed ? 0 : 10, justifyContent: collapsed ? 'center' : 'flex-start', paddingTop: 8, paddingBottom: 8, transition: paddingTransition() }}
+                            >
+                                <div className="relative flex-shrink-0">
+                                    <img
+                                        src={`https://ui-avatars.com/api/?name=${username}&background=f4f4f5&color=18181b&bold=true`}
+                                        alt="Perfil"
+                                        className="w-[34px] h-[34px] rounded-full object-cover border border-zinc-200 flex-shrink-0"
+                                    />
+                                    <span className="absolute bottom-0 right-0 w-[9px] h-[9px] rounded-full bg-emerald-400 border-2 border-white" />
+                                </div>
+                                <div style={textFade(140)} className="min-w-0">
+                                    <p className="text-[11px] xl:text-[12px] font-semibold text-zinc-800 truncate leading-snug">{username}</p>
+                                    <p className="text-[10px] xl:text-[10.5px] text-zinc-400 truncate leading-snug">{roleLabel}</p>
+                                </div>
+                            </div>
+                        </TooltipTrigger>
+                        {collapsed && (
+                            <TooltipContent side="right" sideOffset={8}>
+                                <p className="font-semibold">{username}</p>
+                                <p className="text-zinc-400 text-[11px]">{roleLabel}</p>
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
 
                     {/* Logout */}
-                    <button
-                        onClick={() => setIsLogoutModalOpen(true)}
-                        className="mx-2 flex items-center rounded-xl text-zinc-500 hover:text-red-500 hover:bg-red-50/70 transition-colors duration-150 outline-none"
-                        style={{ ...rowPadding, paddingTop: 9, paddingBottom: 9 }}
-                        aria-label="Cerrar Sesión"
-                    >
-                        <LogOut size={17} className="flex-shrink-0" strokeWidth={1.8} />
-                        <span className="text-[12.5px] font-medium" style={textFade()}>
-                            Cerrar Sesión
-                        </span>
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={() => setIsLogoutModalOpen(true)}
+                                className="mx-2 flex items-center rounded-xl text-zinc-500 hover:text-red-500 hover:bg-red-50/70 transition-colors duration-150 outline-none"
+                                style={{ paddingLeft: collapsed ? 0 : 10, paddingRight: collapsed ? 0 : 10, justifyContent: collapsed ? 'center' : 'flex-start', paddingTop: 9, paddingBottom: 9, transition: paddingTransition() }}
+                                aria-label="Cerrar Sesión"
+                            >
+                                <LogOut size={17} className="flex-shrink-0" strokeWidth={1.8} />
+                                <span className="text-[11px] xl:text-[12.5px] font-medium" style={textFade()}>
+                                    Cerrar Sesión
+                                </span>
+                            </button>
+                        </TooltipTrigger>
+                        {collapsed && (
+                            <TooltipContent side="right" sideOffset={8}>Cerrar Sesión</TooltipContent>
+                        )}
+                    </Tooltip>
 
                     {/* Toggle */}
-                    <button
-                        onClick={() => setCollapsed((c) => !c)}
-                        className="mx-2 flex items-center rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 transition-colors duration-150 outline-none"
-                        style={{ ...rowPadding, paddingTop: 9, paddingBottom: 9 }}
-                        aria-label={collapsed ? 'Expandir sidebar' : 'Contraer sidebar'}
-                    >
-                        <ChevronRight
-                            size={15}
-                            strokeWidth={2.5}
-                            className="flex-shrink-0"
-                            style={{
-                                transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
-                                transition: `transform ${DUR}ms ${EASE}`,
-                            }}
-                        />
-                        <span className="text-[12.5px] font-medium" style={textFade()}>
-                            Contraer
-                        </span>
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={() => setCollapsed((c) => !c)}
+                                className="mx-2 flex items-center rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 transition-colors duration-150 outline-none"
+                                style={{ paddingLeft: collapsed ? 0 : 10, paddingRight: collapsed ? 0 : 10, justifyContent: collapsed ? 'center' : 'flex-start', paddingTop: 9, paddingBottom: 9, transition: paddingTransition() }}
+                                aria-label={collapsed ? 'Expandir sidebar' : 'Contraer sidebar'}
+                            >
+                                <ChevronRight
+                                    size={15}
+                                    strokeWidth={2.5}
+                                    className="flex-shrink-0"
+                                    style={{
+                                        transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+                                        transition: `transform ${DUR}ms ${EASE}`,
+                                    }}
+                                />
+                                <span className="text-[11px] xl:text-[12.5px] font-medium" style={textFade()}>
+                                    Contraer
+                                </span>
+                            </button>
+                        </TooltipTrigger>
+                        {collapsed && (
+                            <TooltipContent side="right" sideOffset={8}>Expandir</TooltipContent>
+                        )}
+                    </Tooltip>
 
                 </div>
             </aside>
+            </TooltipProvider>
 
             <Modal
                 isOpen={isLogoutModalOpen}
@@ -244,55 +271,52 @@ function NavItem({ to, icon: Icon, label, aliases, collapsed }: NavItemProps) {
         location.pathname === to ||
         (aliases?.some((a) => location.pathname.startsWith(a)) ?? false);
 
-    return (
-        <div className="relative group/nav mx-2">
-            <NavLink
-                to={to}
-                aria-label={label}
-                style={{
-                    paddingLeft:  collapsed ? 19 : 10,
-                    paddingRight: collapsed ? 19 : 10,
-                    paddingTop: 9,
-                    paddingBottom: 9,
-                    transition: paddingTransition(),
-                }}
-                className={cn(
-                    'flex items-center w-full rounded-xl outline-none select-none',
-                    isActive
-                        ? 'bg-zinc-900 text-white'
-                        : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/80'
-                )}
-            >
-                <Icon
-                    size={18}
-                    strokeWidth={isActive ? 2.2 : 1.8}
-                    className="flex-shrink-0"
-                />
-                <span
-                    className="text-[13px] font-medium leading-none overflow-hidden whitespace-nowrap"
-                    style={{
-                        maxWidth:   collapsed ? 0 : 170,
-                        opacity:    collapsed ? 0 : 1,
-                        marginLeft: collapsed ? 0 : 10,
-                        transition: fadeTransition(),
-                    }}
-                >
-                    {label}
-                </span>
-            </NavLink>
-
-            {/* Tooltip — solo en colapsado */}
-            {collapsed && (
-                <div className={cn(
-                    'absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50',
-                    'px-3 py-1.5 bg-zinc-900 text-white text-[11.5px] font-medium rounded-lg shadow-lg whitespace-nowrap',
-                    'pointer-events-none opacity-0 -translate-x-1',
-                    'transition-[opacity,transform] duration-150 ease-out',
-                    'group-hover/nav:opacity-100 group-hover/nav:translate-x-0',
-                )}>
-                    {label}
-                </div>
+    const link = (
+        <NavLink
+            to={to}
+            aria-label={label}
+            style={{
+                paddingLeft:  collapsed ? 0 : 10,
+                paddingRight: collapsed ? 0 : 10,
+                paddingTop: 7,
+                paddingBottom: 7,
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                transition: paddingTransition(),
+            }}
+            className={cn(
+                'flex items-center w-full rounded-xl outline-none select-none',
+                isActive
+                    ? 'bg-zinc-900 text-white'
+                    : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/80'
             )}
-        </div>
+        >
+            <Icon
+                size={18}
+                strokeWidth={isActive ? 2.2 : 1.8}
+                className="flex-shrink-0"
+            />
+            <span
+                className="text-[11.5px] xl:text-[13px] font-medium leading-none overflow-hidden whitespace-nowrap"
+                style={{
+                    maxWidth:   collapsed ? 0 : 170,
+                    opacity:    collapsed ? 0 : 1,
+                    marginLeft: collapsed ? 0 : 10,
+                    transition: fadeTransition(),
+                }}
+            >
+                {label}
+            </span>
+        </NavLink>
+    );
+
+    if (!collapsed) return <div className="mx-2">{link}</div>;
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <div className="mx-2">{link}</div>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>{label}</TooltipContent>
+        </Tooltip>
     );
 }

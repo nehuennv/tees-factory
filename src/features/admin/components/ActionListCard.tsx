@@ -24,7 +24,7 @@ export function ActionListCard({
     return (
         <Card className="flex-1 flex flex-col overflow-hidden bg-white border border-zinc-200 shadow-sm rounded-xl hover:shadow-md transition-shadow duration-300">
             {/* HEADER: Con un fondo muy sutil para separarlo del contenido */}
-            <CardHeader className="border-b border-zinc-100 bg-zinc-50/50 py-3.5 px-5">
+            <CardHeader className="border-b border-zinc-100 bg-zinc-50/50 py-2 px-4 xl:py-3.5 xl:px-5">
                 <CardTitle className="text-sm font-bold text-zinc-900 tracking-tight">
                     {title}
                 </CardTitle>
@@ -32,7 +32,7 @@ export function ActionListCard({
 
             {/* CONTENIDO: Estructura compacta que se ajusta a los items */}
             <CardContent className="p-0 relative overflow-hidden bg-white min-h-0">
-                <div className="flex flex-col w-full px-5 pt-4 pb-0 z-0 space-y-3">
+                <div className="flex flex-col w-full px-3 pt-2 pb-0 z-0 space-y-1.5 xl:px-5 xl:pt-4 xl:space-y-3">
                     {/* Items Reales */}
                     {children}
 
@@ -52,7 +52,7 @@ export function ActionListCard({
                 <Button
                     variant="ghost"
                     onClick={() => navigate(actionRoute)}
-                    className="w-full h-12 rounded-none rounded-b-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors flex items-center justify-center gap-2"
+                    className="w-full h-9 xl:h-12 rounded-none rounded-b-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors flex items-center justify-center gap-2"
                 >
                     {actionText}
                     <ArrowRight className="w-3.5 h-3.5 opacity-70" />

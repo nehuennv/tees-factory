@@ -20,7 +20,7 @@ export function PaymentReportPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     // Form states
-    const [method, setMethod] = useState('Transferencia');
+    const [method, setMethod] = useState('TRANSFER');
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState('');
     const [operationNumber, setOperationNumber] = useState('');
@@ -28,7 +28,7 @@ export function PaymentReportPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const resetForm = () => {
-        setMethod('Transferencia');
+        setMethod('TRANSFER');
         setAmount('');
         setDate('');
         setOperationNumber('');
@@ -36,10 +36,23 @@ export function PaymentReportPage() {
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+    const MAX_SIZE_MB = 10;
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
+        const selected = e.target.files?.[0];
+        if (!selected) return;
+        if (!ALLOWED_TYPES.includes(selected.type)) {
+            toast.error('Solo se permiten archivos JPG, PNG o PDF.');
+            e.target.value = '';
+            return;
         }
+        if (selected.size > MAX_SIZE_MB * 1024 * 1024) {
+            toast.error(`El archivo no puede superar los ${MAX_SIZE_MB} MB.`);
+            e.target.value = '';
+            return;
+        }
+        setFile(selected);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -57,8 +70,8 @@ export function PaymentReportPage() {
             toast.error('El número de operación es obligatorio.');
             return;
         }
-        if (!operationNumber.trim()) {
-            toast.error('El número de operación es obligatorio.');
+        if (!file) {
+            toast.error('El comprobante de pago es obligatorio.');
             return;
         }
 
@@ -66,37 +79,21 @@ export function PaymentReportPage() {
 
         try {
             const formData = new FormData();
-            
-            // Enviamos múltiples versiones de las llaves para satisfacer cualquier validación (DTO o multer)
-            formData.append('monto', amount);
+
             formData.append('amount', amount);
-            formData.append('amount_reported', amount);
-
-            formData.append('metodo_pago', method);
             formData.append('method', method);
-            formData.append('payment_method', method);
-
-            formData.append('fecha', date);
-            formData.append('date', date);
-            formData.append('payment_date', date);
-
-            formData.append('referencia', operationNumber);
-            formData.append('operationNumber', operationNumber);
-            formData.append('operation_reference', operationNumber);
+            formData.append('reference', operationNumber);
 
             if (user?.reference_id) {
                 formData.append('client_id', user.reference_id);
-                formData.append('clientId', user.reference_id);
             }
 
             if (file) {
                 formData.append('receipt', file);
-                formData.append('file', file);
             }
 
-            await apiClient.post('/payments', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            // No manual Content-Type — axios sets multipart/form-data with the correct boundary automatically
+            await apiClient.post('/payments', formData);
 
             toast.success('Pago reportado con éxito. El tesorero lo validará pronto.');
             resetForm();
@@ -109,15 +106,8 @@ export function PaymentReportPage() {
     };
 
     return (
-        <div className="h-full w-full overflow-y-auto bg-zinc-50/50 p-4 md:p-6 lg:p-8 animate-in fade-in duration-500">
-            <div className="w-full max-w-2xl mx-auto flex flex-col gap-8 pb-20">
-
-                <div className="flex flex-col gap-1 px-1 text-center md:text-left">
-                    <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Validar Transferencia</h2>
-                    <p className="text-sm text-zinc-500">
-                        Informa tus pagos mediante este formulario seguro. Nuestro equipo lo verificará en minutos para habilitar el despacho de tus pedidos.
-                    </p>
-                </div>
+        <div className="h-full w-full overflow-y-auto bg-zinc-50/50 p-6 animate-in fade-in duration-500">
+            <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 pb-10">
 
                 <div className="flex flex-col md:flex-row gap-6 items-start">
                     {/* Left Column: Bank Details */}
@@ -150,8 +140,8 @@ export function PaymentReportPage() {
                                             <SelectValue placeholder="Seleccionar método" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Transferencia">Transferencia Bancaria</SelectItem>
-                                            <SelectItem value="Deposito">Depósito por Cajero</SelectItem>
+                                            <SelectItem value="TRANSFER">Transferencia Bancaria</SelectItem>
+                                            <SelectItem value="CASH">Depósito por Cajero</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -214,7 +204,7 @@ export function PaymentReportPage() {
                                 {/* Comprobante */}
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
-                                        Adjuntar Comprobante <span className="text-zinc-300 font-normal lowercase">(opcional)</span>
+                                        Adjuntar Comprobante <span className="text-red-500">*</span>
                                     </label>
 
                                     <input

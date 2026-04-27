@@ -44,11 +44,15 @@ const COLUMNS: ColumnDef[] = [
 const BoardColumn = memo(function BoardColumn({
     column,
     orders,
-    onOrderClick
+    onOrderClick,
+    seenIds,
+    isFirstVisit,
 }: {
     column: ColumnDef;
     orders: any[];
-    onOrderClick: (o: any) => void
+    onOrderClick: (o: any) => void;
+    seenIds: Set<string>;
+    isFirstVisit: boolean;
 }) {
     const { setNodeRef } = useDroppable({ id: column.id });
     const { over } = useDndContext();
@@ -78,7 +82,12 @@ const BoardColumn = memo(function BoardColumn({
                 <div className="flex flex-col gap-3 min-h-full pb-2">
                     <SortableContext id={column.id} items={itemIds} strategy={verticalListSortingStrategy}>
                         {orders.map((order) => (
-                            <OrderCard key={order.id} order={order} onClick={onOrderClick} />
+                            <OrderCard
+                                key={order.id}
+                                order={order}
+                                onClick={onOrderClick}
+                                isNew={!isFirstVisit && !seenIds.has(order.id)}
+                            />
                         ))}
                     </SortableContext>
                 </div>
@@ -92,6 +101,13 @@ export function OrdersBoardPage() {
         PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: []
     });
 
+    const SEEN_KEY = 'admin_seen_order_ids';
+    const [isFirstVisit] = useState(() => !localStorage.getItem(SEEN_KEY));
+    const [seenIds, setSeenIds] = useState<Set<string>>(() => {
+        const stored = localStorage.getItem(SEEN_KEY);
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    });
+
     const [isLoading, setIsLoading] = useState(true);
     const [activeOrder, setActiveOrder] = useState<any | null>(null);
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
@@ -103,6 +119,27 @@ export function OrdersBoardPage() {
     const amountPopoverRef = useRef<HTMLDivElement>(null);
     const amountBtnRef = useRef<HTMLButtonElement>(null);
     const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0 });
+
+    // Primera visita: guardar todos los IDs actuales para que no aparezcan como "nuevos"
+    useEffect(() => {
+        if (!isFirstVisit) return;
+        const allIds = Object.values(columns).flat().map((o: any) => o.id);
+        if (allIds.length === 0) return;
+        const newSet = new Set(allIds);
+        setSeenIds(newSet);
+        localStorage.setItem(SEEN_KEY, JSON.stringify([...newSet]));
+    }, [columns, isFirstVisit]);
+
+    // Al salir: marcar todos los pedidos cargados como vistos
+    useEffect(() => {
+        return () => {
+            const allIds = Object.values(columns).flat().map((o: any) => o.id);
+            const stored = localStorage.getItem(SEEN_KEY);
+            const existing: Set<string> = stored ? new Set(JSON.parse(stored)) : new Set();
+            allIds.forEach((id: string) => existing.add(id));
+            localStorage.setItem(SEEN_KEY, JSON.stringify([...existing]));
+        };
+    }, [columns]);
 
     useEffect(() => {
         setIsLoading(true);
@@ -330,7 +367,17 @@ export function OrdersBoardPage() {
                                 <BoardColumn
                                     column={col}
                                     orders={filteredColumns[col.id]}
-                                    onOrderClick={(order) => setSelectedOrder(order)}
+                                    seenIds={seenIds}
+                                    isFirstVisit={isFirstVisit}
+                                    onOrderClick={(order) => {
+                                        setSelectedOrder(order);
+                                        setSeenIds(prev => {
+                                            const next = new Set(prev);
+                                            next.add(order.id);
+                                            localStorage.setItem(SEEN_KEY, JSON.stringify([...next]));
+                                            return next;
+                                        });
+                                    }}
                                 />
                             </div>
                         ))}

@@ -329,33 +329,76 @@ export function ProductDetailPage() {
                 {/* Esta tarjeta ocupa el 100% del alto disponible */}
                 <div className="flex flex-col bg-white rounded-3xl border border-zinc-200/60 shadow-sm h-full overflow-hidden relative">
 
-                    {/* Header & Quality Selector (shrink-0 para que no se achique) */}
-                    <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-zinc-100 bg-white">
-                        <div className="flex flex-col">
-                            <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest">
-                                Matriz de Pedido
-                            </h3>
-                            <p className="text-xs text-zinc-500 mt-1">
-                                Selecciona la calidad y completa las cantidades.
-                            </p>
+                    {/* Header & Quality Selector */}
+                    <div className="shrink-0 p-5 border-b border-zinc-100 bg-white space-y-4">
+                        {/* Top row: title + quality selector */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h3 className="text-sm font-black text-zinc-900 uppercase tracking-widest">
+                                    Matriz de Pedido
+                                </h3>
+                                <p className="text-xs text-zinc-400 mt-0.5">
+                                    Elegí la calidad y completá las cantidades por talle.
+                                </p>
+                            </div>
+
+                            {/* Quality selector: CALIDAD: [1] [2] [3] */}
+                            {product.qualities?.length > 1 && (
+                                <div className="flex items-center gap-2.5">
+                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em]">
+                                        Calidad
+                                    </span>
+                                    <div className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl border border-zinc-200/70">
+                                        {product.qualities.map((quality: any, idx: number) => {
+                                            const isActive = idx === selectedQualityIdx;
+                                            return (
+                                                <button
+                                                    key={quality.qualityName || idx}
+                                                    onClick={() => setSelectedQualityIdx(idx)}
+                                                    title={quality.qualityName}
+                                                    className={`w-9 h-9 rounded-lg text-sm font-black transition-all duration-200 ${isActive
+                                                        ? 'bg-zinc-900 text-white shadow-sm scale-105'
+                                                        : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200'
+                                                    }`}
+                                                >
+                                                    {idx + 1}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="flex flex-wrap items-center p-1 bg-zinc-100/80 rounded-xl w-fit border border-zinc-200/50">
-                            {product.qualities?.map((quality: any, idx: number) => {
-                                const isActive = idx === selectedQualityIdx;
-                                return (
-                                    <button
-                                        key={quality.qualityName || idx}
-                                        onClick={() => setSelectedQualityIdx(idx)}
-                                        className={`px-4 lg:px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${isActive
-                                            ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/60'
-                                            : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50 border border-transparent'
-                                            }`}
-                                    >
-                                        {quality.qualityName}
-                                    </button>
-                                );
-                            })}
+                        {/* Active quality info pill */}
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <div className="flex items-center gap-2 bg-zinc-50 border border-zinc-200/80 rounded-xl px-4 py-2">
+                                <span className="w-2 h-2 rounded-full bg-zinc-900 shrink-0" />
+                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                    {product.qualities?.length > 1 ? `Calidad ${selectedQualityIdx + 1}` : 'Calidad'}
+                                </span>
+                                <span className="text-xs font-black text-zinc-900">
+                                    {activeQuality?.qualityName}
+                                </span>
+                                <span className="text-zinc-300">·</span>
+                                <span className="text-xs font-black text-zinc-900">
+                                    {formatPrice(activeQuality?.basePrice)}
+                                    <span className="font-normal text-zinc-400"> / ud.</span>
+                                </span>
+                            </div>
+                            {product.qualities?.length > 1 && (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    {product.qualities.map((q: any, idx: number) => idx !== selectedQualityIdx && (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setSelectedQualityIdx(idx)}
+                                            className="text-[10px] font-semibold text-zinc-400 hover:text-zinc-700 transition-colors px-2 py-1 rounded-lg hover:bg-zinc-100"
+                                        >
+                                            Cal. {idx + 1}: {formatPrice(q.basePrice)}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -363,66 +406,104 @@ export function ProductDetailPage() {
                     <div className="flex-1 overflow-auto">
                         <table className="text-left border-collapse" style={{ width: 'max-content', minWidth: '100%' }}>
                             <thead>
-                                <tr className="border-b border-zinc-100 bg-zinc-50/30 sticky top-0 z-10 backdrop-blur-sm">
-                                    <th className="py-4 px-5 text-xs font-bold text-zinc-400 uppercase tracking-widest" style={{ minWidth: 140 }}>
-                                        Color / Talle
+                                <tr className="border-b-2 border-zinc-100 bg-white sticky top-0 z-10">
+                                    <th className="py-3 px-5 text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em]" style={{ minWidth: 160 }}>
+                                        Color
                                     </th>
                                     {activeSizes.map((size: string) => (
-                                        <th key={size} className="py-4 px-2 text-xs font-bold text-zinc-400 uppercase tracking-widest text-center" style={{ minWidth: 64 }}>
-                                            {size}
+                                        <th key={size} className="py-3 px-2 text-center" style={{ minWidth: 72 }}>
+                                            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-zinc-100 text-xs font-black text-zinc-600 border border-zinc-200/80 uppercase">
+                                                {size}
+                                            </span>
                                         </th>
                                     ))}
-                                    <th className="py-4 px-5 text-xs font-bold text-zinc-400 uppercase tracking-widest text-right" style={{ minWidth: 72 }}>
-                                        Uds.
+                                    <th className="py-3 px-5 text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right" style={{ minWidth: 80 }}>
+                                        Total
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
-                                {activeQuality.colors?.map((color: any) => (
-                                    <tr key={color.colorName} className="hover:bg-zinc-50/50 transition-colors">
-                                        <td className="py-3 px-5">
-                                            <div className="flex items-center gap-2.5">
-                                                <div
-                                                    className="w-3.5 h-3.5 rounded-full border border-zinc-200/80 shadow-inner shrink-0"
-                                                    style={{ backgroundColor: getHexForColor(color.colorName) }}
-                                                />
-                                                <span className="text-sm font-semibold text-zinc-700 whitespace-nowrap">
-                                                    {color.colorName}
-                                                </span>
-                                            </div>
-                                        </td>
-
-                                        {activeSizes.map((size: string) => {
-                                            const sizeData = color.sizes?.find((s: any) => s.size?.toString().trim().toUpperCase() === size);
-                                            const maxStock = sizeData?.availableStock || 0;
-                                            const inputDisabled = maxStock === 0;
-
-                                            return (
-                                                <td key={size} className="py-3 px-2 align-middle text-center">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max={maxStock}
-                                                        disabled={inputDisabled}
-                                                        title={inputDisabled ? "Sin stock" : `Máx: ${maxStock}`}
-                                                        value={getQuantity(color.colorName, size)}
-                                                        onChange={(e) => handleQuantityChange(color.colorName, size, e.target.value)}
-                                                        placeholder={inputDisabled ? "–" : "0"}
-                                                        className={`w-12 h-10 text-center bg-zinc-50 border border-transparent
-                                                            ${inputDisabled ? 'opacity-40 cursor-not-allowed text-zinc-400 bg-zinc-100' : 'hover:bg-zinc-100 focus:bg-white focus:border-zinc-300 text-zinc-900'}
-                                                            rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all outline-none mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-zinc-300 placeholder:font-normal`}
+                                {activeQuality.colors?.map((color: any) => {
+                                    const rowTotal = getRowTotal(color.colorName);
+                                    return (
+                                        <tr key={color.colorName} className={`transition-colors ${rowTotal > 0 ? 'bg-zinc-50/80' : 'hover:bg-zinc-50/40'}`}>
+                                            <td className="py-3.5 px-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className="w-5 h-5 rounded-full shrink-0 shadow-sm"
+                                                        style={{
+                                                            backgroundColor: getHexForColor(color.colorName),
+                                                            border: getHexForColor(color.colorName) === '#ffffff' ? '2px solid #d4d4d8' : '1.5px solid rgba(0,0,0,0.08)'
+                                                        }}
                                                     />
-                                                </td>
-                                            );
-                                        })}
+                                                    <span className="text-sm font-bold text-zinc-800 whitespace-nowrap">
+                                                        {color.colorName}
+                                                    </span>
+                                                </div>
+                                            </td>
 
-                                        <td className="py-3 px-5 text-right">
-                                            <span className="text-sm font-bold text-zinc-400 tabular-nums">
-                                                {getRowTotal(color.colorName) || '–'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            {activeSizes.map((size: string) => {
+                                                const sizeData = color.sizes?.find((s: any) => s.size?.toString().trim().toUpperCase() === size);
+                                                const maxStock = sizeData?.availableStock || 0;
+                                                const itemId = `${product.id}-${activeQuality.qualityName}-${color.colorName}-${size}`;
+                                                const inCartQty = cartItemsInStore.find(item => item.id === itemId)?.quantity || 0;
+                                                const effectiveMax = Math.max(0, maxStock - inCartQty);
+                                                const noStock = maxStock === 0;
+                                                const allInCart = effectiveMax === 0 && inCartQty > 0;
+                                                const inputDisabled = noStock || allInCart;
+                                                const currentQty = Number(getQuantity(color.colorName, size)) || 0;
+                                                const isHighlighted = currentQty > 0;
+
+                                                return (
+                                                    <td key={size} className="py-3.5 px-2 align-middle text-center">
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                max={effectiveMax}
+                                                                disabled={inputDisabled}
+                                                                title={
+                                                                    noStock ? "Sin stock disponible"
+                                                                    : allInCart ? `${inCartQty} en tu bolsa — sin stock adicional`
+                                                                    : `Disponible: ${effectiveMax}${inCartQty > 0 ? ` (${inCartQty} ya en bolsa)` : ''}`
+                                                                }
+                                                                value={getQuantity(color.colorName, size)}
+                                                                onChange={(e) => handleQuantityChange(color.colorName, size, e.target.value)}
+                                                                placeholder={inputDisabled ? "–" : "0"}
+                                                                className={`w-12 h-10 text-center border transition-all outline-none mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                                                                    ${inputDisabled
+                                                                        ? 'opacity-30 cursor-not-allowed text-zinc-400 bg-zinc-100 border-transparent rounded-lg'
+                                                                        : isHighlighted
+                                                                            ? 'bg-zinc-900 text-white border-zinc-900 rounded-lg font-black text-sm shadow-sm'
+                                                                            : 'bg-zinc-50 border-zinc-200/60 hover:border-zinc-300 hover:bg-zinc-100 focus:bg-white focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 rounded-lg text-sm font-bold'
+                                                                    }`}
+                                                            />
+                                                            {allInCart ? (
+                                                                <span className="text-[9px] font-bold text-emerald-500 leading-none">✓ {inCartQty} bolsa</span>
+                                                            ) : inCartQty > 0 && !noStock ? (
+                                                                <span className="text-[9px] font-semibold text-zinc-400 leading-none">{inCartQty}✓ / {effectiveMax} disp.</span>
+                                                            ) : !noStock ? (
+                                                                <span className={`text-[9px] font-semibold tabular-nums leading-none ${effectiveMax <= 5 ? 'text-amber-500' : 'text-zinc-300'}`}>
+                                                                    {effectiveMax <= 5 ? `¡${effectiveMax} disp.!` : `${effectiveMax}`}
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    </td>
+                                                );
+                                            })}
+
+                                            <td className="py-3.5 px-5 text-right">
+                                                {rowTotal > 0 ? (
+                                                    <span className="inline-flex items-center justify-center min-w-[2rem] px-2.5 py-1 rounded-lg bg-zinc-900 text-white text-xs font-black tabular-nums">
+                                                        {rowTotal}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-zinc-200 text-sm font-bold">–</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -472,30 +553,49 @@ export function ProductDetailPage() {
                             </div>
                         </div>
                     ) : (
-                        <div className="shrink-0 border-t border-zinc-200/80 bg-white px-4 lg:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:min-h-[72px]">
+                        <div className={`shrink-0 border-t px-4 lg:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:min-h-[76px] transition-colors duration-300 ${totalUnits > 0 ? 'border-zinc-900/10 bg-zinc-50' : 'border-zinc-100 bg-white'}`}>
                             <div className="flex items-center gap-4 w-full sm:w-auto">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="w-9 h-9 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center shrink-0">
-                                        <TableProperties className="w-4 h-4 text-zinc-600" />
+                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${totalUnits > 0 ? 'bg-zinc-900 border-zinc-900' : 'bg-zinc-100 border-zinc-200'} border`}>
+                                        <TableProperties className={`w-4 h-4 ${totalUnits > 0 ? 'text-white' : 'text-zinc-500'}`} />
                                     </div>
                                     <div className="flex flex-col leading-tight">
-                                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Prendas Totales</span>
-                                        <span className="text-sm font-bold text-zinc-900">{totalUnits} un.</span>
+                                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Prendas</span>
+                                        <span className={`text-lg font-black tabular-nums leading-none ${totalUnits > 0 ? 'text-zinc-900' : 'text-zinc-300'}`}>
+                                            {totalUnits > 0 ? `${totalUnits} un.` : '0 un.'}
+                                        </span>
                                     </div>
                                 </div>
                                 <div className="w-px h-8 bg-zinc-200" />
                                 <div className="flex flex-col leading-tight">
-                                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Subtotal Estimado</span>
-                                    <span className="text-base font-black text-zinc-900 tracking-tight">{formatPrice(totalPrice)}</span>
+                                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Subtotal</span>
+                                    <span className={`text-lg font-black tracking-tight tabular-nums leading-none ${totalUnits > 0 ? 'text-zinc-900' : 'text-zinc-300'}`}>
+                                        {formatPrice(totalPrice)}
+                                    </span>
                                 </div>
+                                {totalUnits > 0 && (
+                                    <>
+                                        <div className="w-px h-8 bg-zinc-200" />
+                                        <div className="flex flex-col leading-tight">
+                                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Precio unit.</span>
+                                            <span className="text-sm font-bold text-zinc-500 tabular-nums leading-none">
+                                                {formatPrice(activeQuality.basePrice)}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                             <Button
                                 onClick={handleAddToCart}
                                 disabled={totalUnits === 0}
-                                className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white rounded-xl px-8 h-11 font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
+                                className={`w-full sm:w-auto rounded-xl px-8 h-12 font-black shadow-sm flex items-center justify-center gap-2 transition-all text-sm ${
+                                    totalUnits > 0
+                                        ? 'bg-zinc-900 hover:bg-zinc-700 text-white scale-[1.02] shadow-md'
+                                        : 'bg-zinc-100 text-zinc-400 cursor-not-allowed opacity-60'
+                                }`}
                             >
                                 <ShoppingBag className="w-4 h-4" />
-                                Añadir al Pedido
+                                {totalUnits > 0 ? `Añadir ${totalUnits} prenda${totalUnits !== 1 ? 's' : ''} al Pedido` : 'Añadir al Pedido'}
                             </Button>
                         </div>
                     )}

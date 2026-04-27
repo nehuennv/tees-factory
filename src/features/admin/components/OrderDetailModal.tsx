@@ -16,9 +16,11 @@ interface OrderDetailModalProps {
     order: any | null;
     isOpen: boolean;
     onClose: () => void;
+    hideClient?: boolean;
+    hidePdf?: boolean;
 }
 
-export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: OrderDetailModalProps) {
+export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideClient = false, hidePdf = false }: OrderDetailModalProps) {
     const [order, setOrder] = useState<any>(initialOrder);
     const [isFetching, setIsFetching] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -98,7 +100,10 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
                             </span>
                         </div>
                         <DialogDescription className="mt-0.5 text-zinc-500">
-                            Cliente: <strong className="text-zinc-900 font-semibold">{order.client?.company_name || order.company_name || order.clientName || order.client_name || order.client?.name || 'Consumidor Final'}</strong> · Fecha: {order.created_at || order.createdAt || order.date ? new Date(order.created_at || order.createdAt || order.date).toLocaleDateString() : '---'}
+                            {!hideClient && (
+                                <>Cliente: <strong className="text-zinc-900 font-semibold">{order.client?.company_name || order.company_name || order.clientName || order.client_name || order.client?.name || 'Consumidor Final'}</strong> · </>
+                            )}
+                            Fecha: {order.created_at || order.createdAt || order.date ? new Date(order.created_at || order.createdAt || order.date).toLocaleDateString() : '---'}
                         </DialogDescription>
                     </div>
                 </DialogHeader>
@@ -160,7 +165,7 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
                     )}
                 </div>
 
-                <div className="shrink-0 mt-6 pt-4 flex flex-col gap-4 border-t border-zinc-200">
+                <div className="shrink-0  pt-4 flex flex-col gap-4 border-t border-zinc-200">
                     {order.observations && (
                         <div className="bg-amber-50/50 border border-amber-100 p-3 rounded-xl">
                             <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest block mb-1">Observaciones</span>
@@ -181,18 +186,20 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose }: Order
                         </div>
                     </div>
 
-                    <Button
-                        onClick={handleDownloadPdf}
-                        disabled={isDownloadingPdf}
-                        variant="outline"
-                        className="w-full rounded-xl border-zinc-200 h-11 font-bold gap-2"
-                    >
-                        {isDownloadingPdf
-                            ? <span className="w-4 h-4 rounded-full border-2 border-zinc-400 border-t-transparent animate-spin" />
-                            : <FileDown className="w-4 h-4" />
-                        }
-                        Descargar Remito PDF
-                    </Button>
+                    {!hidePdf && (
+                        <Button
+                            onClick={handleDownloadPdf}
+                            disabled={isDownloadingPdf}
+                            variant="outline"
+                            className="w-full rounded-xl border-zinc-200 h-11 font-bold gap-2"
+                        >
+                            {isDownloadingPdf
+                                ? <span className="w-4 h-4 rounded-full border-2 border-zinc-400 border-t-transparent animate-spin" />
+                                : <FileDown className="w-4 h-4" />
+                            }
+                            Descargar Remito PDF
+                        </Button>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>

@@ -14,9 +14,10 @@ const STATUS_STYLES: Record<string, { cardBorder: string; handleBg: string; numb
 interface OrderCardProps {
     order: Order;
     onClick: (order: Order) => void;
+    isNew?: boolean;
 }
 
-export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardProps) {
+export const OrderCard = memo(function OrderCard({ order, onClick, isNew }: OrderCardProps) {
     const {
         attributes,
         listeners,
@@ -61,9 +62,20 @@ export const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardPr
                 {...attributes}
                 {...listeners}
             >
-                <span className={`text-xs font-black tracking-wider uppercase ${statusStyle.numberColor}`}>
-                    #{order.orderNumber || order.id?.slice(0, 8)}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className={`text-xs font-black tracking-wider uppercase ${statusStyle.numberColor}`}>
+                        #{order.orderNumber || order.id?.slice(0, 8)}
+                    </span>
+                    {isNew && (
+                        <span className="flex items-center gap-1 bg-emerald-100 border border-emerald-200 text-emerald-700 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md">
+                            <span className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                            </span>
+                            Nuevo
+                        </span>
+                    )}
+                </div>
                 <GripHorizontal className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600 transition-colors" />
             </div>
 

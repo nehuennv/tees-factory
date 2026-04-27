@@ -101,14 +101,23 @@ const AdminClientTable = memo(({
                                         <div className="flex items-center gap-1.5">
                                             <span className="text-sm font-semibold text-zinc-900">{client.name}</span>
                                         </div>
-                                        <span className="text-[11px] text-zinc-400 mt-0.5">CUIT: {client.cuit}</span>
+                                        {client.cuit
+                                            ? <span className="text-[11px] text-zinc-400 mt-0.5">CUIT: {client.cuit}</span>
+                                            : <span className="text-[11px] text-zinc-300 italic mt-0.5">Sin CUIT registrado</span>
+                                        }
                                     </div>
                                 </div>
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-col">
-                                    <span className="text-xs font-medium text-zinc-700">{client.phone}</span>
-                                    <span className="text-[11px] text-zinc-400 mt-0.5">{client.email}</span>
+                                    {client.phone
+                                        ? <span className="text-xs font-medium text-zinc-700">{client.phone}</span>
+                                        : <span className="text-xs italic text-zinc-300">Sin teléfono</span>
+                                    }
+                                    {client.email
+                                        ? <span className="text-[11px] text-zinc-400 mt-0.5">{client.email}</span>
+                                        : <span className="text-[11px] italic text-zinc-300 mt-0.5">Sin email</span>
+                                    }
                                 </div>
                             </TableCell>
                             <TableCell>

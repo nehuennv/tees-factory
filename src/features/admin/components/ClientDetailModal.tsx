@@ -41,9 +41,8 @@ const getAvatarColor = (name: string) => {
 };
 
 function InfoItem({ icon: Icon, label, value, copyable }: { icon: React.ElementType; label: string; value?: string | null; copyable?: boolean }) {
-    if (!value) return null;
-
     const handleCopy = () => {
+        if (!value) return;
         navigator.clipboard.writeText(value);
         toast.success('Copiado al portapapeles');
     };
@@ -53,16 +52,20 @@ function InfoItem({ icon: Icon, label, value, copyable }: { icon: React.ElementT
             <Icon className="w-3.5 h-3.5 text-zinc-400 mt-0.5 shrink-0" />
             <div className="flex flex-col min-w-0">
                 <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider leading-none mb-0.5">{label}</span>
-                {copyable ? (
-                    <button
-                        onClick={handleCopy}
-                        className="text-sm text-zinc-800 font-medium truncate text-left hover:text-zinc-500 transition-colors cursor-copy"
-                        title={`Copiar: ${value}`}
-                    >
-                        {value}
-                    </button>
+                {value ? (
+                    copyable ? (
+                        <button
+                            onClick={handleCopy}
+                            className="text-sm text-zinc-800 font-medium truncate text-left hover:text-zinc-500 transition-colors cursor-copy"
+                            title={`Copiar: ${value}`}
+                        >
+                            {value}
+                        </button>
+                    ) : (
+                        <span className="text-sm text-zinc-800 font-medium truncate" title={value}>{value}</span>
+                    )
                 ) : (
-                    <span className="text-sm text-zinc-800 font-medium truncate" title={value}>{value}</span>
+                    <span className="text-sm text-zinc-300 italic">Sin registrar</span>
                 )}
             </div>
         </div>
@@ -115,7 +118,12 @@ export function ClientDetailModal({ isOpen, onClose, client, onEdit, onDelete }:
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-base font-bold text-zinc-900 leading-tight truncate">{client.name}</p>
-                        <p className="text-xs text-zinc-400 font-mono mt-0.5">CUIT {client.cuit}</p>
+                        <p className="text-xs font-mono mt-0.5">
+                            {client.cuit
+                                ? <span className="text-zinc-400">CUIT {client.cuit}</span>
+                                : <span className="text-zinc-300 italic">CUIT no registrado</span>
+                            }
+                        </p>
                     </div>
                     <button
                         onClick={onClose}

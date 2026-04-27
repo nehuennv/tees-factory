@@ -624,7 +624,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                     )}
 
                                                     {/* Add size row */}
-                                                    <div className="flex items-center gap-2 pt-1">
+                                                    <div className="flex items-center gap-2">
                                                         <Input
                                                             placeholder="Ej: XL, 42, 3XL..."
                                                             value={newSizeInputs[newSizeKey] || ""}
