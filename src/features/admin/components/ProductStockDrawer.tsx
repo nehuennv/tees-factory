@@ -350,7 +350,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                     cAcc + c.sizes.reduce((sAcc, s) => sAcc + (s.physicalStock || 0), 0), 0), 0
             );
 
-            const qualityPrices = qualities.map(q => q.basePrice).filter(p => p > 0);
+            const qualityPrices = qualities.map(q => Number(q.basePrice)).filter(p => p > 0);
             const newBasePrice = qualityPrices.length > 0 ? Math.min(...qualityPrices) : 0;
 
             onProductSaved?.({
