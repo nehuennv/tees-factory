@@ -55,6 +55,8 @@ export function PaymentReportPage() {
         setFile(selected);
     };
 
+    const isCash = method === 'EFECTIVO';
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -66,11 +68,11 @@ export function PaymentReportPage() {
             toast.error('La fecha del pago es obligatoria.');
             return;
         }
-        if (!operationNumber.trim()) {
+        if (!isCash && !operationNumber.trim()) {
             toast.error('El número de operación es obligatorio.');
             return;
         }
-        if (!file) {
+        if (!isCash && !file) {
             toast.error('El comprobante de pago es obligatorio.');
             return;
         }
@@ -142,6 +144,7 @@ export function PaymentReportPage() {
                                         <SelectContent>
                                             <SelectItem value="TRANSFER">Transferencia Bancaria</SelectItem>
                                             <SelectItem value="CASH">Depósito por Cajero</SelectItem>
+                                            <SelectItem value="EFECTIVO">Efectivo</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -163,6 +166,7 @@ export function PaymentReportPage() {
                                 </div>
 
                                 {/* Número de operación */}
+                                {!isCash && (
                                 <div className="flex flex-col gap-2">
                                     <label htmlFor="operationNumber" className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
                                         Número de Operación <span className="text-red-500">*</span>
@@ -178,6 +182,7 @@ export function PaymentReportPage() {
                                         className="rounded-xl h-11 border-zinc-200 bg-zinc-50 focus:bg-white transition-colors placeholder:text-zinc-400 font-mono"
                                     />
                                 </div>
+                                )}
 
                                 {/* Monto */}
                                 <div className="flex flex-col gap-2">
@@ -203,8 +208,8 @@ export function PaymentReportPage() {
 
                                 {/* Comprobante */}
                                 <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
-                                        Adjuntar Comprobante <span className="text-red-500">*</span>
+                                    <label className={`text-xs font-bold uppercase tracking-widest pl-1 ${isCash ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                                        Adjuntar Comprobante {!isCash && <span className="text-red-500">*</span>}
                                     </label>
 
                                     <input
@@ -213,27 +218,38 @@ export function PaymentReportPage() {
                                         onChange={handleFileChange}
                                         className="hidden"
                                         accept="image/*,application/pdf"
+                                        disabled={isCash}
                                     />
 
                                     <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className={`border-dashed border-2 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all group ${
-                                            file ? 'border-zinc-900 bg-zinc-50/80 shadow-sm' : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
+                                        onClick={() => !isCash && fileInputRef.current?.click()}
+                                        className={`border-dashed border-2 rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all ${
+                                            isCash
+                                                ? 'border-zinc-100 bg-zinc-50/30 cursor-not-allowed opacity-50'
+                                                : file
+                                                    ? 'border-zinc-900 bg-zinc-50/80 shadow-sm cursor-pointer'
+                                                    : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 cursor-pointer group'
                                         }`}
                                     >
                                         <div className={`w-12 h-12 rounded-xl border flex items-center justify-center mb-3 shadow-sm transition-transform ${
-                                            file ? 'border-zinc-300 bg-white text-zinc-900 scale-105' : 'border-zinc-200 bg-white text-zinc-400 group-hover:scale-110'
+                                            isCash
+                                                ? 'border-zinc-100 bg-white text-zinc-300'
+                                                : file
+                                                    ? 'border-zinc-300 bg-white text-zinc-900 scale-105'
+                                                    : 'border-zinc-200 bg-white text-zinc-400 group-hover:scale-110'
                                         }`}>
-                                            {file ? <CheckCircle2 className="w-5 h-5 text-zinc-900" /> : <UploadCloud className="w-5 h-5" />}
+                                            {file && !isCash ? <CheckCircle2 className="w-5 h-5 text-zinc-900" /> : <UploadCloud className="w-5 h-5" />}
                                         </div>
 
-                                        <span className="text-sm font-bold text-zinc-900 mb-1">
-                                            {file ? file.name : 'Subir imagen o PDF bancario'}
+                                        <span className={`text-sm font-bold mb-1 ${isCash ? 'text-zinc-300' : 'text-zinc-900'}`}>
+                                            {isCash ? 'No requerido para pagos en efectivo' : file ? file.name : 'Subir imagen o PDF bancario'}
                                         </span>
 
-                                        <span className="text-[11px] text-zinc-500 font-medium px-4 leading-tight">
-                                            {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB • Click para cambiar` : 'PNG, JPG o PDF de hasta 5MB.'}
-                                        </span>
+                                        {!isCash && (
+                                            <span className="text-[11px] text-zinc-500 font-medium px-4 leading-tight">
+                                                {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB • Click para cambiar` : 'PNG, JPG o PDF de hasta 5MB.'}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
