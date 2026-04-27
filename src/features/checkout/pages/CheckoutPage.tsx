@@ -297,33 +297,43 @@ export function CheckoutPage() {
                             {/* Items List Agrupado */}
                             <div className="space-y-4 mb-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
                                 {Object.values(items.reduce((acc: Record<string, any>, item) => {
-                                    if (!acc[item.productId]) {
-                                        acc[item.productId] = {
-                                            productName: item.productName,
-                                            variants: []
-                                        };
-                                    }
-                                    acc[item.productId].variants.push(item);
+                                    if (!acc[item.productId]) acc[item.productId] = { productName: item.productName, qualities: {} };
+                                    const prod = acc[item.productId];
+                                    if (!prod.qualities[item.quality]) prod.qualities[item.quality] = { qualityName: item.quality, unitPrice: item.unitPrice, variants: [] };
+                                    prod.qualities[item.quality].variants.push(item);
                                     return acc;
                                 }, {} as Record<string, any>)).map((product: any) => (
                                     <div key={product.productName} className="flex flex-col gap-2 bg-white/50 rounded-2xl p-3 border border-zinc-200/50">
                                         <p className="font-bold text-zinc-900 text-sm border-b border-zinc-100 pb-1.5 leading-tight">
                                             {product.productName}
                                         </p>
-                                        <div className="space-y-1.5">
-                                            {product.variants.map((variant: any) => (
-                                                <div key={variant.id} className="flex justify-between items-start text-[11px]">
-                                                    <div className="flex-1 pr-4">
-                                                        <span className="text-zinc-600 font-medium">
-                                                            {variant.quantity} un. x ${variant.unitPrice.toLocaleString('es-AR')}
+                                        <div className="space-y-3">
+                                            {Object.values(product.qualities).map((q: any) => (
+                                                <div key={q.qualityName}>
+                                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                                        <div className="h-px flex-1 bg-zinc-200" />
+                                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                                                            {q.qualityName} · ${q.unitPrice.toLocaleString('es-AR')}/ud.
                                                         </span>
-                                                        <span className="text-zinc-400 mx-1">•</span>
-                                                        <span className="text-zinc-500">
-                                                            {variant.color} | {variant.size}
-                                                        </span>
+                                                        <div className="h-px flex-1 bg-zinc-200" />
                                                     </div>
-                                                    <div className="font-bold text-zinc-900 whitespace-nowrap">
-                                                        ${variant.subtotal.toLocaleString('es-AR')}
+                                                    <div className="space-y-1.5">
+                                                        {q.variants.map((variant: any) => (
+                                                            <div key={variant.id} className="flex justify-between items-start text-[11px]">
+                                                                <div className="flex-1 pr-4">
+                                                                    <span className="text-zinc-600 font-medium">
+                                                                        {variant.quantity} un.
+                                                                    </span>
+                                                                    <span className="text-zinc-400 mx-1">•</span>
+                                                                    <span className="text-zinc-500">
+                                                                        {variant.color} | {variant.size}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="font-bold text-zinc-900 whitespace-nowrap">
+                                                                    ${variant.subtotal.toLocaleString('es-AR')}
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
                                             ))}
@@ -416,29 +426,44 @@ export function CheckoutPage() {
                         </div>
                     )}
 
-                    {/* Items agrupados por producto */}
+                    {/* Items agrupados por producto → calidad */}
                     <div className="space-y-1">
                         <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
                             <Package className="w-3.5 h-3.5" /> Productos ({totalUnits} unidades)
                         </p>
                         <div className="border border-zinc-200 rounded-2xl overflow-hidden divide-y divide-zinc-100">
                             {Object.values(items.reduce((acc: Record<string, any>, item) => {
-                                if (!acc[item.productId]) acc[item.productId] = { productName: item.productName, variants: [] };
-                                acc[item.productId].variants.push(item);
+                                if (!acc[item.productId]) acc[item.productId] = { productName: item.productName, qualities: {} };
+                                const prod = acc[item.productId];
+                                if (!prod.qualities[item.quality]) prod.qualities[item.quality] = { qualityName: item.quality, unitPrice: item.unitPrice, variants: [] };
+                                prod.qualities[item.quality].variants.push(item);
                                 return acc;
                             }, {})).map((product: any) => (
                                 <div key={product.productName} className="px-4 py-3 bg-white">
                                     <p className="font-bold text-zinc-900 text-sm mb-2">{product.productName}</p>
-                                    <div className="space-y-1.5">
-                                        {product.variants.map((v: any) => (
-                                            <div key={v.id} className="flex items-center justify-between text-xs">
-                                                <div className="flex items-center gap-2 text-zinc-500">
-                                                    <span className="bg-zinc-100 text-zinc-700 font-bold px-2 py-0.5 rounded-md">
-                                                        {v.color} · {v.size}
+                                    <div className="space-y-3">
+                                        {Object.values(product.qualities).map((q: any) => (
+                                            <div key={q.qualityName}>
+                                                <div className="flex items-center gap-1.5 mb-1.5">
+                                                    <div className="h-px flex-1 bg-zinc-100" />
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                                                        {q.qualityName} · ${q.unitPrice.toLocaleString('es-AR')}/ud.
                                                     </span>
-                                                    <span className="text-zinc-400">{v.quantity} un. × ${v.unitPrice.toLocaleString('es-AR')}</span>
+                                                    <div className="h-px flex-1 bg-zinc-100" />
                                                 </div>
-                                                <span className="font-bold text-zinc-900">${v.subtotal.toLocaleString('es-AR')}</span>
+                                                <div className="space-y-1.5">
+                                                    {q.variants.map((v: any) => (
+                                                        <div key={v.id} className="flex items-center justify-between text-xs">
+                                                            <div className="flex items-center gap-2 text-zinc-500">
+                                                                <span className="bg-zinc-100 text-zinc-700 font-bold px-2 py-0.5 rounded-md">
+                                                                    {v.color} · {v.size}
+                                                                </span>
+                                                                <span className="text-zinc-400">{v.quantity} un.</span>
+                                                            </div>
+                                                            <span className="font-bold text-zinc-900">${v.subtotal.toLocaleString('es-AR')}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
