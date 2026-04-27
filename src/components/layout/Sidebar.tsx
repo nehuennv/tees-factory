@@ -86,12 +86,7 @@ export default function Sidebar() {
     const username  = user?.email?.split('@')[0] ?? 'Usuario';
     const roleLabel = user?.role === 'ADMIN' ? 'Administrador' : user?.role === 'SELLER' ? 'Vendedor' : 'Cliente';
 
-    // Shared style for every row-level element (header, nav items, bottom items)
-    const rowPadding: React.CSSProperties = {
-        paddingLeft:  collapsed ? 19 : 10,
-        paddingRight: collapsed ? 19 : 10,
-        transition: paddingTransition(),
-    };
+
 
     // Shared style for text that fades in/out
     const textFade = (maxW = 160): React.CSSProperties => ({
