@@ -93,6 +93,14 @@ function normalizeDetail(data: any): ProductDetail {
             })),
         };
     }
+    // Normalize quality fields (handle snake_case from backend)
+    if (data.qualities) {
+        data.qualities = data.qualities.map((q: any) => ({
+            ...q,
+            qualityName: q.qualityName ?? q.quality_name ?? '',
+            basePrice: q.basePrice ?? q.base_price ?? 0,
+        }));
+    }
     return data;
 }
 

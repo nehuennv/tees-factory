@@ -180,15 +180,10 @@ export function CartWidget() {
                                                     {/* Quality row header */}
                                                     <div className="flex items-center justify-between gap-2">
                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            {/* "CALIDAD X" pill prominente */}
+                                                            {/* Nombre de la calidad */}
                                                             <div className="flex items-center gap-1 bg-zinc-100 border border-zinc-200 rounded-lg px-2.5 py-1 shrink-0">
-                                                                <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-widest">Calidad</span>
-                                                                <span className="text-sm font-black text-zinc-700 leading-none">{quality.index}</span>
+                                                                <span className="text-xs font-bold text-zinc-700 leading-none">{quality.qualityName}</span>
                                                             </div>
-                                                            {/* Nombre de la calidad (si difiere del índice) */}
-                                                            {quality.qualityName !== String(quality.index) && (
-                                                                <span className="text-xs font-bold text-zinc-700 truncate">{quality.qualityName}</span>
-                                                            )}
                                                             <span className="text-[11px] text-zinc-400 font-semibold shrink-0">{formatPrice(quality.unitPrice)}/ud.</span>
                                                         </div>
                                                         <div className="flex items-baseline gap-1 shrink-0">

@@ -130,15 +130,14 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
             const mapped: QualityTab[] = (data.qualities || []).map((q: any) => ({
                 id: q.id,
-                qualityName: q.qualityName,
-                basePrice: q.basePrice ?? 0,
+                qualityName: q.qualityName ?? q.quality_name ?? '',
+                basePrice: q.basePrice ?? q.base_price ?? 0,
                 colors: (q.colors || []).map((c: any) => ({
                     colorName: c.colorName,
                     sizes: (c.sizes || []).map((s: any) => ({
                         id: s.id,
                         size: s.size,
-                        // Usamos physicalStock (stock real), no availableStock (stock - reservado)
-                        physicalStock: Math.round(Number(s.physicalStock) || 0),
+                        physicalStock: Math.round(Number(s.physicalStock ?? s.availableStock) || 0),
                     })),
                 })),
             }));
@@ -351,13 +350,17 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                     cAcc + c.sizes.reduce((sAcc, s) => sAcc + (s.physicalStock || 0), 0), 0), 0
             );
 
+            const qualityPrices = qualities.map(q => q.basePrice).filter(p => p > 0);
+            const newBasePrice = qualityPrices.length > 0 ? Math.min(...qualityPrices) : 0;
+
             onProductSaved?.({
                 ...product,
                 name: productDetails.name,
                 category: productDetails.category,
                 categoryId: productDetails.categoryId,
                 description: productDetails.description,
-                totalStock: newTotalStock
+                totalStock: newTotalStock,
+                basePrice: newBasePrice
             });
 
             toast.success("Producto guardado", {
@@ -493,7 +496,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                             </div>
                             <p className="text-sm font-semibold text-zinc-800">Producto sin calidades en la base de datos</p>
                             <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
-                                Todos los productos deben tener 3 calidades (1, 2, 3) creadas automáticamente por el backend.
+                                Todos los productos deben tener 3 calidades (Calidad 1 Premium, Calidad 2, Calidad 3) creadas automáticamente por el backend.
                                 Este producto no las tiene — pedile al dev que corra la inicialización para este registro.
                             </p>
                             <Button
@@ -514,7 +517,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                         value={q.id}
                                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-zinc-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 py-3 font-semibold text-sm text-zinc-500 data-[state=active]:text-zinc-900"
                                     >
-                                        Calidad {q.qualityName}
+                                        {q.qualityName}
                                     </TabsTrigger>
                                 ))}
                             </TabsList>
@@ -528,7 +531,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                     {/* Precio por calidad — editable, se guarda en product_qualities */}
                                     <div className="flex items-center gap-3 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3">
                                         <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">
-                                            Precio Calidad {quality.qualityName}
+                                            Precio {quality.qualityName}
                                         </span>
                                         <div className="relative flex-1 max-w-[180px]">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-sm">$</span>

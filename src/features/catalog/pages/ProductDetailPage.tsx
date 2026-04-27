@@ -74,6 +74,14 @@ export function ProductDetailPage() {
                         colors: Object.values(q.colors),
                     }));
                 }
+                // Normalize quality fields (handle snake_case from backend)
+                if (data.qualities) {
+                    data.qualities = data.qualities.map((q: any) => ({
+                        ...q,
+                        qualityName: q.qualityName ?? q.quality_name ?? '',
+                        basePrice: q.basePrice ?? q.base_price ?? 0,
+                    }));
+                }
                 setProduct({
                     ...data,
                     image: data.image || data.image_url || data.imageUrl || undefined,
@@ -375,7 +383,7 @@ export function ProductDetailPage() {
                             <div className="flex items-center gap-2 bg-zinc-50 border border-zinc-200/80 rounded-xl px-4 py-2">
                                 <span className="w-2 h-2 rounded-full bg-zinc-900 shrink-0" />
                                 <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                    {product.qualities?.length > 1 ? `Calidad ${selectedQualityIdx + 1}` : 'Calidad'}
+                                    {'Calidad'}
                                 </span>
                                 <span className="text-xs font-black text-zinc-900">
                                     {activeQuality?.qualityName}
