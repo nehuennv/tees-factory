@@ -1,21 +1,31 @@
 import { Search, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import type { ProductSortKey } from '@/types/product';
+
+const SORT_LABELS: Record<ProductSortKey, string> = {
+    default: 'Ordenar',
+    name_asc: 'Nombre A→Z',
+    price_asc: 'Precio ↑',
+    price_desc: 'Precio ↓',
+    stock_asc: 'Stock ↑',
+    stock_desc: 'Stock ↓',
+};
 
 interface CatalogToolbarProps {
     searchTerm: string;
     onSearchChange: (value: string) => void;
     searchPlaceholder?: string;
+    sortKey?: ProductSortKey;
+    onSortChange?: (key: ProductSortKey) => void;
 }
 
-/**
- * Barra de herramientas del catálogo: campo de búsqueda + filtros.
- * Acepta el estado de búsqueda externamente (controlled component).
- * Los filtros por ahora son visuales; se pueden conectar a lógica real después.
- */
 export function CatalogToolbar({
     searchTerm,
     onSearchChange,
-    searchPlaceholder = 'Buscar por nombre, SKU o categoría...'
+    searchPlaceholder = 'Buscar por nombre, SKU o categoría...',
+    sortKey = 'default',
+    onSortChange,
 }: CatalogToolbarProps) {
     return (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
@@ -43,6 +53,25 @@ export function CatalogToolbar({
                     Estado <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
                 </Button>
 
+                {onSortChange && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
+                                {SORT_LABELS[sortKey]} <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 bg-white border border-zinc-200 rounded-xl shadow-lg p-1">
+                            <DropdownMenuItem onClick={() => onSortChange('default')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Relevancia</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onSortChange('name_asc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Nombre A→Z</DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-zinc-100" />
+                            <DropdownMenuItem onClick={() => onSortChange('price_asc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Precio: menor primero</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onSortChange('price_desc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Precio: mayor primero</DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-zinc-100" />
+                            <DropdownMenuItem onClick={() => onSortChange('stock_desc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Más stock</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onSortChange('stock_asc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Menos stock</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
             </div>
         </div>
     );

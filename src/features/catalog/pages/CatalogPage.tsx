@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Product } from '@/types/product';
+import type { Product, ProductSortKey } from '@/types/product';
 import { CatalogToolbar } from '../components/CatalogToolbar';
 import { CatalogGrid } from '../components/CatalogGrid';
 import { OrderSummaryBar } from '../components/OrderSummaryBar';
@@ -26,6 +26,21 @@ export function CatalogPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [products, setProducts] = useState<Product[]>([]);
     const [_isLoading, setIsLoading] = useState(true);
+    const [sortKey, setSortKey] = useState<ProductSortKey>('default');
+
+    const sortedProducts = useMemo(() => {
+        if (sortKey === 'default') return products;
+        return [...products].sort((a, b) => {
+            switch (sortKey) {
+                case 'price_asc':  return a.basePrice - b.basePrice;
+                case 'price_desc': return b.basePrice - a.basePrice;
+                case 'stock_asc':  return a.totalStock - b.totalStock;
+                case 'stock_desc': return b.totalStock - a.totalStock;
+                case 'name_asc':   return a.name.localeCompare(b.name, 'es');
+                default: return 0;
+            }
+        });
+    }, [products, sortKey]);
 
     const { totalUnits, totalPrice, items } = useCartStore();
     const draftIsActive = useOrderDraftStore((s) => s.isActive);
@@ -84,10 +99,12 @@ export function CatalogPage() {
                 <CatalogToolbar
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
+                    sortKey={sortKey}
+                    onSortChange={setSortKey}
                 />
 
                 <CatalogGrid
-                    products={products}
+                    products={sortedProducts}
                     onProductAction={handleProductAction}
                 />
             </div>

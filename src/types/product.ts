@@ -53,4 +53,7 @@ export interface ProductVariant {
     size: string;
     sku: string;
     availableStock: number;
+    price?: number | null;
 }
+
+export type ProductSortKey = 'default' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc' | 'name_asc';

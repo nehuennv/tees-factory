@@ -13,6 +13,34 @@ import { Loader2, Plus, Trash2, X, ImagePlus, Shirt, Search, ChevronDown } from 
 
 const BACKEND_BASE = (import.meta.env.VITE_API_URL as string || 'http://localhost:3000/api').replace(/\/api\/?$/, '');
 
+const LETTER_SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL'];
+const SIZE_GROUPS = {
+    base:    ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    nino:    ['2', '4', '6', '8', '10', '12', '14'],
+    especial:['3XL', '4XL', '5XL', '6XL', '7XL'],
+} as const;
+const PREDEFINED_SIZES = [...SIZE_GROUPS.nino, ...SIZE_GROUPS.base, ...SIZE_GROUPS.especial];
+
+const compareSizes = (a: string, b: string): number => {
+    const normA = a.trim().toUpperCase().replace(/^(\d+)\s*X\s*L$/, '$1XL');
+    const normB = b.trim().toUpperCase().replace(/^(\d+)\s*X\s*L$/, '$1XL');
+    const numA = parseFloat(normA);
+    const numB = parseFloat(normB);
+    const isNumA = !isNaN(numA) && isFinite(numA);
+    const isNumB = !isNaN(numB) && isFinite(numB);
+    // Numeric sizes first (children sizes: 2, 4, 6...)
+    if (isNumA && isNumB) return numA - numB;
+    if (isNumA) return -1;
+    if (isNumB) return 1;
+    // Letter sizes by canonical order
+    const idxA = LETTER_SIZE_ORDER.indexOf(normA);
+    const idxB = LETTER_SIZE_ORDER.indexOf(normB);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return normA.localeCompare(normB, 'es');
+};
+
 const PREDEFINED_COLORS = [
     { name: "Melange 5%",      hex: "#e8e8e8" },
     { name: "Melange 25%",     hex: "#c0c0c0" },
@@ -46,10 +74,13 @@ const PREDEFINED_COLORS = [
     { name: "Chocolate",       hex: "#5c3317" },
 ];
 
+type SizeSortKey = 'none' | 'name' | 'stock' | 'price';
+
 interface SizeVariant {
     id?: string;
     size: string;
     physicalStock: number | '';
+    price: number | '' | null;
 }
 
 interface ColorRow {
@@ -76,12 +107,34 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
     const [isSaving, setIsSaving] = useState(false);
     const [qualities, setQualities] = useState<QualityTab[]>([]);
     const [activeTab, setActiveTab] = useState<string>("");
+    const [sizeSortKey, setSizeSortKey] = useState<SizeSortKey>('name');
+    const [collapsedColors, setCollapsedColors] = useState<Set<string>>(new Set());
+
+    const toggleColorCollapse = (qualityId: string, colorName: string) => {
+        const key = `${qualityId}-${colorName}`;
+        setCollapsedColors(prev => {
+            const next = new Set(prev);
+            next.has(key) ? next.delete(key) : next.add(key);
+            return next;
+        });
+    };
     const [imageUrl, setImageUrl] = useState<string>('');
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Per color new-size inputs: key = `${qualityId}-${colorName}`
     const [newSizeInputs, setNewSizeInputs] = useState<Record<string, string>>({});
+    // Per color size picker open state
+    const [showSizePicker, setShowSizePicker] = useState<Record<string, boolean>>({});
+    // Per picker which size groups are expanded (nino / especial)
+    const [expandedSizeGroups, setExpandedSizeGroups] = useState<Record<string, Set<string>>>({});
+    const toggleSizeGroup = (pickerKey: string, group: string) => {
+        setExpandedSizeGroups(prev => {
+            const current = new Set(prev[pickerKey] ?? []);
+            current.has(group) ? current.delete(group) : current.add(group);
+            return { ...prev, [pickerKey]: current };
+        });
+    };
     // Per quality color picker state
     const [showColorPicker, setShowColorPicker] = useState<Record<string, boolean>>({});
     const [colorSearch, setColorSearch] = useState<Record<string, string>>({});
@@ -107,6 +160,8 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
             setQualities([]);
             setActiveTab("");
             setNewSizeInputs({});
+            setShowSizePicker({});
+            setExpandedSizeGroups({});
             setShowColorPicker({});
             setColorSearch({});
             setImageUrl('');
@@ -138,10 +193,13 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                         id: s.id,
                         size: s.size,
                         physicalStock: Math.round(Number(s.physicalStock ?? s.availableStock) || 0),
+                        price: s.price != null ? Number(s.price) : null,
                     })),
                 })),
             }));
 
+            console.log('[TEST] fetchMatrix raw sizes (primer color de primer quality):', data.qualities?.[0]?.colors?.[0]?.sizes);
+            console.log('[TEST] prices mapeados:', mapped.flatMap(q => q.colors.flatMap(c => c.sizes.map(s => ({ size: s.size, price: s.price })))));
             setQualities(mapped);
             if (mapped.length > 0) setActiveTab(mapped[0].id);
         } catch {
@@ -163,6 +221,25 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                     newSizes[sizeIdx] = { 
                         ...newSizes[sizeIdx], 
                         physicalStock: Number.isNaN(parsed as number) ? 0 : parsed 
+                    };
+                    return { ...c, sizes: newSizes };
+                }),
+            };
+        }));
+    };
+
+    const handleSizePriceChange = (qualityId: string, colorName: string, sizeIdx: number, value: string) => {
+        setQualities(prev => prev.map(q => {
+            if (q.id !== qualityId) return q;
+            return {
+                ...q,
+                colors: q.colors.map(c => {
+                    if (c.colorName !== colorName) return c;
+                    const newSizes = [...c.sizes];
+                    const parsed = value === "" ? null : parseFloat(value);
+                    newSizes[sizeIdx] = {
+                        ...newSizes[sizeIdx],
+                        price: parsed === null || Number.isNaN(parsed) ? null : parsed,
                     };
                     return { ...c, sizes: newSizes };
                 }),
@@ -212,7 +289,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                         toast.error(`El talle "${sizeName}" ya existe para este color.`);
                         return c;
                     }
-                    return { ...c, sizes: [...c.sizes, { size: sizeName, physicalStock: 0 }] };
+                    return { ...c, sizes: [...c.sizes, { size: sizeName, physicalStock: 0, price: null }] };
                 }),
             };
         }));
@@ -308,7 +385,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
         setIsSaving(true);
 
-        const stockPayload: { qualityId: string; color: string; size: string; physicalStock: number }[] = [];
+        const stockPayload: { qualityId: string; color: string; size: string; physicalStock: number; price: number | null }[] = [];
 
         for (const quality of qualities) {
             for (const color of quality.colors) {
@@ -318,6 +395,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                         color: color.colorName,
                         size: size.size,
                         physicalStock: Math.round(Number(size.physicalStock) || 0),
+                        price: size.price != null && size.price !== '' ? Number(size.price) : null,
                     });
                 }
             }
@@ -341,7 +419,9 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
             // 2. Guardar stock
             if (stockPayload.length > 0) {
-                await apiClient.put(`/products/${product.id}/stock`, stockPayload);
+                console.log('[TEST] payload enviado a PUT /stock:', JSON.stringify(stockPayload, null, 2));
+                const stockRes = await apiClient.put(`/products/${product.id}/stock`, stockPayload);
+                console.log('[TEST] respuesta del backend:', stockRes.status, stockRes.data);
             }
 
             // Recalcular totalStock local
@@ -372,6 +452,34 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const getSortedSizes = (quality: QualityTab): string[] => {
+        const allSizes = new Set<string>();
+        quality.colors.forEach(c => c.sizes.forEach(s => allSizes.add(s.size)));
+        const sizeList = Array.from(allSizes);
+        if (sizeSortKey === 'none') return sizeList;
+        if (sizeSortKey === 'name') return [...sizeList].sort(compareSizes);
+        if (sizeSortKey === 'stock') {
+            return [...sizeList].sort((a, b) => {
+                const stockOf = (sz: string) => quality.colors.reduce((sum, c) =>
+                    sum + (Number(c.sizes.find(s => s.size === sz)?.physicalStock) || 0), 0);
+                return stockOf(b) - stockOf(a);
+            });
+        }
+        if (sizeSortKey === 'price') {
+            return [...sizeList].sort((a, b) => {
+                const priceOf = (sz: string) => {
+                    for (const c of quality.colors) {
+                        const sv = c.sizes.find(s => s.size === sz);
+                        if (sv) return sv.price != null && sv.price !== '' ? Number(sv.price) : Number(quality.basePrice);
+                    }
+                    return Number(quality.basePrice);
+                };
+                return priceOf(a) - priceOf(b);
+            });
+        }
+        return sizeList;
     };
 
     if (!product) return null;
@@ -550,6 +658,24 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                         <span className="text-xs text-zinc-400">por unidad</span>
                                     </div>
 
+                                    {/* Sort bar — canonical is default, only extra sorts shown */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Ordenar por:</span>
+                                        {(['stock', 'price'] as SizeSortKey[]).map(key => (
+                                            <button
+                                                key={key}
+                                                onClick={() => setSizeSortKey(sizeSortKey === key ? 'name' : key)}
+                                                className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors ${
+                                                    sizeSortKey === key
+                                                        ? 'bg-zinc-900 text-white border-zinc-900'
+                                                        : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400'
+                                                }`}
+                                            >
+                                                {key === 'stock' ? 'Mayor stock' : 'Mayor precio'}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     {quality.colors.length === 0 && (
                                         <p className="text-sm text-zinc-400 text-center py-4 italic">
                                             Sin colores. Agregá uno abajo.
@@ -558,24 +684,39 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
                                     {quality.colors.map((color) => {
                                         const newSizeKey = `${quality.id}-${color.colorName}`;
+                                        const collapseKey = `${quality.id}-${color.colorName}`;
+                                        const isCollapsed = collapsedColors.has(collapseKey);
+                                        const sortedSizes = getSortedSizes(quality).filter(sz =>
+                                            color.sizes.some(s => s.size === sz)
+                                        );
+                                        const totalColorStock = color.sizes.reduce((s, sz) => s + (Number(sz.physicalStock) || 0), 0);
+
                                         return (
                                             <div
                                                 key={color.colorName}
                                                 className="border border-zinc-200 rounded-xl overflow-hidden bg-white shadow-sm"
                                             >
-                                                {/* Color header */}
-                                                <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-50 border-b border-zinc-100">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2.5 h-2.5 rounded-full bg-zinc-400 border border-zinc-300" />
-                                                        <span className="font-semibold text-sm text-zinc-900">
-                                                            {color.colorName}
-                                                        </span>
+                                                {/* Color header — clickable to collapse */}
+                                                <div
+                                                    className="flex items-center justify-between px-4 py-3 bg-zinc-50 border-b border-zinc-100 cursor-pointer select-none hover:bg-zinc-100/70 transition-colors"
+                                                    onClick={() => toggleColorCollapse(quality.id, color.colorName)}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <ChevronDown
+                                                            className="w-3.5 h-3.5 text-zinc-400 transition-transform duration-200"
+                                                            style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+                                                        />
+                                                        <div className="w-2.5 h-2.5 rounded-full bg-zinc-400 border border-zinc-300 shrink-0" />
+                                                        <span className="font-semibold text-sm text-zinc-900">{color.colorName}</span>
                                                         <span className="text-xs text-zinc-400 font-medium">
                                                             {color.sizes.length} talle{color.sizes.length !== 1 ? 's' : ''}
+                                                            {totalColorStock > 0 && (
+                                                                <span className="ml-1.5 text-zinc-500 font-semibold">· {totalColorStock} uds</span>
+                                                            )}
                                                         </span>
                                                     </div>
                                                     <button
-                                                        onClick={() => handleRemoveColor(quality.id, color.colorName)}
+                                                        onClick={(e) => { e.stopPropagation(); handleRemoveColor(quality.id, color.colorName); }}
                                                         className="text-zinc-300 hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-50"
                                                         title="Eliminar color"
                                                     >
@@ -583,76 +724,195 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                     </button>
                                                 </div>
 
-                                                <div className="p-4 flex flex-col gap-3">
-                                                    {/* Size chips */}
-                                                    {color.sizes.length > 0 && (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {color.sizes.map((sz, sizeIdx) => (
-                                                                <div
-                                                                    key={sizeIdx}
-                                                                    className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1.5 group/chip"
+                                                {!isCollapsed && (
+                                                    <div className="flex flex-col divide-y divide-zinc-100">
+                                                        {/* Size table */}
+                                                        {color.sizes.length > 0 && (
+                                                            <table className="w-full">
+                                                                <thead>
+                                                                    <tr className="bg-zinc-50">
+                                                                        <th className="text-left py-2.5 px-5 text-[10px] font-bold text-zinc-400 uppercase tracking-wider w-24">Talle</th>
+                                                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Stock</th>
+                                                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Precio unit.</th>
+                                                                        <th className="w-10" />
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {sortedSizes.map((sizeName) => {
+                                                                        const sizeIdx = color.sizes.findIndex(s => s.size === sizeName);
+                                                                        if (sizeIdx === -1) return null;
+                                                                        const sz = color.sizes[sizeIdx];
+                                                                        return (
+                                                                            <tr key={sizeName} className="group/row border-t border-zinc-100 hover:bg-zinc-50/60 transition-colors">
+                                                                                <td className="py-3.5 px-5">
+                                                                                    <span className="text-sm font-black text-zinc-800 uppercase tracking-wide">{sz.size}</span>
+                                                                                </td>
+                                                                                <td className="py-3.5 px-4">
+                                                                                    <div className="flex items-center justify-center gap-2">
+                                                                                        <Input
+                                                                                            type="number"
+                                                                                            value={sz.physicalStock}
+                                                                                            onChange={(e) => handleStockChange(quality.id, color.colorName, sizeIdx, e.target.value)}
+                                                                                            onBlur={(e) => { if (e.target.value === "") handleStockChange(quality.id, color.colorName, sizeIdx, "0"); }}
+                                                                                            className="w-20 h-9 text-center font-semibold rounded-lg border-zinc-200 bg-white focus-visible:ring-1 focus-visible:ring-zinc-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                            min={0}
+                                                                                        />
+                                                                                        <span className="text-xs text-zinc-400 font-medium w-6">uds</span>
+                                                                                    </div>
+                                                                                </td>
+                                                                                <td className="py-3.5 px-4">
+                                                                                    <div className="flex items-center justify-center gap-1.5">
+                                                                                        <span className="text-sm text-zinc-400 font-semibold">$</span>
+                                                                                        <Input
+                                                                                            type="number"
+                                                                                            value={sz.price ?? ''}
+                                                                                            onChange={(e) => handleSizePriceChange(quality.id, color.colorName, sizeIdx, e.target.value)}
+                                                                                            placeholder={String(Number(quality.basePrice).toLocaleString('es-AR'))}
+                                                                                            title={`Vacío = precio de calidad ($${Number(quality.basePrice).toLocaleString('es-AR')})`}
+                                                                                            className="w-28 h-9 text-center font-semibold rounded-lg border-zinc-200 bg-white focus-visible:ring-1 focus-visible:ring-zinc-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                            min={0}
+                                                                                        />
+                                                                                    </div>
+                                                                                </td>
+                                                                                <td className="py-3.5 px-3 text-right">
+                                                                                    <button
+                                                                                        onClick={() => handleRemoveSize(quality.id, color.colorName, sizeIdx)}
+                                                                                        className="text-zinc-300 hover:text-red-400 transition-colors opacity-0 group-hover/row:opacity-100 p-1 rounded"
+                                                                                        title="Quitar talle"
+                                                                                    >
+                                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                                    </button>
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    })}
+                                                                </tbody>
+                                                            </table>
+                                                        )}
+
+                                                        {color.sizes.length === 0 && (
+                                                            <p className="text-xs text-zinc-400 italic px-5 py-4">
+                                                                Sin talles. Usá los botones de abajo para agregar.
+                                                            </p>
+                                                        )}
+
+                                                        {/* Add size section */}
+                                                        {!showSizePicker[newSizeKey] ? (
+                                                            <div className="px-5 py-2.5">
+                                                                <button
+                                                                    onClick={() => setShowSizePicker(prev => ({ ...prev, [newSizeKey]: true }))}
+                                                                    className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-zinc-700 transition-colors py-1 group"
                                                                 >
-                                                                    <span className="text-[11px] font-bold text-zinc-600 uppercase tracking-wide min-w-[24px] text-center">
-                                                                        {sz.size}
+                                                                    <span className="w-5 h-5 rounded-md border border-zinc-200 bg-white flex items-center justify-center group-hover:border-zinc-400 transition-colors">
+                                                                        <Plus className="w-3 h-3" />
                                                                     </span>
+                                                                    Agregar talle
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="px-5 py-4 bg-zinc-50/60 border-t border-zinc-100 flex flex-col gap-3">
+                                                                {(() => {
+                                                                    const usedSizes = new Set(color.sizes.map(s => s.size.toUpperCase()));
+                                                                    const addSize = (sz: string) => {
+                                                                        setQualities(prev => prev.map(q => {
+                                                                            if (q.id !== quality.id) return q;
+                                                                            return {
+                                                                                ...q,
+                                                                                colors: q.colors.map(c => {
+                                                                                    if (c.colorName !== color.colorName) return c;
+                                                                                    if (c.sizes.some(s => s.size.toLowerCase() === sz.toLowerCase())) return c;
+                                                                                    return { ...c, sizes: [...c.sizes, { size: sz, physicalStock: 0, price: null }] };
+                                                                                }),
+                                                                            };
+                                                                        }));
+                                                                    };
+                                                                    const chipClass = "h-7 px-3 text-xs font-bold text-zinc-600 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-900 hover:text-white hover:border-zinc-900 transition-all uppercase tracking-wide shadow-sm";
+                                                                    const baseAvail = SIZE_GROUPS.base.filter(s => !usedSizes.has(s));
+                                                                    const ninoAvail = SIZE_GROUPS.nino.filter(s => !usedSizes.has(s));
+                                                                    const espAvail  = SIZE_GROUPS.especial.filter(s => !usedSizes.has(s));
+                                                                    const ninoOpen  = expandedSizeGroups[newSizeKey]?.has('nino') ?? false;
+                                                                    const espOpen   = expandedSizeGroups[newSizeKey]?.has('especial') ?? false;
+                                                                    return (
+                                                                        <div className="flex flex-col gap-2">
+                                                                            {/* Base sizes — always visible */}
+                                                                            {baseAvail.length > 0 && (
+                                                                                <div className="flex flex-wrap gap-1.5">
+                                                                                    {baseAvail.map(sz => (
+                                                                                        <button key={sz} onClick={() => addSize(sz)} className={chipClass}>{sz}</button>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                            {/* Niño group */}
+                                                                            {ninoAvail.length > 0 && (
+                                                                                <div className="flex flex-col gap-1.5">
+                                                                                    <button
+                                                                                        onClick={() => toggleSizeGroup(newSizeKey, 'nino')}
+                                                                                        className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-wider hover:text-zinc-600 transition-colors w-fit"
+                                                                                    >
+                                                                                        <ChevronDown className="w-3 h-3 transition-transform duration-150" style={{ transform: ninoOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                                                                                        Niño ({ninoAvail.length})
+                                                                                    </button>
+                                                                                    {ninoOpen && (
+                                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                                            {ninoAvail.map(sz => (
+                                                                                                <button key={sz} onClick={() => addSize(sz)} className={chipClass}>{sz}</button>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                            {/* Especiales group */}
+                                                                            {espAvail.length > 0 && (
+                                                                                <div className="flex flex-col gap-1.5">
+                                                                                    <button
+                                                                                        onClick={() => toggleSizeGroup(newSizeKey, 'especial')}
+                                                                                        className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-wider hover:text-zinc-600 transition-colors w-fit"
+                                                                                    >
+                                                                                        <ChevronDown className="w-3 h-3 transition-transform duration-150" style={{ transform: espOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                                                                                        Especiales ({espAvail.length})
+                                                                                    </button>
+                                                                                    {espOpen && (
+                                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                                            {espAvail.map(sz => (
+                                                                                                <button key={sz} onClick={() => addSize(sz)} className={chipClass}>{sz}</button>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                                {/* Custom input row */}
+                                                                <div className="flex items-center gap-2">
                                                                     <Input
-                                                                        type="number"
-                                                                        value={sz.physicalStock}
-                                                                        onChange={(e) =>
-                                                                            handleStockChange(quality.id, color.colorName, sizeIdx, e.target.value)
-                                                                        }
-                                                                        onBlur={(e) => {
-                                                                            if (e.target.value === "") handleStockChange(quality.id, color.colorName, sizeIdx, "0");
-                                                                        }}
-                                                                        className="w-16 h-7 text-center text-sm p-1 border-zinc-200 bg-white focus-visible:ring-1 focus-visible:ring-zinc-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                        min={0}
+                                                                        placeholder="Personalizado: 3XL, 42..."
+                                                                        value={newSizeInputs[newSizeKey] || ""}
+                                                                        onChange={(e) => setNewSizeInputs(prev => ({ ...prev, [newSizeKey]: e.target.value }))}
+                                                                        onKeyDown={(e) => { if (e.key === "Enter") handleAddSize(quality.id, color.colorName); }}
+                                                                        className="h-8 text-sm rounded-lg border-zinc-200 bg-white flex-1"
                                                                     />
-                                                                    <span className="text-[10px] text-zinc-400 font-medium">uds</span>
-                                                                    <button
-                                                                        onClick={() => handleRemoveSize(quality.id, color.colorName, sizeIdx)}
-                                                                        className="text-zinc-300 hover:text-red-400 transition-colors opacity-0 group-hover/chip:opacity-100"
-                                                                        title="Quitar talle"
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => handleAddSize(quality.id, color.colorName)}
+                                                                        className="h-8 px-3 text-xs rounded-lg border-zinc-200 text-zinc-600 hover:text-zinc-900 shrink-0"
                                                                     >
-                                                                        <Trash2 className="w-3 h-3" />
+                                                                        <Plus className="w-3 h-3 mr-1" />
+                                                                        Agregar
+                                                                    </Button>
+                                                                    <button
+                                                                        onClick={() => setShowSizePicker(prev => ({ ...prev, [newSizeKey]: false }))}
+                                                                        className="text-zinc-300 hover:text-zinc-600 transition-colors p-1 rounded-md hover:bg-zinc-100"
+                                                                        title="Cerrar"
+                                                                    >
+                                                                        <X className="w-3.5 h-3.5" />
                                                                     </button>
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-
-                                                    {color.sizes.length === 0 && (
-                                                        <p className="text-xs text-zinc-400 italic">
-                                                            Sin talles. Usá el campo de abajo para agregar.
-                                                        </p>
-                                                    )}
-
-                                                    {/* Add size row */}
-                                                    <div className="flex items-center gap-2">
-                                                        <Input
-                                                            placeholder="Ej: XL, 42, 3XL..."
-                                                            value={newSizeInputs[newSizeKey] || ""}
-                                                            onChange={(e) =>
-                                                                setNewSizeInputs(prev => ({
-                                                                    ...prev,
-                                                                    [newSizeKey]: e.target.value,
-                                                                }))
-                                                            }
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === "Enter") handleAddSize(quality.id, color.colorName);
-                                                            }}
-                                                            className="h-8 text-xs rounded-lg border-zinc-200 bg-zinc-50 max-w-[170px]"
-                                                        />
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => handleAddSize(quality.id, color.colorName)}
-                                                            className="h-8 px-3 text-xs rounded-lg border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
-                                                        >
-                                                            <Plus className="w-3 h-3 mr-1" />
-                                                            Agregar talle
-                                                        </Button>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </div>
+                                                )}
                                             </div>
                                         );
                                     })}

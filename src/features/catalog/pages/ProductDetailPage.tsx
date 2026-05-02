@@ -11,6 +11,26 @@ import { ProductImage } from '@/components/shared/ProductImage';
 
 const SIZES_FALLBACK = ['S', 'M', 'L', 'XL', 'XXL'];
 
+const LETTER_SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL'];
+
+const compareSizes = (a: string, b: string): number => {
+    const normA = a.trim().toUpperCase().replace(/^(\d+)\s*X\s*L$/, '$1XL');
+    const normB = b.trim().toUpperCase().replace(/^(\d+)\s*X\s*L$/, '$1XL');
+    const numA = parseFloat(normA);
+    const numB = parseFloat(normB);
+    const isNumA = !isNaN(numA) && isFinite(numA);
+    const isNumB = !isNaN(numB) && isFinite(numB);
+    if (isNumA && isNumB) return numA - numB;
+    if (isNumA) return -1;
+    if (isNumB) return 1;
+    const idxA = LETTER_SIZE_ORDER.indexOf(normA);
+    const idxB = LETTER_SIZE_ORDER.indexOf(normB);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return normA.localeCompare(normB, 'es');
+};
+
 // Paleta de colores para asignar HEX visual según nombre
 const COLOR_POOL = [
     { name: "Negro", hex: "#18181b" },
@@ -98,6 +118,9 @@ export function ProductDetailPage() {
 
     const activeQuality = product?.qualities?.[selectedQualityIdx];
 
+    const resolveVariantPrice = (sizeData: any, quality: any): number =>
+        (sizeData?.price != null && sizeData.price > 0) ? sizeData.price : quality.basePrice;
+
     // Dynamic sizes for table headers
     const activeSizes = useMemo(() => {
         if (!activeQuality) return SIZES_FALLBACK;
@@ -105,7 +128,7 @@ export function ProductDetailPage() {
         activeQuality.colors?.forEach((c: any) => {
             c.sizes?.forEach((s: any) => set.add(s.size?.toString().trim().toUpperCase()));
         });
-        const arr = Array.from(set);
+        const arr = Array.from(set).sort(compareSizes);
         return arr.length > 0 ? arr : SIZES_FALLBACK;
     }, [activeQuality]);
 
@@ -145,8 +168,11 @@ export function ProductDetailPage() {
                 activeSizes.forEach(size => {
                     const key = `${qIdx}-${color.colorName}-${size}`;
                     const qty = quantities[key] || 0;
-                    units += qty;
-                    price += qty * quality.basePrice;
+                    if (qty > 0) {
+                        const sizeData = color.sizes?.find((s: any) => s.size?.toString().trim().toUpperCase() === size);
+                        units += qty;
+                        price += qty * resolveVariantPrice(sizeData, quality);
+                    }
                 });
             });
         });
@@ -193,6 +219,7 @@ export function ProductDetailPage() {
                     return;
                 }
 
+                const variantPrice = resolveVariantPrice(sizeData, quality);
                 cartItems.push({
                     id: itemId,
                     variantId: sizeData.id,
@@ -202,8 +229,8 @@ export function ProductDetailPage() {
                     color: colorName,
                     size: size,
                     quantity: qty,
-                    unitPrice: quality.basePrice,
-                    subtotal: qty * quality.basePrice,
+                    unitPrice: variantPrice,
+                    subtotal: qty * variantPrice,
                     image: product.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=2600&auto=format&fit=crop'
                 });
             }
@@ -418,13 +445,22 @@ export function ProductDetailPage() {
                                     <th className="py-3 px-5 text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em]" style={{ minWidth: 160 }}>
                                         Color
                                     </th>
-                                    {activeSizes.map((size: string) => (
-                                        <th key={size} className="py-3 px-2 text-center" style={{ minWidth: 72 }}>
-                                            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-zinc-100 text-xs font-black text-zinc-600 border border-zinc-200/80 uppercase">
-                                                {size}
-                                            </span>
-                                        </th>
-                                    ))}
+                                    {activeSizes.map((size: string) => {
+                                        const overridePrice = activeQuality.colors?.flatMap((c: any) => c.sizes ?? [])
+                                            .find((s: any) => s.size?.toString().trim().toUpperCase() === size && s.price != null && s.price > 0)?.price;
+                                        return (
+                                            <th key={size} className="py-3 px-2 text-center" style={{ minWidth: 72 }}>
+                                                <div className="flex flex-col items-center gap-0.5">
+                                                    <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-zinc-100 text-xs font-black text-zinc-600 border border-zinc-200/80 uppercase">
+                                                        {size}
+                                                    </span>
+                                                    {overridePrice != null && (
+                                                        <span className="text-[9px] font-bold text-zinc-500 tabular-nums">{formatPrice(overridePrice)}</span>
+                                                    )}
+                                                </div>
+                                            </th>
+                                        );
+                                    })}
                                     <th className="py-3 px-5 text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right" style={{ minWidth: 80 }}>
                                         Total
                                     </th>

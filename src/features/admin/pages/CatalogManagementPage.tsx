@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import type { Product } from "@/types/product";
+import type { Product, ProductSortKey } from "@/types/product";
 import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -43,6 +43,7 @@ export function CatalogManagementPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("ALL");
     const [statusFilter, setStatusFilter] = useState("ALL");
+    const [sortKey, setSortKey] = useState<ProductSortKey>('default');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
@@ -88,8 +89,21 @@ export function CatalogManagementPage() {
             );
         }
 
+        if (sortKey !== 'default') {
+            result = [...result].sort((a, b) => {
+                switch (sortKey) {
+                    case 'price_asc':  return a.basePrice - b.basePrice;
+                    case 'price_desc': return b.basePrice - a.basePrice;
+                    case 'stock_asc':  return a.totalStock - b.totalStock;
+                    case 'stock_desc': return b.totalStock - a.totalStock;
+                    case 'name_asc':   return a.name.localeCompare(b.name, 'es');
+                    default: return 0;
+                }
+            });
+        }
+
         return result;
-    }, [products, searchQuery, categoryFilter, statusFilter]);
+    }, [products, searchQuery, categoryFilter, statusFilter, sortKey]);
 
     const handleToggleStatus = async (productId: string, currentStatus: boolean) => {
         const newStatus = !currentStatus;
@@ -155,6 +169,23 @@ export function CatalogManagementPage() {
                                 <DropdownMenuItem onClick={() => setStatusFilter('ALL')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Todos</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setStatusFilter('ACTIVE')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Activos</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setStatusFilter('PAUSED')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Pausados</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="rounded-xl h-10 px-4 text-zinc-600 border-zinc-200 bg-white hover:bg-zinc-50 whitespace-nowrap shrink-0">
+                                    {sortKey === 'default' ? 'Ordenar' : sortKey === 'name_asc' ? 'Nombre A→Z' : sortKey === 'price_asc' ? 'Precio ↑' : sortKey === 'price_desc' ? 'Precio ↓' : sortKey === 'stock_desc' ? 'Stock ↓' : 'Stock ↑'} <ChevronDown className="w-3 h-3 ml-2 text-zinc-400" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 bg-white border border-zinc-200 rounded-xl shadow-lg p-1">
+                                <DropdownMenuItem onClick={() => setSortKey('default')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Relevancia</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSortKey('name_asc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Nombre A→Z</DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-zinc-100" />
+                                <DropdownMenuItem onClick={() => setSortKey('price_asc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Precio: menor primero</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSortKey('price_desc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Precio: mayor primero</DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-zinc-100" />
+                                <DropdownMenuItem onClick={() => setSortKey('stock_desc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Más stock</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSortKey('stock_asc')} className="cursor-pointer rounded-lg hover:bg-zinc-50 text-sm font-medium text-zinc-700 py-2 px-3 outline-none">Menos stock</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <div className="w-px h-6 bg-zinc-200 mx-1 hidden sm:block shrink-0"></div>
