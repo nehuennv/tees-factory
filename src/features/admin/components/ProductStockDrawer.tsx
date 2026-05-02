@@ -19,7 +19,6 @@ const SIZE_GROUPS = {
     nino:    ['2', '4', '6', '8', '10', '12', '14'],
     especial:['3XL', '4XL', '5XL', '6XL', '7XL'],
 } as const;
-const PREDEFINED_SIZES = [...SIZE_GROUPS.nino, ...SIZE_GROUPS.base, ...SIZE_GROUPS.especial];
 
 const compareSizes = (a: string, b: string): number => {
     const normA = a.trim().toUpperCase().replace(/^(\d+)\s*X\s*L$/, '$1XL');
