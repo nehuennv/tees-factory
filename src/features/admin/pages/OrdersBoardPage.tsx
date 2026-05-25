@@ -38,7 +38,7 @@ const COLUMNS: ColumnDef[] = [
     { id: 'IN_REVIEW',      title: 'En Revisión',     colorClass: 'bg-zinc-100/50',    dotClass: 'bg-zinc-400',    badgeClass: 'bg-zinc-100 text-zinc-500 border-zinc-200' },
     { id: 'APPROVED',       title: 'Aprobados',        colorClass: 'bg-emerald-50/40',  dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
     { id: 'IN_PREPARATION', title: 'En Preparación',   colorClass: 'bg-blue-50/40',     dotClass: 'bg-blue-500',    badgeClass: 'bg-blue-100 text-blue-600 border-blue-200' },
-    { id: 'SHIPPED',        title: 'Enviado',          colorClass: 'bg-amber-50/40',    dotClass: 'bg-amber-500',   badgeClass: 'bg-amber-100 text-amber-700 border-amber-200' },
+    { id: 'SHIPPED',        title: 'Despachado',          colorClass: 'bg-amber-50/40',    dotClass: 'bg-amber-500',   badgeClass: 'bg-amber-100 text-amber-700 border-amber-200' },
     { id: 'DELIVERED',      title: 'Entregado',        colorClass: 'bg-purple-50/40',   dotClass: 'bg-purple-500',  badgeClass: 'bg-purple-100 text-purple-700 border-purple-200' },
 ];
 

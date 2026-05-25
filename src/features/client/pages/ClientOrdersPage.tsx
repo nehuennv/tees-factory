@@ -67,7 +67,7 @@ export function ClientOrdersPage() {
             case 'SHIPPED':
                 return (
                     <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-600 border border-amber-100">
-                        <Truck className="w-3 h-3" /> Enviado
+                        <Truck className="w-3 h-3" /> Despachado
                     </div>
                 );
             case 'DELIVERED':

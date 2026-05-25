@@ -78,7 +78,7 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideCli
             case 'IN_REVIEW':      return { label: 'En Revisión',    color: 'bg-zinc-100 text-zinc-600 border-zinc-200' };
             case 'APPROVED':       return { label: 'Aprobado',       color: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
             case 'IN_PREPARATION': return { label: 'En Preparación', color: 'bg-blue-50 text-blue-600 border-blue-200' };
-            case 'SHIPPED':        return { label: 'Enviado',         color: 'bg-amber-50 text-amber-600 border-amber-200' };
+            case 'SHIPPED':        return { label: 'Despachado',         color: 'bg-amber-50 text-amber-600 border-amber-200' };
             case 'DELIVERED':      return { label: 'Entregado',       color: 'bg-purple-50 text-purple-600 border-purple-200' };
             case 'CANCELLED':      return { label: 'Cancelado',       color: 'bg-rose-50 text-rose-600 border-rose-200' };
             default: return { label: status || 'Desconocido', color: 'bg-zinc-100 text-zinc-600 border-zinc-200' };
