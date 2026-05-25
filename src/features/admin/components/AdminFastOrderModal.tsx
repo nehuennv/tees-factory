@@ -5,6 +5,10 @@ import {
     ShoppingBag, Package, Loader2, Factory, Truck,
     User, ArrowRight, Trash2, CheckCircle2,
 } from 'lucide-react';
+import { DISPATCH_LABELS } from '@/types/order';
+import type { DispatchType } from '@/types/order';
+import { calcPricing } from '@/lib/ordersApi';
+import type { OrderExtra } from '@/types/order';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -133,6 +137,12 @@ export function AdminFastOrderModal({ isOpen, onClose }: AdminFastOrderModalProp
     const [deliveryMethod, setDeliveryMethod] = useState<'fabrica' | 'transporte'>('fabrica');
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    // ── Pricing extras ────────────────────────────────────────────
+    const [extras, setExtras] = useState<OrderExtra[]>([]);
+    const [taxRate, setTaxRate] = useState(0);
+    const [discountPercentage, setDiscountPercentage] = useState(0);
+    const [dispatchType, setDispatchType] = useState<DispatchType | ''>('');
+    const [deliveryDeadline, setDeliveryDeadline] = useState('');
 
     // ── Fetch clients and products on open ───────────────────────
     useEffect(() => {
@@ -315,7 +325,9 @@ export function AdminFastOrderModal({ isOpen, onClose }: AdminFastOrderModalProp
 
     // ── Totals ───────────────────────────────────────────────────
     const totalUnits = cartItems.reduce((s, i) => s + i.quantity, 0);
-    const totalPrice = cartItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    const subtotalPrice = cartItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    const pricing = calcPricing(subtotalPrice, extras, discountPercentage, taxRate);
+    const totalPrice = pricing.totalAmount || subtotalPrice;
 
     // ── Submit ───────────────────────────────────────────────────
     const handleConfirm = async () => {
@@ -327,7 +339,11 @@ export function AdminFastOrderModal({ isOpen, onClose }: AdminFastOrderModalProp
             await apiClient.post('/orders', {
                 clientId: selectedClient.id,
                 items: cartItems.map(i => ({ variantId: i.variantId, quantity: i.quantity })),
-                discountPercentage: 0,
+                discountPercentage,
+                taxRate,
+                extras,
+                dispatchType: dispatchType || undefined,
+                deliveryDeadline: deliveryDeadline || undefined,
                 observations: `Pedido Exprés. Entrega: ${
                     deliveryMethod === 'fabrica' ? 'Retiro por Fábrica' : 'Envío por Expreso'
                 }${notes.trim() ? '. ' + notes.trim() : ''}`,
@@ -365,6 +381,11 @@ export function AdminFastOrderModal({ isOpen, onClose }: AdminFastOrderModalProp
         setCartItems([]);
         setDeliveryMethod('fabrica');
         setNotes('');
+        setExtras([]);
+        setTaxRate(0);
+        setDiscountPercentage(0);
+        setDispatchType('');
+        setDeliveryDeadline('');
         onClose();
     };
 
@@ -820,10 +841,115 @@ export function AdminFastOrderModal({ isOpen, onClose }: AdminFastOrderModalProp
                                 />
                             </div>
 
+                            {/* Dispatch + Deadline */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Despacho</label>
+                                    <select
+                                        value={dispatchType}
+                                        onChange={e => setDispatchType(e.target.value as DispatchType | '')}
+                                        className="h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                                    >
+                                        <option value="">Sin asignar</option>
+                                        {(Object.keys(DISPATCH_LABELS) as DispatchType[]).map(dt => (
+                                            <option key={dt} value={dt}>{DISPATCH_LABELS[dt]}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Fecha límite</label>
+                                    <input
+                                        type="date"
+                                        value={deliveryDeadline}
+                                        onChange={e => setDeliveryDeadline(e.target.value)}
+                                        className="h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* IVA + Descuento */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">IVA (%)</label>
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {[0, 10.5, 21].map(p => (
+                                            <button
+                                                key={p}
+                                                onClick={() => setTaxRate(p)}
+                                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                                    taxRate === p ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'
+                                                }`}
+                                            >
+                                                {p === 0 ? 'Sin IVA' : `${p}%`}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Descuento (%)</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        value={discountPercentage || ''}
+                                        onChange={e => setDiscountPercentage(parseFloat(e.target.value) || 0)}
+                                        placeholder="0"
+                                        className="h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Extras */}
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Extras</label>
+                                    <button
+                                        onClick={() => setExtras(prev => [...prev, { label: '', amount: 0 }])}
+                                        className="flex items-center gap-1 text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Agregar
+                                    </button>
+                                </div>
+                                {extras.map((extra, i) => (
+                                    <div key={i} className="flex gap-2 items-center">
+                                        <input
+                                            type="text"
+                                            value={extra.label}
+                                            onChange={e => setExtras(prev => prev.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))}
+                                            placeholder="Descripción"
+                                            className="flex-1 h-9 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                                        />
+                                        <input
+                                            type="number"
+                                            value={extra.amount || ''}
+                                            onChange={e => setExtras(prev => prev.map((x, idx) => idx === i ? { ...x, amount: parseFloat(e.target.value) || 0 } : x))}
+                                            placeholder="Monto"
+                                            className="w-28 h-9 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <button
+                                            onClick={() => setExtras(prev => prev.filter((_, idx) => idx !== i))}
+                                            className="w-8 h-8 rounded-lg hover:bg-rose-50 flex items-center justify-center transition-colors"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5 text-zinc-400 hover:text-rose-500" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
                             {/* Total */}
                             <div className="flex items-center justify-between bg-zinc-900 text-white rounded-2xl px-5 py-4">
-                                <span className="text-sm font-bold text-zinc-300">Total Estimado</span>
-                                <span className="text-2xl font-black tracking-tight">{formatPrice(totalPrice)}</span>
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-sm font-bold text-zinc-300">Total Estimado</span>
+                                    {(discountPercentage > 0 || taxRate > 0 || extras.length > 0) && (
+                                        <span className="text-xs text-zinc-500">
+                                            Base {formatCurrency(subtotalPrice)}
+                                            {extras.length > 0 ? ` + extras ${formatCurrency(pricing.extrasTotal)}` : ''}
+                                            {discountPercentage > 0 ? ` − ${discountPercentage}%` : ''}
+                                            {taxRate > 0 ? ` + IVA ${taxRate}%` : ''}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-2xl font-black tracking-tight">{formatCurrency(totalPrice)}</span>
                             </div>
                         </div>
                     )}

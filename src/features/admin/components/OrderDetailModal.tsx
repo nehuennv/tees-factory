@@ -8,7 +8,7 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, FileDown } from 'lucide-react';
+import { Package, FileDown, Pencil, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -18,9 +18,11 @@ interface OrderDetailModalProps {
     onClose: () => void;
     hideClient?: boolean;
     hidePdf?: boolean;
+    onEdit?: (order: any) => void;
+    onCancel?: (order: any) => void;
 }
 
-export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideClient = false, hidePdf = false }: OrderDetailModalProps) {
+export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideClient = false, hidePdf = false, onEdit, onCancel }: OrderDetailModalProps) {
     const [order, setOrder] = useState<any>(initialOrder);
     const [isFetching, setIsFetching] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -171,6 +173,31 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideCli
                         <div className="bg-amber-50/50 border border-amber-100 p-3 rounded-xl">
                             <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest block mb-1">Observaciones</span>
                             <p className="text-xs text-zinc-700 italic">"{order.observations}"</p>
+                        </div>
+                    )}
+
+                    {(onEdit || onCancel) && (
+                        <div className="flex gap-2">
+                            {onEdit && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => onEdit(order)}
+                                    className="flex-1 rounded-xl border-zinc-200 h-10 font-bold gap-2 text-zinc-700"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                    Editar pedido
+                                </Button>
+                            )}
+                            {onCancel && !['DELIVERED', 'ARCHIVED', 'CANCELLED'].includes(order.status) && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => onCancel(order)}
+                                    className="flex-1 rounded-xl border-rose-200 h-10 font-bold gap-2 text-rose-600 hover:bg-rose-50 hover:border-rose-300"
+                                >
+                                    <XCircle className="w-4 h-4" />
+                                    Cancelar pedido
+                                </Button>
+                            )}
                         </div>
                     )}
 

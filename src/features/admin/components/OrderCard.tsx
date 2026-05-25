@@ -1,8 +1,9 @@
 import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripHorizontal, Calendar } from 'lucide-react';
-import type { Order } from '@/mocks/orders';
+import { GripHorizontal, Calendar, Clock } from 'lucide-react';
+import type { Order, DispatchType } from '@/types/order';
+import { DISPATCH_LABELS } from '@/types/order';
 
 const STATUS_STYLES: Record<string, { cardBorder: string; handleBg: string; numberColor: string }> = {
     IN_REVIEW:      { cardBorder: 'border-l-[3px] border-l-zinc-300',    handleBg: 'bg-zinc-50/80 hover:bg-zinc-100',          numberColor: 'text-zinc-500' },
@@ -10,16 +11,35 @@ const STATUS_STYLES: Record<string, { cardBorder: string; handleBg: string; numb
     IN_PREPARATION: { cardBorder: 'border-l-[3px] border-l-blue-400',    handleBg: 'bg-blue-50/70 hover:bg-blue-100/60',       numberColor: 'text-blue-500' },
     SHIPPED:        { cardBorder: 'border-l-[3px] border-l-amber-400',   handleBg: 'bg-amber-50/70 hover:bg-amber-100/60',     numberColor: 'text-amber-600' },
     DELIVERED:      { cardBorder: 'border-l-[3px] border-l-purple-400',  handleBg: 'bg-purple-50/70 hover:bg-purple-100/60',   numberColor: 'text-purple-600' },
+    ARCHIVED:       { cardBorder: 'border-l-[3px] border-l-zinc-300',    handleBg: 'bg-zinc-50/80',                            numberColor: 'text-zinc-400' },
     CANCELLED:      { cardBorder: 'border-l-[3px] border-l-rose-400',    handleBg: 'bg-rose-50/70 hover:bg-rose-100/60',       numberColor: 'text-rose-500' },
 };
+
+const PAYMENT_BADGE: Record<string, string> = {
+    PAID:    'bg-emerald-100 text-emerald-700 border-emerald-200',
+    PARTIAL: 'bg-amber-100 text-amber-700 border-amber-200',
+    PENDING: 'bg-rose-100 text-rose-600 border-rose-200',
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+    PAID: 'Pagado', PARTIAL: 'Parcial', PENDING: 'Debe',
+};
+
+function deadlineColor(deadline: string): string {
+    const diff = (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    if (diff < 0) return 'text-rose-600 font-bold';
+    if (diff < 3) return 'text-rose-500 font-semibold';
+    return 'text-zinc-400';
+}
 
 interface OrderCardProps {
     order: Order;
     onClick: (order: Order) => void;
     isNew?: boolean;
+    isDragDisabled?: boolean;
 }
 
-export const OrderCard = memo(function OrderCard({ order, onClick, isNew }: OrderCardProps) {
+export const OrderCard = memo(function OrderCard({ order, onClick, isNew, isDragDisabled }: OrderCardProps) {
     const {
         attributes,
         listeners,
@@ -29,18 +49,16 @@ export const OrderCard = memo(function OrderCard({ order, onClick, isNew }: Orde
         isDragging,
     } = useSortable({
         id: order.id,
-        data: {
-            type: 'Order',
-            order,
-        },
+        disabled: isDragDisabled,
+        data: { type: 'Order', order },
     });
 
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-    };
-
+    const style = { transform: CSS.Transform.toString(transform), transition };
     const statusStyle = STATUS_STYLES[(order as any).status] ?? STATUS_STYLES.IN_REVIEW;
+    const paymentStatus = order.paymentStatus || order.payment_status;
+    const dispatchType = order.dispatchType || order.dispatch_type;
+    const deadline = order.deliveryDeadline || order.delivery_deadline;
+    const status = (order as any).status;
 
     if (isDragging) {
         return (
@@ -58,13 +76,12 @@ export const OrderCard = memo(function OrderCard({ order, onClick, isNew }: Orde
             style={style}
             className={`bg-white border border-zinc-200 rounded-xl shadow-sm hover:shadow-md hover:border-zinc-300 transition-all group flex flex-col overflow-hidden ${statusStyle.cardBorder}`}
         >
-            {/* DRAG HANDLE: Toda la barra superior ahora es el área de agarre */}
+            {/* Drag handle */}
             <div
-                className={`border-b border-zinc-100 px-3 py-2.5 flex justify-between items-center cursor-grab active:cursor-grabbing transition-colors ${statusStyle.handleBg}`}
-                {...attributes}
-                {...listeners}
+                className={`border-b border-zinc-100 px-3 py-2.5 flex justify-between items-center transition-colors ${statusStyle.handleBg} ${isDragDisabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
+                {...(isDragDisabled ? {} : { ...attributes, ...listeners })}
             >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-xs font-black tracking-wider uppercase ${statusStyle.numberColor}`}>
                         #{order.orderNumber || order.id?.slice(0, 8)}
                     </span>
@@ -77,16 +94,28 @@ export const OrderCard = memo(function OrderCard({ order, onClick, isNew }: Orde
                             Nuevo
                         </span>
                     )}
+                    {paymentStatus && (
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md border ${PAYMENT_BADGE[paymentStatus] || PAYMENT_BADGE.PENDING}`}>
+                            {PAYMENT_LABELS[paymentStatus] || paymentStatus}
+                        </span>
+                    )}
+                    {status === 'SHIPPED' && dispatchType && (
+                        <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200">
+                            {DISPATCH_LABELS[dispatchType as DispatchType] || dispatchType}
+                        </span>
+                    )}
                 </div>
-                <GripHorizontal className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600 transition-colors" />
+                {!isDragDisabled && (
+                    <GripHorizontal className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600 transition-colors shrink-0" />
+                )}
             </div>
 
-            {/* CARD BODY: Click para abrir modal */}
+            {/* Card body */}
             <div
                 className="p-3 flex flex-col gap-2 cursor-pointer bg-white hover:bg-zinc-50/50 transition-colors"
                 onClick={() => onClick(order)}
             >
-                 <span className="text-sm text-zinc-900 font-bold leading-tight line-clamp-2" title={(order as any).client?.company_name || (order as any).company_name || (order as any).clientName || (order as any).client_name || (order as any).client_id}>
+                <span className="text-sm text-zinc-900 font-bold leading-tight line-clamp-2">
                     {(order as any).client?.company_name || (order as any).company_name || (order as any).clientName || (order as any).client_name || (order as any).client_id || 'Pedido'}
                 </span>
 
@@ -98,6 +127,15 @@ export const OrderCard = memo(function OrderCard({ order, onClick, isNew }: Orde
                             : '—'}
                     </span>
                 </div>
+
+                {deadline && (
+                    <div className={`flex items-center gap-1 text-[11px] ${deadlineColor(deadline)}`}>
+                        <Clock className="w-3 h-3 shrink-0" />
+                        <span>
+                            Entrega: {new Date(deadline).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+                        </span>
+                    </div>
+                )}
 
                 <div className="flex justify-between items-end pt-1 border-t border-zinc-100/50">
                     <div className="flex flex-col">
