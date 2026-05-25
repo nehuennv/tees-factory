@@ -10,7 +10,11 @@ COPY package.json package-lock.json ./
 # Instalar dependencias (usamos ci para instalaciones más rápidas y exactas según lockfile)
 RUN npm ci
 
-# Copiar el resto del código fuente y el archivo .env
+# Bust cache when git SHA changes so COPY always gets fresh files
+ARG GIT_SHA
+RUN echo "Build SHA: ${GIT_SHA}"
+
+# Copiar el resto del código fuente
 COPY . .
 
 # Variables de entorno al momento de compilar. 
