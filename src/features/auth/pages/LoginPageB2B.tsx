@@ -255,8 +255,7 @@ export const LoginPageB2B = () => {
                                     </Label>
                                     <button
                                         type="button"
-                                        // 3. Abrimos el modal de contraseña en vez del toast
-                                        onClick={() => setModalType('password')}
+                                        onClick={() => navigate('/forgot-password')}
                                         className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors"
                                     >
                                         ¿Olvidaste tu contraseña?

@@ -7,6 +7,7 @@ import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage"
 import { CheckoutPage } from "@/features/checkout/pages/CheckoutPage"
 import { CheckoutSuccessPage } from "@/features/checkout/pages/CheckoutSuccessPage"
 import { LoginPageB2B } from "@/features/auth/pages/LoginPageB2B"
+import { ForgotPasswordPage } from "@/features/auth/pages/ForgotPasswordPage"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { useAuthStore } from "@/store/authStore"
 import SplashScreen from "@/components/shared/SplashScreen"
@@ -56,6 +57,7 @@ function App() {
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPageB2B />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* ADMIN ROUTES */}
         <Route path="/admin" element={
