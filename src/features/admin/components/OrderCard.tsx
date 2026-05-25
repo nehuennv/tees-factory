@@ -5,10 +5,12 @@ import { GripHorizontal, Calendar } from 'lucide-react';
 import type { Order } from '@/mocks/orders';
 
 const STATUS_STYLES: Record<string, { cardBorder: string; handleBg: string; numberColor: string }> = {
-    PENDING:   { cardBorder: 'border-l-[3px] border-l-zinc-300',    handleBg: 'bg-zinc-50/80 hover:bg-zinc-100',          numberColor: 'text-zinc-500' },
-    PICKING:   { cardBorder: 'border-l-[3px] border-l-blue-400',    handleBg: 'bg-blue-50/70 hover:bg-blue-100/60',       numberColor: 'text-blue-500' },
-    SHIPPED:   { cardBorder: 'border-l-[3px] border-l-amber-400',   handleBg: 'bg-amber-50/70 hover:bg-amber-100/60',     numberColor: 'text-amber-600' },
-    DELIVERED: { cardBorder: 'border-l-[3px] border-l-emerald-400', handleBg: 'bg-emerald-50/70 hover:bg-emerald-100/60', numberColor: 'text-emerald-600' },
+    IN_REVIEW:      { cardBorder: 'border-l-[3px] border-l-zinc-300',    handleBg: 'bg-zinc-50/80 hover:bg-zinc-100',          numberColor: 'text-zinc-500' },
+    APPROVED:       { cardBorder: 'border-l-[3px] border-l-emerald-400', handleBg: 'bg-emerald-50/70 hover:bg-emerald-100/60', numberColor: 'text-emerald-600' },
+    IN_PREPARATION: { cardBorder: 'border-l-[3px] border-l-blue-400',    handleBg: 'bg-blue-50/70 hover:bg-blue-100/60',       numberColor: 'text-blue-500' },
+    SHIPPED:        { cardBorder: 'border-l-[3px] border-l-amber-400',   handleBg: 'bg-amber-50/70 hover:bg-amber-100/60',     numberColor: 'text-amber-600' },
+    DELIVERED:      { cardBorder: 'border-l-[3px] border-l-purple-400',  handleBg: 'bg-purple-50/70 hover:bg-purple-100/60',   numberColor: 'text-purple-600' },
+    CANCELLED:      { cardBorder: 'border-l-[3px] border-l-rose-400',    handleBg: 'bg-rose-50/70 hover:bg-rose-100/60',       numberColor: 'text-rose-500' },
 };
 
 interface OrderCardProps {
@@ -38,7 +40,7 @@ export const OrderCard = memo(function OrderCard({ order, onClick, isNew }: Orde
         transition,
     };
 
-    const statusStyle = STATUS_STYLES[(order as any).status] ?? STATUS_STYLES.PENDING;
+    const statusStyle = STATUS_STYLES[(order as any).status] ?? STATUS_STYLES.IN_REVIEW;
 
     if (isDragging) {
         return (

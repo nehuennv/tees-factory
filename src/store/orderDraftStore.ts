@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { useCartStore } from './cartStore';
 
 /**
@@ -32,32 +33,42 @@ export interface OrderDraftState {
     clearDraft: () => void;
 }
 
-export const useOrderDraftStore = create<OrderDraftState>((set) => ({
-    clientId: null,
-    clientName: null,
-    startedAt: null,
-    isActive: false,
-
-    startDraft: (clientId, clientName) => {
-        // Limpiar carrito anterior antes de empezar pedido nuevo
-        useCartStore.getState().clearCart();
-
-        set({
-            clientId,
-            clientName,
-            startedAt: new Date().toISOString(),
-            isActive: true,
-        });
-    },
-
-    clearDraft: () => {
-        useCartStore.getState().clearCart();
-
-        set({
+export const useOrderDraftStore = create<OrderDraftState>()(
+    persist(
+        (set) => ({
             clientId: null,
             clientName: null,
             startedAt: null,
             isActive: false,
-        });
-    },
-}));
+
+            startDraft: (clientId, clientName) => {
+                useCartStore.getState().clearCart();
+                set({
+                    clientId,
+                    clientName,
+                    startedAt: new Date().toISOString(),
+                    isActive: true,
+                });
+            },
+
+            clearDraft: () => {
+                useCartStore.getState().clearCart();
+                set({
+                    clientId: null,
+                    clientName: null,
+                    startedAt: null,
+                    isActive: false,
+                });
+            },
+        }),
+        {
+            name: 'tees-draft',
+            partialize: (state) => ({
+                clientId: state.clientId,
+                clientName: state.clientName,
+                startedAt: state.startedAt,
+                isActive: state.isActive,
+            }),
+        }
+    )
+);

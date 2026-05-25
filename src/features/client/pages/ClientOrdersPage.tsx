@@ -45,23 +45,29 @@ export function ClientOrdersPage() {
 
     const getStatusBadge = (status: string) => {
         switch (status?.toUpperCase()) {
-            case 'PENDING':
+            case 'IN_REVIEW':
                 return (
                     <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-zinc-100 text-zinc-600 border border-zinc-200">
-                        <Clock className="w-3 h-3" /> Pendiente
+                        <Clock className="w-3 h-3" /> En Revisión
                     </div>
                 );
+            case 'APPROVED':
             case 'CONFIRMED':
-            case 'PICKING':
                 return (
                     <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100">
                         <CheckCircle2 className="w-3 h-3" /> Aprobado
                     </div>
                 );
-            case 'SHIPPED':
+            case 'IN_PREPARATION':
                 return (
                     <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
-                        <Truck className="w-3 h-3" /> Despachado
+                        <Clock className="w-3 h-3" /> En Preparación
+                    </div>
+                );
+            case 'SHIPPED':
+                return (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-600 border border-amber-100">
+                        <Truck className="w-3 h-3" /> Enviado
                     </div>
                 );
             case 'DELIVERED':

@@ -33,7 +33,7 @@ const getHexForColor = (name: string) => {
 export function CartWidget() {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
-    const { items, totalUnits, totalPrice, removeItem } = useCartStore();
+    const { items, totalUnits, totalPrice, removeItem, updateQuantity } = useCartStore();
 
     const handleGoToCheckout = () => {
         setOpen(false);
@@ -217,7 +217,20 @@ export function CartWidget() {
                                                                             <span className="inline-flex items-center gap-0.5 bg-zinc-100 border border-zinc-200 rounded-lg px-2 py-0.5 text-[11px] font-bold text-zinc-700 leading-5">
                                                                                 <span className="text-zinc-500">{v.size}</span>
                                                                                 <span className="text-zinc-300 mx-0.5 font-normal">·</span>
-                                                                                <span className="text-zinc-900">{v.quantity}</span>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    min="1"
+                                                                                    value={v.quantity}
+                                                                                    onChange={(e) => {
+                                                                                        const val = parseInt(e.target.value, 10);
+                                                                                        if (isNaN(val) || val <= 0) {
+                                                                                            removeItem(v.id);
+                                                                                        } else {
+                                                                                            updateQuantity(v.id, val);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="w-8 text-center bg-transparent font-black text-zinc-900 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                />
                                                                             </span>
                                                                             <button
                                                                                 onClick={() => removeItem(v.id)}

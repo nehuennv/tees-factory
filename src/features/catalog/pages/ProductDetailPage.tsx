@@ -467,7 +467,18 @@ export function ProductDetailPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
-                                {activeQuality.colors?.map((color: any) => {
+                                {(() => {
+                                    const COLOR_PRIORITY = ['negro', 'blanco'];
+                                    const sortedColors = [...(activeQuality.colors ?? [])].sort((a: any, b: any) => {
+                                        const ai = COLOR_PRIORITY.indexOf(a.colorName.toLowerCase());
+                                        const bi = COLOR_PRIORITY.indexOf(b.colorName.toLowerCase());
+                                        if (ai !== -1 && bi !== -1) return ai - bi;
+                                        if (ai !== -1) return -1;
+                                        if (bi !== -1) return 1;
+                                        return a.colorName.localeCompare(b.colorName, 'es');
+                                    });
+                                    return sortedColors;
+                                })().map((color: any) => {
                                     const rowTotal = getRowTotal(color.colorName);
                                     return (
                                         <tr key={color.colorName} className={`transition-colors ${rowTotal > 0 ? 'bg-zinc-50/80' : 'hover:bg-zinc-50/40'}`}>

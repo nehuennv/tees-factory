@@ -35,10 +35,11 @@ type ColumnDef = {
 };
 
 const COLUMNS: ColumnDef[] = [
-    { id: 'PENDING',   title: 'Pendientes',  colorClass: 'bg-zinc-100/50',    dotClass: 'bg-zinc-400',    badgeClass: 'bg-zinc-100 text-zinc-500 border-zinc-200' },
-    { id: 'PICKING',   title: 'Aprobados',   colorClass: 'bg-blue-50/40',     dotClass: 'bg-blue-500',    badgeClass: 'bg-blue-100 text-blue-600 border-blue-200' },
-    { id: 'SHIPPED',   title: 'Despachados', colorClass: 'bg-amber-50/40',    dotClass: 'bg-amber-500',   badgeClass: 'bg-amber-100 text-amber-700 border-amber-200' },
-    { id: 'DELIVERED', title: 'Entregados',  colorClass: 'bg-emerald-50/40',  dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    { id: 'IN_REVIEW',      title: 'En Revisión',     colorClass: 'bg-zinc-100/50',    dotClass: 'bg-zinc-400',    badgeClass: 'bg-zinc-100 text-zinc-500 border-zinc-200' },
+    { id: 'APPROVED',       title: 'Aprobados',        colorClass: 'bg-emerald-50/40',  dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    { id: 'IN_PREPARATION', title: 'En Preparación',   colorClass: 'bg-blue-50/40',     dotClass: 'bg-blue-500',    badgeClass: 'bg-blue-100 text-blue-600 border-blue-200' },
+    { id: 'SHIPPED',        title: 'Enviado',          colorClass: 'bg-amber-50/40',    dotClass: 'bg-amber-500',   badgeClass: 'bg-amber-100 text-amber-700 border-amber-200' },
+    { id: 'DELIVERED',      title: 'Entregado',        colorClass: 'bg-purple-50/40',   dotClass: 'bg-purple-500',  badgeClass: 'bg-purple-100 text-purple-700 border-purple-200' },
 ];
 
 const BoardColumn = memo(function BoardColumn({
@@ -98,7 +99,7 @@ const BoardColumn = memo(function BoardColumn({
 
 export function OrdersBoardPage() {
     const [columns, setColumns] = useState<Record<string, any[]>>({
-        PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: []
+        IN_REVIEW: [], APPROVED: [], IN_PREPARATION: [], SHIPPED: [], DELIVERED: [], CANCELLED: []
     });
 
     const SEEN_KEY = 'admin_seen_order_ids';
@@ -148,12 +149,12 @@ export function OrdersBoardPage() {
                 if (res.data.length > 0) {
                     console.log('[OrdersBoard] Primer orden recibida:', res.data[0]);
                 }
-                const initial: Record<string, any[]> = { PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
+                const initial: Record<string, any[]> = { IN_REVIEW: [], APPROVED: [], IN_PREPARATION: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
                 res.data.forEach((order: any) => {
                     if (initial[order.status]) {
                         initial[order.status].push(order);
                     } else {
-                        initial['PENDING'].push(order);
+                        initial['IN_REVIEW'].push(order);
                     }
                 });
                 setColumns(initial);
@@ -167,7 +168,7 @@ export function OrdersBoardPage() {
 
     const filteredColumns = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase();
-        const result: Record<string, any[]> = { PENDING: [], PICKING: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
+        const result: Record<string, any[]> = { IN_REVIEW: [], APPROVED: [], IN_PREPARATION: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
 
         const min = minAmount !== '' ? parseFloat(minAmount) : null;
         const max = maxAmount !== '' ? parseFloat(maxAmount) : null;
@@ -255,9 +256,9 @@ export function OrdersBoardPage() {
 
             apiClient.patch(`/orders/${draggedOrder.id}/status`, { status: overContainer })
                 .then(() => {
-                    if (overContainer === 'PICKING') {
-                        toast.success('Pedido aprobado — pago conciliado', {
-                            description: 'Se está enviando el email "En Preparación" al cliente automáticamente.',
+                    if (overContainer === 'IN_PREPARATION') {
+                        toast.success('Pedido enviado a preparación', {
+                            description: 'Se enviará el email "En Preparación" al cliente automáticamente.',
                             duration: 6000,
                         });
                     } else {
@@ -361,7 +362,7 @@ export function OrdersBoardPage() {
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                 >
-                    <div className="grid grid-cols-4 gap-6 h-full min-w-[1100px]">
+                    <div className="grid grid-cols-5 gap-6 h-full min-w-[1350px]">
                         {COLUMNS.map((col) => (
                             <div key={col.id} className="min-h-0 h-full">
                                 <BoardColumn

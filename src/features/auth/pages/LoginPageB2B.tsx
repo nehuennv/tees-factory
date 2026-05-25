@@ -139,7 +139,7 @@ export const LoginPageB2B = () => {
 
         try {
             setGlobalLoading(true, 'Validando credenciales...');
-            await login(email, password);
+            await login(email.toLowerCase().trim(), password);
 
             const user = useAuthStore.getState().user;
             if (user) {
