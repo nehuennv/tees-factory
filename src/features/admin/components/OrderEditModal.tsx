@@ -74,7 +74,6 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
     const [orderItems, setOrderItems] = useState<any[]>([]);
     const [isFetchingItems, setIsFetchingItems] = useState(false);
     const [allProducts, setAllProducts] = useState<any[]>([]);
-    const [productsLoading, setProductsLoading] = useState(false);
     const [isSavingItems, setIsSavingItems] = useState(false);
     const [itemsChanged, setItemsChanged] = useState(false);
 
@@ -112,14 +111,12 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
             .finally(() => setIsFetchingItems(false));
     }, [tab]);
 
-    // Fetch products for items tab
+    // Fetch products for items tab (reserved for future add-item UI)
     useEffect(() => {
         if (tab !== 'items' || isLocked || allProducts.length > 0) return;
-        setProductsLoading(true);
         apiClient.get('/products')
             .then(res => setAllProducts(Array.isArray(res.data) ? res.data : []))
-            .catch(() => {})
-            .finally(() => setProductsLoading(false));
+            .catch(() => {});
     }, [tab]);
 
     if (!isOpen) return null;
