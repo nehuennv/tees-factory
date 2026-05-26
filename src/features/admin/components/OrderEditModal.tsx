@@ -109,7 +109,7 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
             })
             .catch(() => toast.error('Error al cargar items'))
             .finally(() => setIsFetchingItems(false));
-    }, [tab]);
+    }, [tab, order.id]);
 
     // Fetch products for items tab (reserved for future add-item UI)
     useEffect(() => {

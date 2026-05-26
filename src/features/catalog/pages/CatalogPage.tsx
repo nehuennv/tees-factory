@@ -25,7 +25,7 @@ import apiClient from '@/lib/apiClient';
 export function CatalogPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [products, setProducts] = useState<Product[]>([]);
-    const [_isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const [sortKey, setSortKey] = useState<ProductSortKey>('default');
 
     const sortedProducts = useMemo(() => {
@@ -105,6 +105,7 @@ export function CatalogPage() {
 
                 <CatalogGrid
                     products={sortedProducts}
+                    isLoading={isLoading}
                     onProductAction={handleProductAction}
                 />
             </div>

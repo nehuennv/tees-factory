@@ -197,8 +197,6 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                 })),
             }));
 
-            console.log('[TEST] fetchMatrix raw sizes (primer color de primer quality):', data.qualities?.[0]?.colors?.[0]?.sizes);
-            console.log('[TEST] prices mapeados:', mapped.flatMap(q => q.colors.flatMap(c => c.sizes.map(s => ({ size: s.size, price: s.price })))));
             setQualities(mapped);
             if (mapped.length > 0) setActiveTab(mapped[0].id);
         } catch {
@@ -418,9 +416,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
             // 2. Guardar stock
             if (stockPayload.length > 0) {
-                console.log('[TEST] payload enviado a PUT /stock:', JSON.stringify(stockPayload, null, 2));
-                const stockRes = await apiClient.put(`/products/${product.id}/stock`, stockPayload);
-                console.log('[TEST] respuesta del backend:', stockRes.status, stockRes.data);
+                await apiClient.put(`/products/${product.id}/stock`, stockPayload);
             }
 
             // Recalcular totalStock local
