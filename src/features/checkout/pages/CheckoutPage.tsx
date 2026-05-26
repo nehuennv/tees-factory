@@ -42,6 +42,14 @@ export function CheckoutPage() {
                 ? 'Envío por Expreso · Correo (Andreani / CA)'
                 : 'Envío por Expreso';
 
+    // Map UI delivery selection → backend DispatchType enum
+    const resolvedDispatchType = (): string | null => {
+        if (deliveryMethod === 'fabrica') return 'PUNTO_PILAR';
+        if (expressType === 'moto')    return 'MOTOMENSAJERIA';
+        if (expressType === 'correo')  return 'CORREO';
+        return null;
+    };
+
     const handleConfirmOrder = async () => {
         if (items.length === 0) {
             toast.error("El carrito está vacío");
@@ -72,7 +80,8 @@ export function CheckoutPage() {
                 quantity: item.quantity
             })),
             discountPercentage: 0,
-            observations: `Entrega: ${deliveryLabel}. ${notes}`
+            dispatchType: resolvedDispatchType(),
+            observations: notes.trim() || null,
         };
 
         try {
