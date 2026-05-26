@@ -27,9 +27,10 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 function deadlineColor(deadline: string): string {
     const diff = (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    if (diff < 0) return 'text-rose-600 font-bold';
-    if (diff < 3) return 'text-rose-500 font-semibold';
-    return 'text-zinc-400';
+    if (diff < 0)  return 'text-rose-600 font-bold';    // vencido
+    if (diff < 3)  return 'text-rose-500 font-semibold'; // rojo: ≤3 días
+    if (diff <= 7) return 'text-amber-500 font-semibold'; // naranja: ≤7 días
+    return 'text-emerald-600'; // verde: en tiempo
 }
 
 interface OrderCardProps {
