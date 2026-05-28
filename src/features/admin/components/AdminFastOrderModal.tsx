@@ -62,6 +62,7 @@ interface LocalCartItem {
 interface AdminFastOrderModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onOrderCreated?: () => void;
 }
 
 // Normalize product detail (handles flat `variants` array from some backends)
@@ -108,7 +109,7 @@ function normalizeDetail(data: any): ProductDetail {
     return data;
 }
 
-export function AdminFastOrderModal({ isOpen, onClose }: AdminFastOrderModalProps) {
+export function AdminFastOrderModal({ isOpen, onClose, onOrderCreated }: AdminFastOrderModalProps) {
     const [step, setStep] = useState<1 | 2>(1);
 
     // ── Client search ────────────────────────────────────────────
@@ -354,7 +355,7 @@ export function AdminFastOrderModal({ isOpen, onClose }: AdminFastOrderModalProp
             });
 
             handleClose();
-            window.location.reload();
+            onOrderCreated?.();
         } catch (error: any) {
             if (error.response?.status === 409) {
                 toast.error('Stock insuficiente', {
