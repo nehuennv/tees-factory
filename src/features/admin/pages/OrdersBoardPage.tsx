@@ -27,6 +27,7 @@ import { AdminFastOrderModal } from '../components/AdminFastOrderModal';
 import { CancelOrderDialog } from '../components/CancelOrderDialog';
 import { OrderEditModal } from '../components/OrderEditModal';
 import { ArchivedOrdersPanel } from '../components/ArchivedOrdersPanel';
+import apiClient from '@/lib/apiClient';
 import { patchOrderStatus } from '@/lib/ordersApi';
 import { useAuthStore } from '@/store/authStore';
 import type { Order, OrderStatus } from '@/types/order';
@@ -278,18 +279,14 @@ export function OrdersBoardPage() {
 
     const fetchOrders = useCallback(() => {
         setIsLoading(true);
-        // deliveredWithinDays=7 excludes ARCHIVED from main board
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/orders?deliveredWithinDays=7`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('jwt_token')}` },
-        })
-            .then(r => r.json())
-            .then((data: Order[]) => {
-                if (!Array.isArray(data)) return;
-                const initial: Record<string, Order[]> = { IN_REVIEW: [], APPROVED: [], IN_PREPARATION: [], SHIPPED: [], DELIVERED: [], CANCELLED: [] };
+        apiClient.get('/orders', { params: { deliveredWithinDays: 7 } })
+            .then(res => {
+                const data: Order[] = Array.isArray(res.data) ? res.data : [];
+                const initial: Record<string, Order[]> = { IN_REVIEW: [], APPROVED: [], IN_PREPARATION: [], SHIPPED: [], DELIVERED: [], CANCELLED: [], ARCHIVED: [] };
                 data.forEach((order) => {
                     const s = order.status as string;
                     if (s in initial) initial[s].push(order);
-                    else initial['IN_REVIEW'].push(order);
+                    // unknown status → silently ignore, don't pollute IN_REVIEW
                 });
                 setColumns(initial);
             })
@@ -429,7 +426,11 @@ export function OrdersBoardPage() {
                     const labels = serverAllowed.map(s => STATUS_LABELS[s] || s).join(', ');
                     toast.error('Transición no permitida', { description: `Podés mover a: ${labels}` });
                 } else {
-                    toast.error('Error al mover el pedido. Refresque la página.');
+                    const backendMsg = err?.response?.data?.error || err?.response?.data?.message;
+                    toast.error('Error al mover el pedido', {
+                        description: backendMsg || `HTTP ${err?.response?.status ?? 'sin respuesta'} — Refresque la página.`,
+                        duration: 8000,
+                    });
                 }
             });
     }, [activeOrder, columns, findContainer]);
@@ -611,6 +612,7 @@ export function OrdersBoardPage() {
             <AdminFastOrderModal
                 isOpen={isFastOrderModalOpen}
                 onClose={() => setIsFastOrderModalOpen(false)}
+                onOrderCreated={fetchOrders}
             />
 
             {/* Archived panel */}
