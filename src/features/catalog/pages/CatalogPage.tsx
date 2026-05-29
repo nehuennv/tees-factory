@@ -26,6 +26,7 @@ export function CatalogPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(false);
     const [sortKey, setSortKey] = useState<ProductSortKey>('default');
 
     const sortedProducts = useMemo(() => {
@@ -49,9 +50,10 @@ export function CatalogPage() {
     useEffect(() => {
         const handler = setTimeout(() => {
             setIsLoading(true);
+            setFetchError(false);
             const params: any = {};
             if (searchTerm.trim()) params.search = searchTerm;
-            
+
             apiClient.get('/products', { params })
                 .then(res => {
                     const fetchedProducts = res.data
@@ -62,7 +64,7 @@ export function CatalogPage() {
                         }));
                     setProducts(fetchedProducts);
                 })
-                .catch(err => console.error("Error fetching products:", err))
+                .catch(() => setFetchError(true))
                 .finally(() => setIsLoading(false));
         }, 300);
 
@@ -103,11 +105,24 @@ export function CatalogPage() {
                     onSortChange={setSortKey}
                 />
 
-                <CatalogGrid
-                    products={sortedProducts}
-                    isLoading={isLoading}
-                    onProductAction={handleProductAction}
-                />
+                {fetchError ? (
+                    <div className="flex flex-col items-center justify-center py-24 bg-white border border-dashed border-rose-200 rounded-2xl">
+                        <p className="text-base font-bold text-zinc-900">Error al cargar el catálogo</p>
+                        <p className="text-sm text-zinc-500 mt-1 mb-4">No se pudo conectar con el servidor.</p>
+                        <button
+                            onClick={() => setSearchTerm(t => t)}
+                            className="text-sm font-semibold text-zinc-900 underline underline-offset-2"
+                        >
+                            Reintentar
+                        </button>
+                    </div>
+                ) : (
+                    <CatalogGrid
+                        products={sortedProducts}
+                        isLoading={isLoading}
+                        onProductAction={handleProductAction}
+                    />
+                )}
             </div>
 
             {/* Footer de resumen (sticky) */}

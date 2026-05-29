@@ -104,7 +104,7 @@ export function CheckoutSuccessPage() {
                                         <CreditCard className="w-5 h-5 text-zinc-600" />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-zinc-900 leading-tight">Pago de ${total.toLocaleString('es-AR')}</p>
+                                        <p className="font-bold text-zinc-900 leading-tight">Pago de ${(total ?? 0).toLocaleString('es-AR')}</p>
                                         <p className="text-sm text-zinc-500 mt-1">Realiza la transferencia para liberar el pedido.</p>
                                     </div>
                                 </div>

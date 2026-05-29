@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Archive, Loader2, Package } from 'lucide-react';
+import { toast } from 'sonner';
 import { getOrders } from '@/lib/ordersApi';
 import type { Order } from '@/types/order';
 
@@ -21,7 +22,7 @@ export function ArchivedOrdersPanel({ isOpen, onClose, onOrderClick }: ArchivedO
         setIsLoading(true);
         getOrders({ status: 'ARCHIVED' })
             .then(setOrders)
-            .catch(() => {})
+            .catch(() => toast.error('Error al cargar pedidos archivados'))
             .finally(() => setIsLoading(false));
     }, [isOpen]);
 

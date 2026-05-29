@@ -52,21 +52,16 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideCli
         setError(null);
     }, [initialOrder]);
 
-    // Fetch full order detail (with items) when modal opens
+    // Always fetch full order detail when modal opens — board orders lack extras/subtotal/taxRate
     useEffect(() => {
         if (!isOpen || !order?.id) return;
-
-        const items = order.order_items || order.items || order.orderItems || order.orderDetails || [];
-        if (items.length > 0) return; // ya tenemos los items, no hace falta volver a pedir
-
         setIsFetching(true);
         apiClient.get(`/orders/${order.id}`)
             .then(res => {
                 setOrder((prev: any) => ({ ...prev, ...res.data }));
             })
-            .catch(err => {
-                console.error("Error fetching order details:", err);
-                setError("No se pudieron cargar los productos de este pedido.");
+            .catch(() => {
+                setError("No se pudieron cargar los detalles de este pedido.");
             })
             .finally(() => setIsFetching(false));
     }, [isOpen, order?.id]);
@@ -133,15 +128,16 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideCli
                                     const qty = item.quantity || item.qty || 0;
                                     const price = item.unit_price || item.unitPrice || item.price || 0;
                                     const subtotal = item.row_subtotal || item.rowSubtotal || (qty * price) || 0;
-                                    const prodName = item.variant?.product?.name || item.product_name || item.productName || item.product?.name || 'Producto';
-                                    const color = item.variant?.color_name || item.color_name || item.colorName || item.color || '-';
-                                    const size = item.variant?.size_name || item.size_name || item.sizeName || item.size || '-';
-                                    const quality = item.variant?.product?.category || item.quality_name || item.qualityName || item.quality || 'N/A';
+                                    const prodName = item.variant?.product?.name || item.product_name || item.productName || item.product?.name || 'Producto no disponible';
+                                    const color = item.variant?.color_name || item.color_name || item.colorName || item.color || '—';
+                                    const size = item.variant?.size_name || item.size_name || item.sizeName || item.size || '—';
+                                    const quality = item.variant?.product?.category || item.quality_name || item.qualityName || item.quality || '—';
+                                    const isOrphan = prodName === 'Producto no disponible';
 
                                     return (
-                                        <TableRow key={item.id || idx} className="hover:bg-zinc-50/50">
+                                        <TableRow key={item.id || idx} className={isOrphan ? 'bg-zinc-50/80 opacity-60' : 'hover:bg-zinc-50/50'}>
                                             <TableCell>
-                                                <p className="font-semibold text-zinc-900">{prodName}</p>
+                                                <p className={`font-semibold ${isOrphan ? 'text-zinc-400 italic' : 'text-zinc-900'}`}>{prodName}</p>
                                                 <p className="text-xs text-zinc-500">{quality}</p>
                                             </TableCell>
                                             <TableCell className="text-zinc-700">{color}</TableCell>
@@ -168,13 +164,55 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideCli
                     )}
                 </div>
 
-                <div className="shrink-0  pt-4 flex flex-col gap-4 border-t border-zinc-200">
+                <div className="shrink-0 pt-4 flex flex-col gap-4 border-t border-zinc-200">
                     {order.observations && (
                         <div className="bg-amber-50/50 border border-amber-100 p-3 rounded-xl">
                             <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest block mb-1">Observaciones</span>
                             <p className="text-xs text-zinc-700 italic">"{order.observations}"</p>
                         </div>
                     )}
+
+                    {/* Desglose de cotización: extras / descuento / IVA */}
+                    {(() => {
+                        const extras: any[] = order.extras || [];
+                        const discount = order.discountPercentage ?? order.discount_percentage ?? 0;
+                        const taxRate = order.taxRate ?? order.tax_rate ?? 0;
+                        const subtotal = order.subtotal ?? 0;
+                        const hasBreakdown = extras.length > 0 || discount > 0 || taxRate > 0;
+                        if (!hasBreakdown) return null;
+                        const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+                        const extrasTotal = extras.reduce((s: number, e: any) => s + (e.amount || 0), 0);
+                        const base = subtotal + extrasTotal;
+                        const discountAmt = base * (discount / 100);
+                        const taxAmt = (base - discountAmt) * (taxRate / 100);
+                        return (
+                            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2 text-sm">
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Desglose</p>
+                                <div className="flex justify-between text-zinc-600">
+                                    <span>Subtotal artículos</span>
+                                    <span className="font-semibold text-zinc-900">{fmt(subtotal)}</span>
+                                </div>
+                                {extras.map((e: any, i: number) => (
+                                    <div key={i} className="flex justify-between text-zinc-600">
+                                        <span>{e.label || 'Extra'}</span>
+                                        <span className="font-semibold text-zinc-900">{fmt(e.amount || 0)}</span>
+                                    </div>
+                                ))}
+                                {discount > 0 && (
+                                    <div className="flex justify-between text-rose-600">
+                                        <span>Descuento ({discount}%)</span>
+                                        <span className="font-semibold">-{fmt(discountAmt)}</span>
+                                    </div>
+                                )}
+                                {taxRate > 0 && (
+                                    <div className="flex justify-between text-zinc-600">
+                                        <span>IVA ({taxRate}%)</span>
+                                        <span className="font-semibold text-zinc-900">{fmt(taxAmt)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     {(onEdit || onCancel) && (
                         <div className="flex gap-2">
