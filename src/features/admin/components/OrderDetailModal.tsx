@@ -192,12 +192,17 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideCli
                                     <span>Subtotal artículos</span>
                                     <span className="font-semibold text-zinc-900">{fmt(subtotal)}</span>
                                 </div>
-                                {extras.map((e: any, i: number) => (
-                                    <div key={i} className="flex justify-between text-zinc-600">
-                                        <span>{e.label || 'Extra'}</span>
-                                        <span className="font-semibold text-zinc-900">{fmt(e.amount || 0)}</span>
+                                {extras.length > 0 && (
+                                    <div className="flex flex-col gap-2 border-l-2 border-zinc-200 pl-3 ml-0.5">
+                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Extras</span>
+                                        {extras.map((e: any, i: number) => (
+                                            <div key={i} className="flex justify-between text-zinc-600">
+                                                <span className="truncate pr-2">{e.label || 'Extra'}</span>
+                                                <span className="font-semibold text-zinc-900 whitespace-nowrap">+{fmt(e.amount || 0)}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                )}
                                 {discount > 0 && (
                                     <div className="flex justify-between text-rose-600">
                                         <span>Descuento ({discount}%)</span>

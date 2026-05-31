@@ -445,10 +445,22 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
                                     <span className="text-zinc-400">Subtotal artículos</span>
                                     <span className="font-semibold">{formatCurrency(subtotal)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-zinc-400">Extras</span>
-                                    <span className="font-semibold">{formatCurrency(pricingPreview.extrasTotal)}</span>
-                                </div>
+                                {extras.length === 0 ? (
+                                    <div className="flex justify-between">
+                                        <span className="text-zinc-400">Extras</span>
+                                        <span className="font-semibold">{formatCurrency(0)}</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-1 border-l-2 border-zinc-700 pl-3 ml-0.5">
+                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Extras</span>
+                                        {extras.map((extra, i) => (
+                                            <div key={i} className="flex justify-between">
+                                                <span className="text-zinc-400 truncate pr-2">{extra.label?.trim() || 'Extra'}</span>
+                                                <span className="font-semibold whitespace-nowrap">+{formatCurrency(extra.amount || 0)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 <div className="flex justify-between">
                                     <span className="text-zinc-400">Descuento ({discountPercentage}%)</span>
                                     <span className="font-semibold text-rose-400">-{formatCurrency(pricingPreview.discountAmount)}</span>
