@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, X, ImagePlus, Shirt, Search, ChevronDown } from "lucide-react";
+import { Loader2, Plus, Trash2, X, ImagePlus, Shirt, Search, ChevronDown, Copy } from "lucide-react";
 
 const BACKEND_BASE = (import.meta.env.VITE_API_URL as string || 'http://localhost:3000/api').replace(/\/api\/?$/, '');
 
@@ -123,6 +123,9 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
     // Per color new-size inputs: key = `${qualityId}-${colorName}`
     const [newSizeInputs, setNewSizeInputs] = useState<Record<string, string>>({});
+    // Quick-fill (aplicar a todos los talles) inputs: key = `${qualityId}-${colorName}`
+    const [bulkPrice, setBulkPrice] = useState<Record<string, string>>({});
+    const [bulkStock, setBulkStock] = useState<Record<string, string>>({});
     // Per color size picker open state
     const [showSizePicker, setShowSizePicker] = useState<Record<string, boolean>>({});
     // Per picker which size groups are expanded (nino / especial)
@@ -338,6 +341,70 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
         setShowColorPicker(prev => ({ ...prev, [qualityId]: false }));
     };
 
+    // ── Acciones rápidas / bulk (comodidad admin) ──
+
+    /** Agrega varios talles de una a un color, salteando los que ya existen. */
+    const addSizesBulk = (qualityId: string, colorName: string, sizes: string[]) => {
+        setQualities(prev => prev.map(q => {
+            if (q.id !== qualityId) return q;
+            return {
+                ...q,
+                colors: q.colors.map(c => {
+                    if (c.colorName !== colorName) return c;
+                    const existing = new Set(c.sizes.map(s => s.size.toLowerCase()));
+                    const toAdd = sizes
+                        .filter(sz => !existing.has(sz.toLowerCase()))
+                        .map(sz => ({ size: sz, physicalStock: 0 as number | '', price: null as number | '' | null }));
+                    return { ...c, sizes: [...c.sizes, ...toAdd] };
+                }),
+            };
+        }));
+    };
+
+    /** Aplica un mismo precio (o stock) a todos los talles de un color. */
+    const applyToColorSizes = (qualityId: string, colorName: string, field: 'price' | 'physicalStock', value: number) => {
+        setQualities(prev => prev.map(q => {
+            if (q.id !== qualityId) return q;
+            return {
+                ...q,
+                colors: q.colors.map(c =>
+                    c.colorName === colorName
+                        ? { ...c, sizes: c.sizes.map(s => ({ ...s, [field]: value })) }
+                        : c
+                ),
+            };
+        }));
+    };
+
+    /** Copia talles + precio + stock del primer color al resto (aditivo, no borra). */
+    const replicateFirstColor = (qualityId: string) => {
+        setQualities(prev => prev.map(q => {
+            if (q.id !== qualityId) return q;
+            const template = q.colors[0];
+            if (!template || q.colors.length < 2) return q;
+            return {
+                ...q,
+                colors: q.colors.map((c, idx) => {
+                    if (idx === 0) return c;
+                    const byName = new Map(c.sizes.map(s => [s.size.toLowerCase(), s]));
+                    const merged = template.sizes.map(ts => {
+                        const existing = byName.get(ts.size.toLowerCase());
+                        return {
+                            ...(existing ?? { size: ts.size }),
+                            size: existing?.size ?? ts.size,
+                            physicalStock: ts.physicalStock,
+                            price: ts.price,
+                        };
+                    });
+                    // Conservar talles extra que el color destino tenía y no están en el template
+                    const templateNames = new Set(template.sizes.map(s => s.size.toLowerCase()));
+                    const extras = c.sizes.filter(s => !templateNames.has(s.size.toLowerCase()));
+                    return { ...c, sizes: [...merged, ...extras] };
+                }),
+            };
+        }));
+        toast.success("Configuración del primer color replicada al resto");
+    };
 
     const handleQualityPriceChange = (qualityId: string, value: string) => {
         setQualities(prev => prev.map(q => {
@@ -707,7 +774,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                     </div>
 
                                     {/* Sort bar — canonical is default, only extra sorts shown */}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Ordenar por:</span>
                                         {(['stock', 'price'] as SizeSortKey[]).map(key => (
                                             <button
@@ -722,6 +789,16 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                 {key === 'stock' ? 'Mayor stock' : 'Mayor precio'}
                                             </button>
                                         ))}
+                                        {quality.colors.length >= 2 && quality.colors[0]?.sizes.length > 0 && (
+                                            <button
+                                                onClick={() => replicateFirstColor(quality.id)}
+                                                title={`Copia talles, precio y stock de "${quality.colors[0].colorName}" al resto de los colores`}
+                                                className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-200 bg-white text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:border-zinc-400 transition-colors"
+                                            >
+                                                <Copy className="w-3.5 h-3.5" />
+                                                Replicar 1er color al resto
+                                            </button>
+                                        )}
                                     </div>
 
                                     {quality.colors.length === 0 && (
@@ -774,6 +851,51 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
                                                 {!isCollapsed && (
                                                     <div className="flex flex-col divide-y divide-zinc-100">
+                                                        {/* Quick-fill: aplicar precio/stock a TODOS los talles del color */}
+                                                        {color.sizes.length > 1 && (
+                                                            <div className="flex flex-wrap items-center gap-2 px-5 py-2.5 bg-zinc-50/60">
+                                                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1">Aplicar a todos:</span>
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-xs text-zinc-400 font-semibold">$</span>
+                                                                    <Input
+                                                                        type="number"
+                                                                        placeholder="Precio"
+                                                                        value={bulkPrice[collapseKey] ?? ''}
+                                                                        onChange={(e) => setBulkPrice(prev => ({ ...prev, [collapseKey]: e.target.value }))}
+                                                                        className="w-24 h-8 text-sm rounded-lg border-zinc-200 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                        min={0}
+                                                                    />
+                                                                    <Button
+                                                                        size="sm" variant="outline"
+                                                                        onClick={() => {
+                                                                            const v = parseFloat(bulkPrice[collapseKey] ?? '');
+                                                                            if (Number.isNaN(v) || v < 0) { toast.error("Precio inválido"); return; }
+                                                                            applyToColorSizes(quality.id, color.colorName, 'price', v);
+                                                                        }}
+                                                                        className="h-8 px-2.5 text-xs rounded-lg border-zinc-200 text-zinc-600 hover:text-zinc-900"
+                                                                    >Aplicar</Button>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <Input
+                                                                        type="number"
+                                                                        placeholder="Stock"
+                                                                        value={bulkStock[collapseKey] ?? ''}
+                                                                        onChange={(e) => setBulkStock(prev => ({ ...prev, [collapseKey]: e.target.value }))}
+                                                                        className="w-24 h-8 text-sm rounded-lg border-zinc-200 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                        min={0}
+                                                                    />
+                                                                    <Button
+                                                                        size="sm" variant="outline"
+                                                                        onClick={() => {
+                                                                            const v = parseInt(bulkStock[collapseKey] ?? '', 10);
+                                                                            if (Number.isNaN(v) || v < 0) { toast.error("Stock inválido"); return; }
+                                                                            applyToColorSizes(quality.id, color.colorName, 'physicalStock', v);
+                                                                        }}
+                                                                        className="h-8 px-2.5 text-xs rounded-lg border-zinc-200 text-zinc-600 hover:text-zinc-900"
+                                                                    >Aplicar</Button>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                         {/* Size table */}
                                                         {color.sizes.length > 0 && (
                                                             <table className="w-full">
@@ -890,10 +1012,13 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                                         <div className="flex flex-col gap-2">
                                                                             {/* Base sizes — always visible */}
                                                                             {baseAvail.length > 0 && (
-                                                                                <div className="flex flex-wrap gap-1.5">
+                                                                                <div className="flex flex-wrap gap-1.5 items-center">
                                                                                     {baseAvail.map(sz => (
                                                                                         <button key={sz} onClick={() => addSize(sz)} className={chipClass}>{sz}</button>
                                                                                     ))}
+                                                                                    {baseAvail.length > 1 && (
+                                                                                        <button onClick={() => addSizesBulk(quality.id, color.colorName, baseAvail)} className="h-7 px-3 text-xs font-bold text-white bg-zinc-900 border border-zinc-900 rounded-lg hover:bg-zinc-700 transition-all uppercase tracking-wide shadow-sm">+ Todos</button>
+                                                                                    )}
                                                                                 </div>
                                                                             )}
                                                                             {/* Niño group */}
@@ -907,10 +1032,13 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                                                         Niño ({ninoAvail.length})
                                                                                     </button>
                                                                                     {ninoOpen && (
-                                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                                        <div className="flex flex-wrap gap-1.5 items-center">
                                                                                             {ninoAvail.map(sz => (
                                                                                                 <button key={sz} onClick={() => addSize(sz)} className={chipClass}>{sz}</button>
                                                                                             ))}
+                                                                                            {ninoAvail.length > 1 && (
+                                                                                                <button onClick={() => addSizesBulk(quality.id, color.colorName, ninoAvail)} className="h-7 px-3 text-xs font-bold text-white bg-zinc-900 border border-zinc-900 rounded-lg hover:bg-zinc-700 transition-all uppercase tracking-wide shadow-sm">+ Todos</button>
+                                                                                            )}
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
@@ -926,10 +1054,13 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                                                         Especiales ({espAvail.length})
                                                                                     </button>
                                                                                     {espOpen && (
-                                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                                        <div className="flex flex-wrap gap-1.5 items-center">
                                                                                             {espAvail.map(sz => (
                                                                                                 <button key={sz} onClick={() => addSize(sz)} className={chipClass}>{sz}</button>
                                                                                             ))}
+                                                                                            {espAvail.length > 1 && (
+                                                                                                <button onClick={() => addSizesBulk(quality.id, color.colorName, espAvail)} className="h-7 px-3 text-xs font-bold text-white bg-zinc-900 border border-zinc-900 rounded-lg hover:bg-zinc-700 transition-all uppercase tracking-wide shadow-sm">+ Todos</button>
+                                                                                            )}
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
