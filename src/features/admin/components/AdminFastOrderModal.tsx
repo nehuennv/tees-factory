@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
 import { formatPrice } from '@/lib/formatters';
+import { colorSwatchStyle } from '@/lib/colorMap';
 import type { Product, ProductDetail } from '@/types/product';
 
 // ── Client type (matches GET /clients response) ─────────────────
@@ -29,20 +30,6 @@ interface Client {
     isActive: boolean;
 }
 
-// ── Color mapping (same as ProductDetailPage) ────────────────────
-const COLOR_POOL = [
-    { name: 'Negro',  hex: '#18181b' },
-    { name: 'Blanco', hex: '#ffffff' },
-    { name: 'Gris',   hex: '#9ca3af' },
-    { name: 'Azul',   hex: '#1e3a8a' },
-    { name: 'Rojo',   hex: '#dc2626' },
-    { name: 'Verde',  hex: '#4d7c0f' },
-    { name: 'Beige',  hex: '#d4c5a9' },
-    { name: 'Bordo',  hex: '#881337' },
-];
-
-const getHexForColor = (name: string) =>
-    COLOR_POOL.find(c => name.toLowerCase().includes(c.name.toLowerCase()))?.hex ?? '#cccccc';
 
 const formatCurrency = (n: number) =>
     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
@@ -657,8 +644,8 @@ export function AdminFastOrderModal({ isOpen, onClose, onOrderCreated }: AdminFa
                                                                                         <td className="py-2.5 px-4">
                                                                                             <div className="flex items-center gap-2">
                                                                                                 <div
-                                                                                                    className="w-3.5 h-3.5 rounded-full border border-zinc-300 shrink-0"
-                                                                                                    style={{ backgroundColor: getHexForColor(color.colorName) }}
+                                                                                                    className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm"
+                                                                                                    style={colorSwatchStyle(color.colorName)}
                                                                                                 />
                                                                                                 <span className="text-xs font-semibold text-zinc-700 truncate">
                                                                                                     {color.colorName}

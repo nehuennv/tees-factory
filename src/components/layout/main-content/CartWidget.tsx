@@ -13,22 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/lib/formatters';
 import { ProductImage } from '@/components/shared/ProductImage';
-
-const COLOR_POOL = [
-    { name: "Negro", hex: "#18181b" },
-    { name: "Blanco", hex: "#ffffff" },
-    { name: "Gris", hex: "#9ca3af" },
-    { name: "Azul", hex: "#1e3a8a" },
-    { name: "Rojo", hex: "#dc2626" },
-    { name: "Verde", hex: "#4d7c0f" },
-    { name: "Beige", hex: "#d4c5a9" },
-    { name: "Bordo", hex: "#881337" },
-];
-
-const getHexForColor = (name: string) => {
-    const found = COLOR_POOL.find(c => name.toLowerCase().includes(c.name.toLowerCase()));
-    return found ? found.hex : '#cccccc';
-};
+import { colorSwatchStyle } from '@/lib/colorMap';
 
 export function CartWidget() {
     const navigate = useNavigate();
@@ -200,12 +185,7 @@ export function CartWidget() {
                                                                 <div className="flex items-center gap-1.5 w-24 shrink-0">
                                                                     <span
                                                                         className="w-3 h-3 rounded-full shrink-0"
-                                                                        style={{
-                                                                            backgroundColor: getHexForColor(colorName),
-                                                                            border: getHexForColor(colorName) === '#ffffff'
-                                                                                ? '1.5px solid #d4d4d8'
-                                                                                : '1px solid rgba(0,0,0,0.12)'
-                                                                        }}
+                                                                        style={colorSwatchStyle(colorName)}
                                                                     />
                                                                     <span className="text-[11px] font-semibold text-zinc-600 truncate">{colorName}</span>
                                                                 </div>

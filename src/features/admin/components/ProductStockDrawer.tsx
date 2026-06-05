@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Product } from "@/types/product";
 import apiClient from "@/lib/apiClient";
+import { colorSwatchStyle } from "@/lib/colorMap";
 import { CategorySelect } from "./CategorySelect";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -831,7 +832,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                             className="w-3.5 h-3.5 text-zinc-400 transition-transform duration-200"
                                                             style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
                                                         />
-                                                        <div className="w-2.5 h-2.5 rounded-full bg-zinc-400 border border-zinc-300 shrink-0" />
+                                                        <div className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" style={colorSwatchStyle(color.colorName)} />
                                                         <span className="font-semibold text-sm text-zinc-900">{color.colorName}</span>
                                                         <span className="text-xs text-zinc-400 font-medium">
                                                             {color.sizes.length} talle{color.sizes.length !== 1 ? 's' : ''}
@@ -1156,8 +1157,8 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                                         className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-50 transition-colors text-left w-full group"
                                                                     >
                                                                         <span
-                                                                            className="w-4 h-4 rounded-full border border-zinc-200/80 shrink-0 shadow-sm"
-                                                                            style={{ backgroundColor: color.hex }}
+                                                                            className="w-4 h-4 rounded-full shrink-0 shadow-sm"
+                                                                            style={colorSwatchStyle(color.name)}
                                                                         />
                                                                         <span className="text-sm text-zinc-700 font-medium group-hover:text-zinc-900">{color.name}</span>
                                                                     </button>
@@ -1165,10 +1166,14 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                                 {showCustom && (
                                                                     <button
                                                                         onClick={() => handleAddColor(quality.id, (colorSearch[quality.id] || "").trim())}
-                                                                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-900 hover:text-white transition-colors text-left w-full group border border-dashed border-zinc-300 mt-1"
+                                                                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-50 transition-colors text-left w-full group border border-dashed border-zinc-300 mt-1"
                                                                     >
-                                                                        <Plus className="w-4 h-4 text-zinc-400 group-hover:text-white shrink-0" />
-                                                                        <span className="text-sm font-semibold text-zinc-600 group-hover:text-white">
+                                                                        <span
+                                                                            className="w-4 h-4 rounded-full shrink-0 shadow-sm"
+                                                                            style={colorSwatchStyle((colorSearch[quality.id] || "").trim())}
+                                                                        />
+                                                                        <span className="text-sm font-semibold text-zinc-600 group-hover:text-zinc-900 flex items-center gap-1.5">
+                                                                            <Plus className="w-3.5 h-3.5 text-zinc-400" />
                                                                             Agregar "{(colorSearch[quality.id] || "").trim()}"
                                                                         </span>
                                                                     </button>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ShoppingBag, TableProperties, ChevronDown, CheckCircle2, ArrowRight, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPrice, formatPriceOrConsult } from '@/lib/formatters';
+import { colorSwatchStyle } from '@/lib/colorMap';
 import { useCartStore, type CartItem } from '@/store/cartStore';
 import { useOrderDraftStore } from '@/store/orderDraftStore';
 import { toast } from 'sonner';
@@ -31,22 +32,6 @@ const compareSizes = (a: string, b: string): number => {
     return normA.localeCompare(normB, 'es');
 };
 
-// Paleta de colores para asignar HEX visual según nombre
-const COLOR_POOL = [
-    { name: "Negro", hex: "#18181b" },
-    { name: "Blanco", hex: "#ffffff" },
-    { name: "Gris", hex: "#9ca3af" },
-    { name: "Azul", hex: "#1e3a8a" },
-    { name: "Rojo", hex: "#dc2626" },
-    { name: "Verde", hex: "#4d7c0f" },
-    { name: "Beige", hex: "#d4c5a9" },
-    { name: "Bordo", hex: "#881337" },
-];
-
-const getHexForColor = (name: string) => {
-    const found = COLOR_POOL.find(c => name.toLowerCase().includes(c.name.toLowerCase()));
-    return found ? found.hex : '#cccccc';
-};
 
 export function ProductDetailPage() {
     const { productId } = useParams();
@@ -505,10 +490,7 @@ export function ProductDetailPage() {
                                                 <div className="flex items-center gap-3">
                                                     <div
                                                         className="w-5 h-5 rounded-full shrink-0 shadow-sm"
-                                                        style={{
-                                                            backgroundColor: getHexForColor(color.colorName),
-                                                            border: getHexForColor(color.colorName) === '#ffffff' ? '2px solid #d4d4d8' : '1.5px solid rgba(0,0,0,0.08)'
-                                                        }}
+                                                        style={colorSwatchStyle(color.colorName)}
                                                     />
                                                     <span className="text-sm font-bold text-zinc-800 whitespace-nowrap">
                                                         {color.colorName}
