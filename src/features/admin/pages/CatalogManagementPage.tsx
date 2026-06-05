@@ -92,8 +92,8 @@ export function CatalogManagementPage() {
         if (sortKey !== 'default') {
             result = [...result].sort((a, b) => {
                 switch (sortKey) {
-                    case 'price_asc':  return a.basePrice - b.basePrice;
-                    case 'price_desc': return b.basePrice - a.basePrice;
+                    case 'price_asc':  return (a.displayPrice ?? a.basePrice ?? 0) - (b.displayPrice ?? b.basePrice ?? 0);
+                    case 'price_desc': return (b.displayPrice ?? b.basePrice ?? 0) - (a.displayPrice ?? a.basePrice ?? 0);
                     case 'stock_asc':  return a.totalStock - b.totalStock;
                     case 'stock_desc': return b.totalStock - a.totalStock;
                     case 'name_asc':   return a.name.localeCompare(b.name, 'es');
@@ -231,7 +231,16 @@ export function CatalogManagementPage() {
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <span className="font-medium text-zinc-900">{formatPrice(product.basePrice)}</span>
+                                    {(() => {
+                                        const price = product.displayPrice ?? product.basePrice;
+                                        return price != null && price > 0 ? (
+                                            <span className="font-medium text-zinc-900">{formatPrice(price)}</span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                                                Sin precio
+                                            </span>
+                                        );
+                                    })()}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2 text-zinc-500">
