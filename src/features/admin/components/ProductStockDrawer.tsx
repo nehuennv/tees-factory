@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Product } from "@/types/product";
 import apiClient from "@/lib/apiClient";
-import { colorSwatchStyle } from "@/lib/colorMap";
+import { colorSwatchStyle, normalizeColorName, colorSimilarity } from "@/lib/colorMap";
 import { CategorySelect } from "./CategorySelect";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, X, ImagePlus, Shirt, Search, ChevronDown, Copy } from "lucide-react";
+import { Loader2, Plus, Trash2, X, ImagePlus, Shirt, Search, ChevronDown, Copy, Wand2 } from "lucide-react";
 
 const BACKEND_BASE = (import.meta.env.VITE_API_URL as string || 'http://localhost:3000/api').replace(/\/api\/?$/, '');
 
@@ -127,6 +127,13 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
     // Quick-fill (aplicar a todos los talles) inputs: key = `${qualityId}-${colorName}`
     const [bulkPrice, setBulkPrice] = useState<Record<string, string>>({});
     const [bulkStock, setBulkStock] = useState<Record<string, string>>({});
+    // Qué colores tienen abierto el panel de "rellenar todos" (oculto por defecto)
+    const [quickFillOpen, setQuickFillOpen] = useState<Set<string>>(new Set());
+    const toggleQuickFill = (key: string) => setQuickFillOpen(prev => {
+        const next = new Set(prev);
+        next.has(key) ? next.delete(key) : next.add(key);
+        return next;
+    });
     // Per color size picker open state
     const [showSizePicker, setShowSizePicker] = useState<Record<string, boolean>>({});
     // Per picker which size groups are expanded (nino / especial)
@@ -797,7 +804,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                 className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-200 bg-white text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:border-zinc-400 transition-colors"
                                             >
                                                 <Copy className="w-3.5 h-3.5" />
-                                                Replicar 1er color al resto
+                                                Replicar al resto
                                             </button>
                                         )}
                                     </div>
@@ -841,19 +848,30 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                             )}
                                                         </span>
                                                     </div>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleRemoveColor(quality.id, color.colorName); }}
-                                                        className="text-zinc-300 hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-50"
-                                                        title="Eliminar color"
-                                                    >
-                                                        <X className="w-3.5 h-3.5" />
-                                                    </button>
+                                                    <div className="flex items-center gap-0.5">
+                                                        {!isCollapsed && color.sizes.length > 1 && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); toggleQuickFill(collapseKey); }}
+                                                                className={`transition-colors p-1 rounded-md ${quickFillOpen.has(collapseKey) ? 'text-zinc-900 bg-zinc-200' : 'text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100'}`}
+                                                                title="Rellenar precio/stock de todos los talles"
+                                                            >
+                                                                <Wand2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleRemoveColor(quality.id, color.colorName); }}
+                                                            className="text-zinc-300 hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-50"
+                                                            title="Eliminar color"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 {!isCollapsed && (
                                                     <div className="flex flex-col divide-y divide-zinc-100">
-                                                        {/* Quick-fill: aplicar precio/stock a TODOS los talles del color */}
-                                                        {color.sizes.length > 1 && (
+                                                        {/* Quick-fill: aplicar precio/stock a TODOS los talles del color (oculto tras varita) */}
+                                                        {color.sizes.length > 1 && quickFillOpen.has(collapseKey) && (
                                                             <div className="flex flex-wrap items-center gap-2 px-5 py-2.5 bg-zinc-50/60">
                                                                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1">Aplicar a todos:</span>
                                                                 <div className="flex items-center gap-1">
@@ -1141,12 +1159,27 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                 {/* Color list */}
                                                 <div className="max-h-52 overflow-y-auto p-1.5 flex flex-col gap-0.5">
                                                     {(() => {
-                                                        const search = (colorSearch[quality.id] || "").toLowerCase().trim();
+                                                        const search = (colorSearch[quality.id] || "").trim();
+                                                        const q = normalizeColorName(search);
                                                         const usedColors = new Set(quality.colors.map(c => c.colorName.toLowerCase()));
-                                                        const filtered = PREDEFINED_COLORS.filter(c =>
-                                                            c.name.toLowerCase().includes(search) && !usedColors.has(c.name.toLowerCase())
-                                                        );
-                                                        const showCustom = search && !PREDEFINED_COLORS.some(c => c.name.toLowerCase() === search) && !usedColors.has(search);
+                                                        // Búsqueda fuzzy: exacto > empieza con > incluye > token > similar (typos)
+                                                        const scoreOf = (name: string): number => {
+                                                            const n = normalizeColorName(name);
+                                                            if (!q) return 1;
+                                                            if (n === q) return 100;
+                                                            if (n.startsWith(q)) return 60;
+                                                            if (n.includes(q)) return 40;
+                                                            if (n.split(' ').some(t => t.startsWith(q))) return 25;
+                                                            const sim = colorSimilarity(q, n);
+                                                            return sim >= 0.6 ? sim : -1;
+                                                        };
+                                                        const filtered = PREDEFINED_COLORS
+                                                            .filter(c => !usedColors.has(c.name.toLowerCase()))
+                                                            .map(c => ({ c, s: scoreOf(c.name) }))
+                                                            .filter(x => x.s > 0)
+                                                            .sort((a, b) => b.s - a.s)
+                                                            .map(x => x.c);
+                                                        const showCustom = !!search && !PREDEFINED_COLORS.some(c => normalizeColorName(c.name) === q) && !usedColors.has(search.toLowerCase());
 
                                                         return (
                                                             <>
@@ -1180,7 +1213,7 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                                 )}
                                                                 {filtered.length === 0 && !showCustom && (
                                                                     <p className="text-xs text-zinc-400 text-center py-3 italic">
-                                                                        {usedColors.has(search) ? `"${colorSearch[quality.id]}" ya fue agregado` : "Sin resultados"}
+                                                                        {usedColors.has(search.toLowerCase()) ? `"${colorSearch[quality.id]}" ya fue agregado` : "Sin resultados"}
                                                                     </p>
                                                                 )}
                                                             </>

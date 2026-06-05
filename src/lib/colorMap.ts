@@ -339,6 +339,16 @@ function compute(n: string): string {
     return FALLBACK;
 }
 
+/** Normaliza un nombre de color (minúsculas, sin acentos). Útil para búsquedas. */
+export function normalizeColorName(s: string): string {
+    return normalize(s);
+}
+
+/** Similitud 0..1 entre dos nombres de color (tolerante a typos). */
+export function colorSimilarity(a: string, b: string): number {
+    return similarity(normalize(a), normalize(b));
+}
+
 /** True si el color es claro (necesita borde para verse sobre fondo blanco). */
 export function isLightColor(hex: string): boolean {
     const [r, g, b] = hexToRgb(hex);
