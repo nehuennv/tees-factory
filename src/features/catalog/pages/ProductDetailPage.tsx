@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShoppingBag, TableProperties, ChevronDown, CheckCircle2, ArrowRight, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatPrice } from '@/lib/formatters';
+import { formatPrice, formatPriceOrConsult } from '@/lib/formatters';
 import { useCartStore, type CartItem } from '@/store/cartStore';
 import { useOrderDraftStore } from '@/store/orderDraftStore';
 import { toast } from 'sonner';
@@ -96,11 +96,24 @@ export function ProductDetailPage() {
                 }
                 // Normalize quality fields (handle snake_case from backend)
                 if (data.qualities) {
-                    data.qualities = data.qualities.map((q: any) => ({
-                        ...q,
-                        qualityName: q.qualityName ?? q.quality_name ?? '',
-                        basePrice: q.basePrice ?? q.base_price ?? 0,
-                    }));
+                    data.qualities = data.qualities.map((q: any) => {
+                        const base = q.basePrice ?? q.base_price ?? 0;
+                        // Precio efectivo: prioriza el del backend; si no, el MIN de variantes>0; fallback base.
+                        let effective = q.effectivePrice ?? q.effective_price ?? 0;
+                        if (!(effective > 0)) {
+                            const variantPrices = (q.colors ?? [])
+                                .flatMap((c: any) => (c.sizes ?? []).map((s: any) => Number(s.price)))
+                                .filter((p: number) => !Number.isNaN(p) && p > 0);
+                            const minV = variantPrices.length > 0 ? Math.min(...variantPrices) : 0;
+                            effective = base > 0 ? base : minV;
+                        }
+                        return {
+                            ...q,
+                            qualityName: q.qualityName ?? q.quality_name ?? '',
+                            basePrice: base,
+                            effectivePrice: effective,
+                        };
+                    });
                 }
                 setProduct({
                     ...data,
@@ -118,8 +131,14 @@ export function ProductDetailPage() {
 
     const activeQuality = product?.qualities?.[selectedQualityIdx];
 
+    // Precio a mostrar por calidad: efectivo (variante más barata / base), nunca 0 si hay dato.
+    const qualityDisplayPrice = (quality: any): number =>
+        (quality?.effectivePrice != null && quality.effectivePrice > 0)
+            ? quality.effectivePrice
+            : (quality?.basePrice ?? 0);
+
     const resolveVariantPrice = (sizeData: any, quality: any): number =>
-        (sizeData?.price != null && sizeData.price > 0) ? sizeData.price : quality.basePrice;
+        (sizeData?.price != null && sizeData.price > 0) ? sizeData.price : qualityDisplayPrice(quality);
 
     // Dynamic sizes for table headers
     const activeSizes = useMemo(() => {
@@ -323,7 +342,7 @@ export function ProductDetailPage() {
                                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 opacity-80">Precio Mayorista</span>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-4xl font-black tracking-tighter text-zinc-900">
-                                        {formatPrice(activeQuality.basePrice)}
+                                        {formatPriceOrConsult(qualityDisplayPrice(activeQuality))}
                                     </span>
                                     <span className="text-zinc-500 font-bold text-sm">/ unidad</span>
                                 </div>
@@ -417,7 +436,7 @@ export function ProductDetailPage() {
                                 </span>
                                 <span className="text-zinc-300">·</span>
                                 <span className="text-xs font-black text-zinc-900">
-                                    {formatPrice(activeQuality?.basePrice)}
+                                    {formatPriceOrConsult(qualityDisplayPrice(activeQuality))}
                                     <span className="font-normal text-zinc-400"> / ud.</span>
                                 </span>
                             </div>
@@ -429,7 +448,7 @@ export function ProductDetailPage() {
                                             onClick={() => setSelectedQualityIdx(idx)}
                                             className="text-[10px] font-semibold text-zinc-400 hover:text-zinc-700 transition-colors px-2 py-1 rounded-lg hover:bg-zinc-100"
                                         >
-                                            Cal. {idx + 1}: {formatPrice(q.basePrice)}
+                                            Cal. {idx + 1}: {formatPriceOrConsult(qualityDisplayPrice(q))}
                                         </button>
                                     ))}
                                 </div>
@@ -634,7 +653,7 @@ export function ProductDetailPage() {
                                         <div className="flex flex-col leading-tight">
                                             <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Precio unit.</span>
                                             <span className="text-sm font-bold text-zinc-500 tabular-nums leading-none">
-                                                {formatPrice(activeQuality.basePrice)}
+                                                {formatPriceOrConsult(qualityDisplayPrice(activeQuality))}
                                             </span>
                                         </div>
                                     </>

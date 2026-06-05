@@ -11,6 +11,8 @@ export interface Product {
     category: string;
     categoryId?: string;
     basePrice: number;
+    /** Precio efectivo "desde" calculado por el backend = MIN(variantes>0), fallback base_price. Preferir este sobre basePrice para mostrar. */
+    displayPrice?: number | null;
     totalStock: number;
     isActive?: boolean;
 
@@ -39,6 +41,8 @@ export interface ProductQuality {
     id: string;
     qualityName: string;
     basePrice: number;
+    /** Precio efectivo de la calidad calculado por el backend = MIN(variantes>0), fallback base_price. Preferir sobre basePrice. */
+    effectivePrice?: number | null;
     colors: ProductColor[];
 }
 

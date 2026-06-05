@@ -31,10 +31,11 @@ export function CatalogPage() {
 
     const sortedProducts = useMemo(() => {
         if (sortKey === 'default') return products;
+        const priceOf = (p: typeof products[number]) => p.displayPrice ?? p.basePrice ?? 0;
         return [...products].sort((a, b) => {
             switch (sortKey) {
-                case 'price_asc':  return a.basePrice - b.basePrice;
-                case 'price_desc': return b.basePrice - a.basePrice;
+                case 'price_asc':  return priceOf(a) - priceOf(b);
+                case 'price_desc': return priceOf(b) - priceOf(a);
                 case 'stock_asc':  return a.totalStock - b.totalStock;
                 case 'stock_desc': return b.totalStock - a.totalStock;
                 case 'name_asc':   return a.name.localeCompare(b.name, 'es');

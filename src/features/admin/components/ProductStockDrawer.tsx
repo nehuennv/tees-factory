@@ -380,6 +380,14 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
             return;
         }
 
+        // Barrera anti-$0: ninguna variante puede quedar sin precio efectivo.
+        if (hasPriceError) {
+            toast.error("Hay variantes sin precio", {
+                description: "Toda variante necesita precio: cargá el precio de la calidad o el precio por talle. Revisá las marcadas en rojo.",
+            });
+            return;
+        }
+
         setIsSaving(true);
 
         const stockPayload: { qualityId: string; color: string; size: string; physicalStock: number; price: number | null }[] = [];
@@ -405,13 +413,23 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                 description: productDetails.description,
             });
 
-            // 1. Guardar precios de calidades 
+            // 1. Guardar precios de calidades.
+            // Auto-backfill: si la calidad no tiene base_price pero sus variantes sí tienen
+            // precio, se setea base = min(variantes) para que nunca quede en 0.
             await Promise.all(
-                qualities.map(q => 
-                    apiClient.patch(`/products/${product.id}/qualities/${q.id}`, {
-                        basePrice: Number(q.basePrice) || 0
-                    })
-                )
+                qualities.map(q => {
+                    const explicit = Number(q.basePrice) || 0;
+                    const variantPrices = q.colors.flatMap(c =>
+                        c.sizes
+                            .map(s => (s.price != null && s.price !== '' ? Number(s.price) : NaN))
+                            .filter(p => !Number.isNaN(p) && p > 0)
+                    );
+                    const derived = variantPrices.length > 0 ? Math.min(...variantPrices) : 0;
+                    const finalBase = explicit > 0 ? explicit : derived;
+                    return apiClient.patch(`/products/${product.id}/qualities/${q.id}`, {
+                        basePrice: finalBase
+                    });
+                })
             );
 
             // 2. Guardar stock
@@ -425,8 +443,11 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                     cAcc + c.sizes.reduce((sAcc, s) => sAcc + (s.physicalStock || 0), 0), 0), 0
             );
 
-            const qualityPrices = qualities.map(q => Number(q.basePrice)).filter(p => p > 0);
-            const newBasePrice = qualityPrices.length > 0 ? Math.min(...qualityPrices) : 0;
+            // Precio "desde" del producto = el efectivo más barato entre todas las variantes.
+            const allEffective = qualities.flatMap(q =>
+                q.colors.flatMap(c => c.sizes.map(s => getEffectivePrice(q, s)))
+            ).filter(p => p > 0);
+            const newBasePrice = allEffective.length > 0 ? Math.min(...allEffective) : 0;
 
             onProductSaved?.({
                 ...product,
@@ -476,6 +497,26 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
         }
         return sizeList;
     };
+
+    // ── Validación de precio: toda variante debe tener precio efectivo > 0 ──
+    // Efectivo = price de la variante si está cargado (>0); si no, base_price de la calidad.
+    const getEffectivePrice = (quality: QualityTab, size: SizeVariant): number => {
+        const v = size.price != null && size.price !== '' ? Number(size.price) : NaN;
+        if (!Number.isNaN(v) && v > 0) return v;
+        return Number(quality.basePrice) || 0;
+    };
+
+    const qualityHasPriceError = (quality: QualityTab): boolean =>
+        quality.colors.some(c => c.sizes.some(s => getEffectivePrice(quality, s) <= 0));
+
+    const priceErrors = qualities.flatMap(q =>
+        q.colors.flatMap(c =>
+            c.sizes
+                .filter(s => getEffectivePrice(q, s) <= 0)
+                .map(s => `${q.qualityName} · ${c.colorName} · ${s.size}`)
+        )
+    );
+    const hasPriceError = priceErrors.length > 0;
 
     if (!product) return null;
 
@@ -632,7 +673,11 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                     className="mt-0 px-6 py-5 flex flex-col gap-4"
                                 >
                                     {/* Precio por calidad — editable, se guarda en product_qualities */}
-                                    <div className="flex items-center gap-3 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3">
+                                    <div className={`flex items-center gap-3 rounded-xl px-4 py-3 border ${
+                                        qualityHasPriceError(quality)
+                                            ? 'bg-rose-50 border-rose-300'
+                                            : 'bg-zinc-50 border-zinc-200'
+                                    }`}>
                                         <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">
                                             Precio {quality.qualityName}
                                         </span>
@@ -645,12 +690,20 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                 onBlur={(e) => {
                                                     if (e.target.value === "") handleQualityPriceChange(quality.id, "0");
                                                 }}
-                                                className="pl-7 h-9 text-sm rounded-lg border-zinc-200 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                className={`pl-7 h-9 text-sm rounded-lg bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                                    qualityHasPriceError(quality) ? 'border-rose-300 focus-visible:ring-rose-400' : 'border-zinc-200'
+                                                }`}
                                                 placeholder="0"
                                                 min={0}
                                             />
                                         </div>
-                                        <span className="text-xs text-zinc-400">por unidad</span>
+                                        {qualityHasPriceError(quality) ? (
+                                            <span className="text-xs font-semibold text-rose-600">
+                                                Falta precio en variantes sin override
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-zinc-400">por unidad</span>
+                                        )}
                                     </div>
 
                                     {/* Sort bar — canonical is default, only extra sorts shown */}
@@ -763,8 +816,14 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
                                                                                             value={sz.price ?? ''}
                                                                                             onChange={(e) => handleSizePriceChange(quality.id, color.colorName, sizeIdx, e.target.value)}
                                                                                             placeholder={String(Number(quality.basePrice).toLocaleString('es-AR'))}
-                                                                                            title={`Vacío = precio de calidad ($${Number(quality.basePrice).toLocaleString('es-AR')})`}
-                                                                                            className="w-28 h-9 text-center font-semibold rounded-lg border-zinc-200 bg-white focus-visible:ring-1 focus-visible:ring-zinc-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                            title={getEffectivePrice(quality, sz) <= 0
+                                                                                                ? 'Sin precio: cargá el precio de la calidad o un precio para este talle'
+                                                                                                : `Vacío = precio de calidad ($${Number(quality.basePrice).toLocaleString('es-AR')})`}
+                                                                                            className={`w-28 h-9 text-center font-semibold rounded-lg bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                                                                                getEffectivePrice(quality, sz) <= 0
+                                                                                                    ? 'border-rose-300 focus-visible:ring-1 focus-visible:ring-rose-400'
+                                                                                                    : 'border-zinc-200 focus-visible:ring-1 focus-visible:ring-zinc-900'
+                                                                                            }`}
                                                                                             min={0}
                                                                                         />
                                                                                     </div>
@@ -1014,11 +1073,22 @@ export function ProductStockDrawer({ product, isOpen, onClose, onProductSaved }:
 
                 {/* Footer */}
                 {!isLoading && qualities.length > 0 && (
-                    <div className="px-6 py-4 border-t border-zinc-100 bg-white shrink-0">
+                    <div className="px-6 py-4 border-t border-zinc-100 bg-white shrink-0 flex flex-col gap-2.5">
+                        {hasPriceError && (
+                            <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2.5 text-xs text-rose-700">
+                                <span className="font-bold whitespace-nowrap">Sin precio:</span>
+                                <span className="font-medium">
+                                    {priceErrors.slice(0, 3).join(' · ')}
+                                    {priceErrors.length > 3 ? ` y ${priceErrors.length - 3} más` : ''}.
+                                    {' '}Cargá precio de calidad o por talle.
+                                </span>
+                            </div>
+                        )}
                         <Button
                             onClick={handleSaveAll}
-                            disabled={isSaving}
-                            className="w-full h-11 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold shadow-sm"
+                            disabled={isSaving || hasPriceError}
+                            title={hasPriceError ? 'Faltan precios: revisá las variantes en rojo' : undefined}
+                            className="w-full h-11 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSaving ? (
                                 <>

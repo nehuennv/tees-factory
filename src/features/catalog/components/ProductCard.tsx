@@ -1,5 +1,5 @@
 import type { Product } from '@/types/product';
-import { formatPrice } from '@/lib/formatters';
+import { formatPriceOrConsult } from '@/lib/formatters';
 import { ProductImage } from '@/components/shared/ProductImage';
 import { QualityBadge } from '@/components/shared/QualityBadge';
 import { Button } from '@/components/ui/button';
@@ -59,15 +59,21 @@ export function ProductCard({
                 </div>
 
                 <div className="mt-auto flex flex-col gap-3">
-                    {/* Precio */}
-                    <div>
-                        <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">
-                            PRECIO DESDE
-                        </p>
-                        <p className="text-base lg:text-lg font-black text-zinc-900 tracking-tight">
-                            {formatPrice(product.basePrice)}
-                        </p>
-                    </div>
+                    {/* Precio — prefiere displayPrice del backend (efectivo), fallback basePrice. Nunca $0. */}
+                    {(() => {
+                        const price = product.displayPrice ?? product.basePrice;
+                        const hasPrice = price != null && price > 0;
+                        return (
+                            <div>
+                                <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">
+                                    {hasPrice ? 'PRECIO DESDE' : 'PRECIO'}
+                                </p>
+                                <p className={`text-base lg:text-lg font-black tracking-tight ${hasPrice ? 'text-zinc-900' : 'text-zinc-400'}`}>
+                                    {formatPriceOrConsult(price)}
+                                </p>
+                            </div>
+                        );
+                    })()}
 
                     {/* Acción */}
                     <Button
