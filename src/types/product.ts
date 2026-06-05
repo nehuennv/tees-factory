@@ -16,6 +16,13 @@ export interface Product {
     totalStock: number;
     isActive?: boolean;
 
+    /** Cantidad de colores distintos del producto (lo manda el backend en la lista). */
+    colorCount?: number;
+    /** Cantidad de talles distintos del producto (lo manda el backend en la lista). */
+    sizeCount?: number;
+    /** Etiqueta legible de talles, ej. "S–XXL" o "2,4,6,8" (opcional, backend). */
+    sizesLabel?: string;
+
     // Campos que vienen solo del mock (se irán eliminando progresivamente)
     quality?: string;
     description?: string;

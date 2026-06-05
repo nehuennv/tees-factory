@@ -48,15 +48,31 @@ export function ProductCard({
                     </div>
                 </div>
 
-                {/* Tags: Talles y Colores */}
-                <div className="flex flex-wrap items-center gap-1 mb-3">
-                    <span className="bg-zinc-50 border border-zinc-100 text-zinc-600 text-[8px] lg:text-[9px] font-medium px-1.5 py-0.5 rounded tracking-wide">
-                        {product.sizes || 'N/A'}
-                    </span>
-                    <span className="bg-zinc-50 border border-zinc-100 text-zinc-600 text-[8px] lg:text-[9px] font-medium px-1.5 py-0.5 rounded tracking-wide">
-                        {product.colors || 0} Col.
-                    </span>
-                </div>
+                {/* Tags: Talles y Colores — solo se muestran si el backend manda el dato */}
+                {(() => {
+                    // Talles: preferir label legible; si no, cantidad; si no, nada.
+                    const sizesText = product.sizesLabel
+                        ?? (Array.isArray(product.sizes) ? product.sizes.join(', ') : product.sizes)
+                        ?? (product.sizeCount != null ? `${product.sizeCount} talle${product.sizeCount !== 1 ? 's' : ''}` : null);
+                    // Colores: preferir colorCount; fallback al campo viejo colors.
+                    const colorN = product.colorCount ?? product.colors;
+                    const hasColors = colorN != null && colorN > 0;
+                    if (!sizesText && !hasColors) return null;
+                    return (
+                        <div className="flex flex-wrap items-center gap-1 mb-3">
+                            {sizesText && (
+                                <span className="bg-zinc-50 border border-zinc-100 text-zinc-600 text-[8px] lg:text-[9px] font-medium px-1.5 py-0.5 rounded tracking-wide">
+                                    {sizesText}
+                                </span>
+                            )}
+                            {hasColors && (
+                                <span className="bg-zinc-50 border border-zinc-100 text-zinc-600 text-[8px] lg:text-[9px] font-medium px-1.5 py-0.5 rounded tracking-wide">
+                                    {colorN} {colorN === 1 ? 'Color' : 'Colores'}
+                                </span>
+                            )}
+                        </div>
+                    );
+                })()}
 
                 <div className="mt-auto flex flex-col gap-3">
                     {/* Precio — prefiere displayPrice del backend (efectivo), fallback basePrice. Nunca $0. */}
