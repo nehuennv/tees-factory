@@ -141,6 +141,9 @@ export function AdminDashboardPage() {
     // ── Gráfico de Ingresos ─────────────────────────────────────
     const [revenueData, setRevenueData] = useState<RevenueTrendItem[]>([]);
     const [isRevenueLoading, setIsRevenueLoading] = useState(true);
+    // Monta el chart cuando la tarjeta terminó de entrar (tamaño ya estable),
+    // así la animación del área corre completa y no se corta a la mitad.
+    const [chartReady, setChartReady] = useState(false);
 
     // ── Distribución por Categoría ──────────────────────────────
     const [categoryData, setCategoryData] = useState<CategoryDistributionItem[]>([]);
@@ -180,9 +183,10 @@ export function AdminDashboardPage() {
         apiClient.get('/payments', { params: { limit: 30 } })
             .then(({ data }) => {
                 if (!Array.isArray(data)) { setRecentPayments([]); return; }
-                // Solo pendientes: son los accionables. Los aprobados/rechazados no aportan acá.
+                // Prioridad a los pendientes (accionables); si faltan, se completan con el resto.
                 const pending = data.filter((p: RecentPayment) => p.status === 'PENDING_REVIEW' || p.status === 'PENDING');
-                setRecentPayments(pending.slice(0, LIST_ITEMS));
+                const rest = data.filter((p: RecentPayment) => p.status !== 'PENDING_REVIEW' && p.status !== 'PENDING');
+                setRecentPayments([...pending, ...rest].slice(0, LIST_ITEMS));
             })
             .catch(() => setRecentPayments([]))
             .finally(() => setIsPaymentsLoading(false));
@@ -196,17 +200,23 @@ export function AdminDashboardPage() {
     const topDebtors = [...(kpis?.topDebtors ?? [])].sort((a, b) => b.debt - a.debt).slice(0, LIST_ITEMS);
 
     // Agrupa las alertas de stock por producto base (el nombre viene como
-    // "Producto - Color Talle"; tomamos lo previo al primer " - ").
+    // "Producto - Color Talle"; tomamos lo previo al primer " - " como producto
+    // y lo posterior como variante/talle).
     const stockGroups = (() => {
         const all = kpis?.criticalStock ?? [];
-        const map = new Map<string, { base: string; count: number; minStock: number }>();
+        const map = new Map<string, { base: string; minStock: number; variants: { label: string; stock: number }[] }>();
         for (const v of all) {
-            const base = (v.name || '').split(' - ')[0].trim() || v.name || 'Producto';
-            const g = map.get(base) ?? { base, count: 0, minStock: Infinity };
-            g.count += 1;
+            const name = v.name || 'Producto';
+            const sepIdx = name.indexOf(' - ');
+            const base = sepIdx >= 0 ? name.slice(0, sepIdx).trim() : name;
+            const label = sepIdx >= 0 ? name.slice(sepIdx + 3).trim() : '—';
+            const g = map.get(base) ?? { base, minStock: Infinity, variants: [] };
             g.minStock = Math.min(g.minStock, v.stock ?? 0);
+            g.variants.push({ label, stock: v.stock ?? 0 });
             map.set(base, g);
         }
+        // talles agotados primero dentro de cada grupo
+        for (const g of map.values()) g.variants.sort((a, b) => a.stock - b.stock);
         return [...map.values()].sort((a, b) => a.minStock - b.minStock).slice(0, LIST_ITEMS);
     })();
 
@@ -339,6 +349,7 @@ export function AdminDashboardPage() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, ease: "easeOut" }}
+                        onAnimationComplete={() => setChartReady(true)}
                         className="col-span-1 md:col-span-2 flex flex-col"
                     >
                         <Card className="flex-1 flex flex-col shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
@@ -347,7 +358,7 @@ export function AdminDashboardPage() {
                             </CardHeader>
                             <CardContent className="flex-1 min-h-0 pl-0 pb-3 pt-2">
                                 <div className="h-full w-full">
-                                    {isRevenueLoading ? (
+                                    {(isRevenueLoading || !chartReady) ? (
                                         <div className="h-full flex items-center justify-center">
                                             <SkeletonBlock className="h-full w-full mx-6" />
                                         </div>
@@ -379,7 +390,9 @@ export function AdminDashboardPage() {
                                                     strokeWidth={3}
                                                     fillOpacity={1}
                                                     fill="url(#colorTotal)"
-                                                    isAnimationActive={false}
+                                                    isAnimationActive={true}
+                                                    animationDuration={1400}
+                                                    animationEasing="ease-out"
                                                 />
                                             </AreaChart>
                                         </ResponsiveContainer>
@@ -541,15 +554,16 @@ export function AdminDashboardPage() {
                                 : <>
                                     {stockGroups.map((g) => {
                                         const sev = stockSeverity(g.minStock);
-                                        const variantsTxt = `${g.count} ${g.count === 1 ? 'talle' : 'talles'}`;
-                                        const detail = g.minStock <= 0
-                                            ? `${variantsTxt} sin stock`
-                                            : `${variantsTxt} · desde ${g.minStock} uds`;
+                                        const shown = g.variants.slice(0, 3).map(v => `${v.label} (${v.stock})`).join(' · ');
+                                        const extra = g.variants.length > 3 ? ` +${g.variants.length - 3}` : '';
+                                        const detail = `${shown}${extra}`;
+                                        const fullList = g.variants.map(v => `${v.label}: ${v.stock} uds`).join('\n');
                                         return (
                                         <div
                                             key={g.base}
                                             onClick={() => navigate('/admin/inventario')}
                                             className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
+                                            title={fullList}
                                         >
                                             <div className={`w-10 h-10 rounded-md ${sev.bg} border ${sev.border} shrink-0 flex items-center justify-center`}>
                                                 <sev.Icon className="w-5 h-5" style={{ color: sev.color }} />
@@ -558,7 +572,7 @@ export function AdminDashboardPage() {
                                                 <p className="text-sm font-medium text-zinc-900 truncate group-hover:text-zinc-700 transition-colors" title={g.base}>
                                                     {g.base}
                                                 </p>
-                                                <span className={`text-xs font-semibold mt-0.5 ${sev.text}`}>
+                                                <span className="text-xs font-medium text-zinc-500 truncate mt-0.5" title={fullList}>
                                                     {detail}
                                                 </span>
                                             </div>
@@ -584,7 +598,7 @@ export function AdminDashboardPage() {
                         className="flex flex-col"
                     >
                         <ActionListCard
-                            title="Pagos a Revisar"
+                            title="Últimos Movimientos"
                             actionText="Ver tesorería"
                             actionRoute="/admin/tesoreria"
                         >
@@ -601,15 +615,21 @@ export function AdminDashboardPage() {
                                 : recentPayments.length === 0
                                 ? (
                                     <div className="h-full min-h-[200px] flex flex-col items-center justify-center gap-2 text-center">
-                                        <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                                            <Receipt className="w-6 h-6 text-emerald-500" />
+                                        <div className="w-12 h-12 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center">
+                                            <Receipt className="w-6 h-6 text-zinc-300" />
                                         </div>
-                                        <p className="text-sm font-semibold text-zinc-700">Todo conciliado</p>
-                                        <p className="text-xs text-zinc-400">No hay pagos pendientes de revisión.</p>
+                                        <p className="text-sm font-semibold text-zinc-500">Sin movimientos</p>
                                     </div>
                                 )
                                 : <>
-                                    {recentPayments.map((payment) => (
+                                    {recentPayments.map((payment) => {
+                                        const s = payment.status;
+                                        const isPending = s === 'PENDING' || s === 'PENDING_REVIEW';
+                                        const isApproved = s === 'APPROVED';
+                                        const isRejected = s === 'REJECTED';
+                                        const dot = isPending ? 'bg-amber-500' : isApproved ? 'bg-emerald-500' : isRejected ? 'bg-red-500' : 'bg-zinc-400';
+                                        const label = isPending ? 'Pendiente' : isApproved ? 'Aprobado' : isRejected ? 'Rechazado' : s;
+                                        return (
                                         <div
                                             key={payment.id}
                                             onClick={() => navigate('/admin/tesoreria')}
@@ -620,9 +640,8 @@ export function AdminDashboardPage() {
                                                     {payment.clientName}
                                                 </span>
                                                 <div className="flex items-center gap-1.5 mt-1 min-w-0">
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100">
-                                                        Pendiente
-                                                    </span>
+                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
+                                                    <span className="text-[11px] font-medium text-zinc-500 whitespace-nowrap">{label}</span>
                                                     {payment.createdAt && (
                                                         <span className="text-[11px] text-zinc-400 font-medium whitespace-nowrap">· {new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(new Date(payment.createdAt))}</span>
                                                     )}
@@ -632,13 +651,16 @@ export function AdminDashboardPage() {
                                                 <span className="text-sm font-bold text-zinc-900 whitespace-nowrap">
                                                     {formatCurrency(payment.amount)}
                                                 </span>
-                                                <span className="text-[11px] font-semibold text-zinc-500 group-hover:text-zinc-900 transition-colors mt-0.5">
-                                                    Revisar →
-                                                </span>
+                                                {isPending && (
+                                                    <span className="text-[11px] font-semibold text-zinc-500 group-hover:text-zinc-900 transition-colors mt-0.5">
+                                                        Revisar →
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
-                                    ))}
-                                    {Array.from({ length: LIST_ITEMS - recentPayments.length }).map((_, i) => (
+                                        );
+                                    })}
+                                    {Array.from({ length: Math.max(0, LIST_ITEMS - recentPayments.length) }).map((_, i) => (
                                         <div key={`fill-mov-${i}`} className="h-[48px] xl:h-[60px]" />
                                     ))}
                                 </>
