@@ -168,7 +168,12 @@ export function AdminDashboardPage() {
         apiClient.get('/dashboard/revenue-trend')
             .then(({ data }) => setRevenueData(Array.isArray(data) && data.length > 0 ? data : defaultRevenue))
             .catch(() => setRevenueData(defaultRevenue))
-            .finally(() => setIsRevenueLoading(false));
+            .finally(() => {
+                setIsRevenueLoading(false);
+                // Esperar 2 frames a que el contenedor mida su ancho antes de
+                // animar el área (evita que la animación arranque y se corte).
+                requestAnimationFrame(() => requestAnimationFrame(() => setChartReady(true)));
+            });
 
         // Category Distribution
         const defaultCategory = [
@@ -349,7 +354,6 @@ export function AdminDashboardPage() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, ease: "easeOut" }}
-                        onAnimationComplete={() => setChartReady(true)}
                         className="col-span-1 md:col-span-2 flex flex-col"
                     >
                         <Card className="flex-1 flex flex-col shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
@@ -358,10 +362,12 @@ export function AdminDashboardPage() {
                             </CardHeader>
                             <CardContent className="flex-1 min-h-0 pl-0 pb-3 pt-2">
                                 <div className="h-full w-full">
-                                    {(isRevenueLoading || !chartReady) ? (
+                                    {isRevenueLoading ? (
                                         <div className="h-full flex items-center justify-center">
                                             <SkeletonBlock className="h-full w-full mx-6" />
                                         </div>
+                                    ) : !chartReady ? (
+                                        <div className="h-full w-full" />
                                     ) : (
                                         <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart data={revenueData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
