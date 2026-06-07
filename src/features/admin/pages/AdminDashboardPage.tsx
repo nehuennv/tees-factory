@@ -142,9 +142,6 @@ export function AdminDashboardPage() {
     // ── Gráfico de Ingresos ─────────────────────────────────────
     const [revenueData, setRevenueData] = useState<RevenueTrendItem[]>([]);
     const [isRevenueLoading, setIsRevenueLoading] = useState(true);
-    // El chart se monta recién cuando la tarjeta terminó de entrar (tamaño estable)
-    // para que la animación del área no se corte a la mitad.
-    const [chartReady, setChartReady] = useState(false);
 
     // ── Distribución por Categoría ──────────────────────────────
     const [categoryData, setCategoryData] = useState<CategoryDistributionItem[]>([]);
@@ -198,7 +195,6 @@ export function AdminDashboardPage() {
     const pendingPayments = kpis?.pendingPaymentsCount ?? 0;
     const preparingOrders = kpis?.preparingOrdersCount ?? 0;
     const topDebtors = [...(kpis?.topDebtors ?? [])].sort((a, b) => b.debt - a.debt).slice(0, LIST_ITEMS);
-    const maxDebt = topDebtors[0]?.debt || 1;
     const criticalStock = [...(kpis?.criticalStock ?? [])].sort((a, b) => a.stock - b.stock).slice(0, LIST_ITEMS);
 
     const revenuePct = calcPctChange(totalRevenue, kpis?.previousMonthRevenue ?? 0);
@@ -330,7 +326,6 @@ export function AdminDashboardPage() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, ease: "easeOut" }}
-                        onAnimationComplete={() => setChartReady(true)}
                         className="col-span-1 md:col-span-2 flex flex-col"
                     >
                         <Card className="flex-1 flex flex-col shadow-sm border-zinc-200 rounded-xl bg-white transition-all duration-300 hover:shadow-md">
@@ -339,7 +334,7 @@ export function AdminDashboardPage() {
                             </CardHeader>
                             <CardContent className="flex-1 min-h-0 pl-0 pb-3 pt-2">
                                 <div className="h-full w-full">
-                                    {(isRevenueLoading || !chartReady) ? (
+                                    {isRevenueLoading ? (
                                         <div className="h-full flex items-center justify-center">
                                             <SkeletonBlock className="h-full w-full mx-6" />
                                         </div>
@@ -371,9 +366,7 @@ export function AdminDashboardPage() {
                                                     strokeWidth={3}
                                                     fillOpacity={1}
                                                     fill="url(#colorTotal)"
-                                                    isAnimationActive={true}
-                                                    animationDuration={1200}
-                                                    animationEasing="ease-out"
+                                                    isAnimationActive={false}
                                                 />
                                             </AreaChart>
                                         </ResponsiveContainer>
@@ -476,24 +469,23 @@ export function AdminDashboardPage() {
                                     </div>
                                 ))
                                 : <>
-                                    {topDebtors.map((client) => (
+                                    {topDebtors.map((client, idx) => (
                                         <div key={client.id} className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
-                                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: getAvatarColor(client.name) }}>
-                                                {getInitials(client.name)}
+                                            <div className="relative shrink-0">
+                                                <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ backgroundColor: getAvatarColor(client.name) }}>
+                                                    {getInitials(client.name)}
+                                                </div>
+                                                <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-white border border-zinc-200 text-[9px] font-bold text-zinc-500 flex items-center justify-center shadow-sm">
+                                                    {idx + 1}
+                                                </span>
                                             </div>
                                             <div className="flex flex-col flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-sm font-medium text-zinc-900 truncate group-hover:text-[#C44A87] transition-colors" title={client.name}>
-                                                        {client.name}
-                                                    </span>
-                                                    <span className="text-xs text-red-600 font-bold whitespace-nowrap">{formatCurrency(client.debt)}</span>
-                                                </div>
-                                                {/* Barra relativa de deuda */}
-                                                <div className="mt-1.5 h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
-                                                    <div className="h-full rounded-full bg-[#C44A87]" style={{ width: `${Math.max(8, (client.debt / maxDebt) * 100)}%` }} />
-                                                </div>
+                                                <span className="text-sm font-medium text-zinc-900 truncate group-hover:text-zinc-700 transition-colors" title={client.name}>
+                                                    {client.name}
+                                                </span>
+                                                <span className="text-xs text-red-600 font-semibold mt-0.5">Debe {formatCurrency(client.debt)}</span>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 group-hover:text-[#C44A87] group-hover:bg-[#C44A87]/10 rounded-full transition-colors shrink-0">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors shrink-0" title="Contactar por WhatsApp">
                                                 <MessageCircle className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -537,30 +529,22 @@ export function AdminDashboardPage() {
                                 : <>
                                     {criticalStock.map((product) => {
                                         const sev = stockSeverity(product.stock);
-                                        const fill = Math.min(100, Math.max(6, (product.stock / 15) * 100));
                                         return (
                                         <div key={product.id} className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
                                             <div className={`w-10 h-10 rounded-md ${sev.bg} border ${sev.border} shrink-0 flex items-center justify-center`}>
                                                 <sev.Icon className="w-5 h-5" style={{ color: sev.color }} />
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <p className="text-sm font-medium text-zinc-900 truncate group-hover:text-zinc-700 transition-colors" title={product.name}>
-                                                        {product.name}
-                                                    </p>
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${sev.bg} ${sev.text} border ${sev.border} shrink-0`}>
-                                                        {sev.label}
-                                                    </span>
-                                                </div>
-                                                <div className="mt-1.5 flex items-center gap-2">
-                                                    <div className="h-1.5 flex-1 rounded-full bg-zinc-100 overflow-hidden">
-                                                        <div className="h-full rounded-full" style={{ width: `${fill}%`, backgroundColor: sev.color }} />
-                                                    </div>
-                                                    <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: sev.color }}>
-                                                        {product.stock} uds
-                                                    </span>
-                                                </div>
+                                                <p className="text-sm font-medium text-zinc-900 truncate group-hover:text-zinc-700 transition-colors" title={product.name}>
+                                                    {product.name}
+                                                </p>
+                                                <span className={`text-xs font-semibold mt-0.5 ${sev.text}`}>
+                                                    {product.stock <= 0 ? 'Sin stock' : `Quedan ${product.stock} uds`}
+                                                </span>
                                             </div>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${sev.bg} ${sev.text} border ${sev.border} shrink-0`}>
+                                                {sev.label}
+                                            </span>
                                         </div>
                                         );
                                     })}
@@ -601,52 +585,41 @@ export function AdminDashboardPage() {
                                     </div>
                                 ))
                                 : <>
-                                    {recentPayments.map((payment) => (
-                                        <div key={payment.id} className="flex items-center justify-between group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-zinc-900 truncate max-w-[140px] group-hover:text-[#2DBDD0] transition-colors" title={payment.clientName}>
+                                    {recentPayments.map((payment) => {
+                                        const s = payment.status;
+                                        const isPending = s === 'PENDING' || s === 'PENDING_REVIEW';
+                                        const isApproved = s === 'APPROVED';
+                                        const isRejected = s === 'REJECTED';
+                                        const statusDot = isPending ? 'bg-amber-500' : isApproved ? 'bg-emerald-500' : isRejected ? 'bg-red-500' : 'bg-zinc-400';
+                                        const statusLabel = isPending ? 'Pendiente' : isApproved ? 'Aprobado' : isRejected ? 'Rechazado' : s;
+                                        return (
+                                        <div key={payment.id} className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
+                                            <div className="flex flex-col flex-1 min-w-0">
+                                                <span className="text-sm font-medium text-zinc-900 truncate transition-colors" title={payment.clientName}>
                                                     {payment.clientName}
                                                 </span>
-                                                <div className="flex items-center gap-1.5 mt-1">
-                                                    {(() => {
-                                                        const s = payment.status;
-                                                        const isPending = s === 'PENDING' || s === 'PENDING_REVIEW';
-                                                        const isApproved = s === 'APPROVED';
-                                                        const isRejected = s === 'REJECTED';
-                                                        return (
-                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
-                                                                isPending ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                                                                isApproved ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                                                isRejected ? 'bg-red-50 text-red-600 border border-red-100' :
-                                                                'bg-zinc-100 text-zinc-500'
-                                                            }`}>
-                                                                {isPending ? 'Pendiente' : isApproved ? 'Aprobado' : isRejected ? 'Rechazado' : s}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                    {payment.method && (
-                                                        <span className="text-[10px] text-zinc-400 font-medium truncate hidden lg:inline">· {payment.method}</span>
-                                                    )}
+                                                <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot}`} />
+                                                    <span className="text-[11px] font-medium text-zinc-500 whitespace-nowrap">{statusLabel}</span>
                                                     {payment.createdAt && (
-                                                        <span className="text-[10px] text-zinc-400 font-medium whitespace-nowrap">· {new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(new Date(payment.createdAt))}</span>
+                                                        <span className="text-[11px] text-zinc-400 font-medium whitespace-nowrap truncate">· {new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(new Date(payment.createdAt))}</span>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 lg:gap-3">
-                                                <span className="text-sm font-bold text-zinc-900 whitespace-nowrap hidden sm:inline-block border-r border-zinc-200 pr-2 lg:pr-3">
+                                            <div className="flex flex-col items-end shrink-0">
+                                                <span className="text-sm font-bold text-zinc-900 whitespace-nowrap">
                                                     {formatCurrency(payment.amount)}
                                                 </span>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
+                                                <button
                                                     onClick={() => navigate('/admin/tesoreria')}
-                                                    className="h-7 text-[11px] px-3 font-semibold bg-white group-hover:bg-[#2DBDD0]/10 group-hover:text-[#2DBDD0] group-hover:border-[#2DBDD0]/30 text-zinc-700 border-zinc-200 shadow-sm rounded-md transition-colors"
+                                                    className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-900 transition-colors mt-0.5"
                                                 >
-                                                    Revisar
-                                                </Button>
+                                                    Revisar →
+                                                </button>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                     {Array.from({ length: LIST_ITEMS - recentPayments.length }).map((_, i) => (
                                         <div key={`fill-mov-${i}`} className="flex items-center justify-between h-[48px] xl:h-[60px] gap-3">
                                             <div className="flex flex-col gap-1.5 flex-1">
