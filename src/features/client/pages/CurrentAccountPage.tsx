@@ -20,8 +20,6 @@ import {
     CheckCircle2,
     Clock,
     XCircle,
-    Plus,
-    Minus,
     ShieldAlert
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -201,23 +199,25 @@ export function CurrentAccountPage() {
                                 <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/40 p-5 shadow-sm flex flex-col gap-3">
                                     <div className="flex flex-col gap-1">
                                         <h4 className="text-sm font-bold text-zinc-900">Ajuste de cuenta</h4>
-                                        <p className="text-xs text-zinc-500 leading-tight">Cargá un cargo manual o acreditá un ajuste a favor del cliente.</p>
+                                        <p className="text-xs text-zinc-500 leading-tight">Modificá manualmente lo que el cliente debe.</p>
                                     </div>
                                     <Button
                                         onClick={() => setAdjustMode('debt')}
-                                        className="w-full rounded-xl bg-zinc-900 border-zinc-900 text-white hover:bg-zinc-800 h-10 font-bold transition-all shadow-md shadow-zinc-200 gap-2"
+                                        className="w-full rounded-xl bg-rose-600 border-rose-600 text-white hover:bg-rose-700 h-11 font-bold transition-all shadow-md shadow-rose-100 gap-2"
                                     >
-                                        <Plus className="w-4 h-4" />
-                                        Agregar deuda
+                                        <ArrowUpRight className="w-4 h-4" />
+                                        Aumentar deuda
                                     </Button>
                                     <Button
-                                        variant="outline"
                                         onClick={() => setAdjustMode('credit')}
-                                        className="w-full rounded-xl border-zinc-200 text-zinc-700 hover:bg-zinc-50 h-10 font-bold transition-all gap-2"
+                                        className="w-full rounded-xl bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 h-11 font-bold transition-all shadow-md shadow-emerald-100 gap-2"
                                     >
-                                        <Minus className="w-4 h-4" />
-                                        Ajustar a favor
+                                        <ArrowDownLeft className="w-4 h-4" />
+                                        Reducir deuda (pago/ajuste)
                                     </Button>
+                                    <p className="text-[11px] text-zinc-400 leading-tight text-center">
+                                        Aumentar = el cliente debe más · Reducir = el cliente debe menos
+                                    </p>
                                 </div>
                             )}
                         </div>

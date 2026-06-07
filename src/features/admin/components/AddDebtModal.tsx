@@ -34,19 +34,19 @@ const COPY: Record<DebtAdjustMode, {
     sign: 1 | -1;
 }> = {
     debt: {
-        title: 'Agregar deuda manual',
+        title: 'Aumentar deuda',
         endpoint: (id) => `/clients/${id}/debt`,
-        actionLabel: (amt) => amt ? `Cargar ${amt}` : 'Cargar deuda',
+        actionLabel: (amt) => amt ? `Aumentar deuda en ${amt}` : 'Aumentar deuda',
         placeholder: 'Ej: Ajuste por diferencia de cambio, flete especial, etc.',
         accent: 'text-rose-400',
         confirmClass: '',
         sign: 1,
     },
     credit: {
-        title: 'Ajuste a favor del cliente',
+        title: 'Reducir deuda (pago / ajuste a favor)',
         endpoint: (id) => `/clients/${id}/credit`,
-        actionLabel: (amt) => amt ? `Acreditar ${amt}` : 'Acreditar a favor',
-        placeholder: 'Ej: Devolución, bonificación, corrección de un cargo previo, etc.',
+        actionLabel: (amt) => amt ? `Reducir deuda en ${amt}` : 'Reducir deuda',
+        placeholder: 'Ej: Pago recibido, devolución, bonificación, corrección de un cargo previo, etc.',
         accent: 'text-emerald-400',
         confirmClass: '[&>span:first-child]:!bg-emerald-600',
         sign: -1,
@@ -100,7 +100,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
             const data = res.data || {};
             const resultDebt = data.newDebt ?? newDebt;
             const wasNotified = data.notified ?? notify;
-            toast.success(mode === 'debt' ? 'Deuda cargada' : 'Ajuste acreditado', {
+            toast.success(mode === 'debt' ? 'Deuda aumentada' : 'Deuda reducida', {
                 description: `${formatPrice(data.previousDebt ?? currentDebt)} → ${formatPrice(resultDebt)}${wasNotified ? ' · Cliente notificado por mail' : ''}`,
             });
             onDone(resultDebt);
@@ -146,7 +146,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
                 {/* Monto */}
                 <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                        {mode === 'debt' ? 'Monto a cargar *' : 'Monto a acreditar *'}
+                        {mode === 'debt' ? 'Monto a sumar a la deuda *' : 'Monto a descontar de la deuda *'}
                     </label>
                     <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">$</span>
