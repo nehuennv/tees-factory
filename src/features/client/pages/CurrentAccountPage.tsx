@@ -198,7 +198,7 @@ export function CurrentAccountPage() {
                         <div className="w-full md:w-[320px] shrink-0">
                             {/* Acción de Reportar Pago solo visible para el cliente */}
                             {!isAdministrativeView && (
-                                <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/40 p-5 shadow-sm flex flex-col gap-4">
+                                <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm flex flex-col gap-4">
                                     <div className="flex flex-col gap-1">
                                         <h4 className="text-sm font-bold text-zinc-900">¿Realizaste un pago?</h4>
                                         <p className="text-xs text-zinc-500 leading-tight">Infórmalo ahora para agilizar el despacho de tus pedidos.</p>
@@ -213,7 +213,7 @@ export function CurrentAccountPage() {
                             )}
                             {/* Acciones de ajuste de cuenta — solo Admin */}
                             {canAddDebt && (
-                                <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/40 p-5 shadow-sm flex flex-col gap-3">
+                                <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm flex flex-col gap-3">
                                     <div className="flex flex-col gap-1">
                                         <h4 className="text-sm font-bold text-zinc-900">Ajuste de cuenta</h4>
                                         <p className="text-xs text-zinc-500 leading-tight">Modificá manualmente lo que el cliente debe.</p>
@@ -274,10 +274,7 @@ export function CurrentAccountPage() {
 
                 {/* Tabla de Movimientos */}
                 <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both">
-                    <div className="flex items-center justify-between px-1">
-                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Movimientos</p>
-                        <span className="text-xs font-semibold text-zinc-400">{transactions.length} en total</span>
-                    </div>
+                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Movimientos</p>
 
                     <Card className="border-zinc-200 shadow-sm rounded-2xl overflow-hidden bg-white">
                         <div className="overflow-x-auto">
