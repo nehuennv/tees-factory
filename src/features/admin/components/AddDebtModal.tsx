@@ -203,8 +203,10 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
                 {/* Preview previo → nuevo */}
                 <div className="flex items-center justify-between rounded-xl bg-zinc-900 px-5 py-4 text-white">
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Deuda actual</span>
-                        <span className="text-base font-bold">{formatPrice(currentDebt)}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                            {currentDebt < 0 ? 'Saldo a favor' : 'Deuda actual'}
+                        </span>
+                        <span className="text-base font-bold">{formatPrice(Math.abs(currentDebt))}</span>
                     </div>
                     <ArrowRight className="w-5 h-5 text-zinc-500" />
                     <div className="flex flex-col items-end">
