@@ -365,7 +365,7 @@ node src/tests/test-pricing.js     # unit tests del servicio de pricing
 node src/tests/test-kanban-v2.js   # integration tests E2E (requiere server arriba)
 ```
 
-El primero corre sin DB. El segundo requiere `BASE_URL=http://localhost:3000` (default) y un admin existente. Si no es `admin@hector.com / Admin1234!`, pasar `TEST_ADMIN_EMAIL` / `TEST_ADMIN_PASSWORD` por env.
+El primero corre sin DB. El segundo requiere `BASE_URL=http://localhost:3000` (default) y un admin existente. Pasar las credenciales de admin por env: `TEST_ADMIN_EMAIL` / `TEST_ADMIN_PASSWORD` (nunca hardcodear credenciales en el repo).
 
 ---
 
