@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { formatPrice } from '@/lib/formatters';
 import apiClient from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
@@ -19,9 +19,12 @@ import {
     ArrowDownLeft,
     CheckCircle2,
     Clock,
-    XCircle
+    XCircle,
+    Plus,
+    ShieldAlert
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { AddDebtModal } from '@/features/admin/components/AddDebtModal';
 
 export function CurrentAccountPage() {
     const { clientId } = useParams();
@@ -33,12 +36,15 @@ export function CurrentAccountPage() {
     // Si hay clientId en URL, es vista administrativa. Si no, es vista propia del cliente.
     const activeClientId = clientId || user?.reference_id;
     const isAdministrativeView = !!clientId;
+    // Cargar deuda manual: solo ADMIN (no VENDEDOR ni cliente).
+    const canAddDebt = isAdministrativeView && user?.role === 'ADMIN';
 
     const [currentDebt, setCurrentDebt] = useState<number>(0);
     const [transactions, setTransactions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [showAddDebt, setShowAddDebt] = useState(false);
 
-    useEffect(() => {
+    const fetchLedger = useCallback(() => {
         if (!activeClientId) {
             setIsLoading(false);
             return;
@@ -49,13 +55,13 @@ export function CurrentAccountPage() {
             .then(res => {
                 const ledger = res.data.ledger || [];
                 const clientData = res.data.client || {};
-                
+
                 // Si el backend nos manda 0 de deuda pero hay movimientos aprobados,
                 // calculamos el balance real nosotros para mostrar el "Saldo a Favor".
                 const realBalance = ledger.reduce((acc: number, tx: any) => {
                     const status = (tx.status || 'COMPLETED').toUpperCase();
                     if (status !== 'COMPLETED' && status !== 'APPROVED') return acc;
-                    
+
                     if (tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER') {
                         return acc + (tx.amount || 0);
                     } else {
@@ -76,6 +82,8 @@ export function CurrentAccountPage() {
             })
             .finally(() => setIsLoading(false));
     }, [activeClientId]);
+
+    useEffect(() => { fetchLedger(); }, [fetchLedger]);
 
     // LÓGICA DE NEGOCIO
     // En la API nueva, currentDebt > 0 significa que debe plata.
@@ -186,6 +194,22 @@ export function CurrentAccountPage() {
                                     </Button>
                                 </div>
                             )}
+                            {/* Acción de cargar deuda manual — solo Admin */}
+                            {canAddDebt && (
+                                <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/40 p-5 shadow-sm flex flex-col gap-4">
+                                    <div className="flex flex-col gap-1">
+                                        <h4 className="text-sm font-bold text-zinc-900">Ajuste de cuenta</h4>
+                                        <p className="text-xs text-zinc-500 leading-tight">Cargá un cargo manual a la cuenta corriente del cliente.</p>
+                                    </div>
+                                    <Button
+                                        onClick={() => setShowAddDebt(true)}
+                                        className="w-full rounded-xl bg-zinc-900 border-zinc-900 text-white hover:bg-zinc-800 h-10 font-bold transition-all shadow-md shadow-zinc-200 gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Agregar deuda
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </Card>
@@ -228,12 +252,33 @@ export function CurrentAccountPage() {
                                                     {formatDate(tx.createdAt || tx.date)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-zinc-900">{tx.description || 'Movimiento'}</span>
-                                                        <span className="text-xs text-zinc-400 font-medium mt-0.5 uppercase tracking-wider">
-                                                            {tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER' ? 'Nuevo Pedido' : 'Reporte de Pago'}
-                                                        </span>
-                                                    </div>
+                                                    {(() => {
+                                                        const isManual = (tx.origin || '').toUpperCase() === 'MANUAL';
+                                                        const isIncrease = tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER';
+                                                        const label = isManual
+                                                            ? (isIncrease ? 'Deuda cargada por administrador' : 'Ajuste a favor (administrador)')
+                                                            : (isIncrease ? 'Nuevo Pedido' : 'Reporte de Pago');
+                                                        return (
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-zinc-900">{tx.description || (isManual ? 'Ajuste de cuenta' : 'Movimiento')}</span>
+                                                                    {isManual && (
+                                                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                                                            <ShieldAlert className="w-3 h-3" />
+                                                                            Manual
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">{label}</span>
+                                                                {isManual && tx.reason && (
+                                                                    <span className="text-xs text-zinc-500 italic">“{tx.reason}”</span>
+                                                                )}
+                                                                {isManual && tx.createdBy && (
+                                                                    <span className="text-[10px] text-zinc-400">por {tx.createdBy}</span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </TableCell>
                                                 <TableCell>
                                                     {getStatusBadge(tx.status || 'COMPLETED')}
@@ -250,6 +295,17 @@ export function CurrentAccountPage() {
                     </Card>
                 </div>
             </div>
+
+            {canAddDebt && activeClientId && (
+                <AddDebtModal
+                    isOpen={showAddDebt}
+                    onClose={() => setShowAddDebt(false)}
+                    clientId={activeClientId}
+                    clientName={clientName}
+                    currentDebt={currentDebt}
+                    onDone={() => fetchLedger()}
+                />
+            )}
         </div>
     );
 }
