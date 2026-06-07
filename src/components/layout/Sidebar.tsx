@@ -5,6 +5,7 @@ import {
     ClipboardCheck, ShoppingBag, ClipboardList, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { prefetchRoute } from '@/lib/routePrefetch';
 import logoUrl from '@/assets/logo/LogoTeesFactorynegro.png';
 import { useAuthStore } from '@/store/authStore';
 import type { Role } from '@/store/authStore';
@@ -270,6 +271,8 @@ function NavItem({ to, icon: Icon, label, aliases, collapsed }: NavItemProps) {
         <NavLink
             to={to}
             aria-label={label}
+            onMouseEnter={() => prefetchRoute(to)}
+            onFocus={() => prefetchRoute(to)}
             style={{
                 paddingLeft:  collapsed ? 0 : 10,
                 paddingRight: collapsed ? 0 : 10,
