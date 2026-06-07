@@ -20,7 +20,9 @@ import {
     CheckCircle2,
     Clock,
     XCircle,
-    ShieldAlert
+    ShieldAlert,
+    ShoppingBag,
+    ListChecks
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AddDebtModal, type DebtAdjustMode } from '@/features/admin/components/AddDebtModal';
@@ -144,6 +146,21 @@ export function CurrentAccountPage() {
         );
     };
 
+    const getConceptVisual = (tx: any) => {
+        const isManual = (tx.origin || '').toUpperCase() === 'MANUAL';
+        const isIncrease = tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER';
+        if (isManual && isIncrease) return { Icon: ShieldAlert, color: '#d97706', bg: 'bg-amber-50', ring: 'border-amber-100' };
+        if (!isIncrease) return { Icon: ArrowDownLeft, color: '#059669', bg: 'bg-emerald-50', ring: 'border-emerald-100' };
+        return { Icon: ShoppingBag, color: '#42318B', bg: 'bg-[#42318B]/10', ring: 'border-[#42318B]/20' };
+    };
+
+    const completedTx = transactions.filter((tx: any) => {
+        const s = (tx.status || 'COMPLETED').toUpperCase();
+        return s === 'COMPLETED' || s === 'APPROVED';
+    });
+    const totalCargos = completedTx.filter((t: any) => t.type === 'DEBT_INCREASE' || t.type === 'ORDER').reduce((a: number, t: any) => a + (t.amount || 0), 0);
+    const totalPagos = completedTx.filter((t: any) => !(t.type === 'DEBT_INCREASE' || t.type === 'ORDER')).reduce((a: number, t: any) => a + (t.amount || 0), 0);
+
     const formatDate = (isoString: string) => {
         const date = new Date(isoString);
         return new Intl.DateTimeFormat('es-AR', {
@@ -224,9 +241,43 @@ export function CurrentAccountPage() {
                     </div>
                 </Card>
 
+                {/* Mini-stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 fill-mode-both">
+                    <div className="bg-white border border-zinc-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+                        <div className="w-11 h-11 rounded-xl bg-[#42318B]/10 border border-[#42318B]/20 flex items-center justify-center shrink-0">
+                            <ListChecks className="w-5 h-5 text-[#42318B]" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Movimientos</span>
+                            <span className="text-xl font-black text-zinc-900">{transactions.length}</span>
+                        </div>
+                    </div>
+                    <div className="bg-white border border-zinc-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+                        <div className="w-11 h-11 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                            <ArrowUpRight className="w-5 h-5 text-rose-500" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Total cargos</span>
+                            <span className="text-xl font-black text-rose-600">{formatPrice(totalCargos)}</span>
+                        </div>
+                    </div>
+                    <div className="bg-white border border-zinc-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+                        <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                            <ArrowDownLeft className="w-5 h-5 text-emerald-500" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Total pagos</span>
+                            <span className="text-xl font-black text-emerald-600">{formatPrice(totalPagos)}</span>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Tabla de Movimientos */}
                 <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both">
-                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Movimientos</p>
+                    <div className="flex items-center justify-between px-1">
+                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Movimientos</p>
+                        <span className="text-xs font-semibold text-zinc-400">{transactions.length} en total</span>
+                    </div>
 
                     <Card className="border-zinc-200 shadow-sm rounded-2xl overflow-hidden bg-white">
                         <div className="overflow-x-auto">
@@ -261,24 +312,30 @@ export function CurrentAccountPage() {
                                                         const label = isManual
                                                             ? (isIncrease ? 'Deuda cargada por administrador' : 'Ajuste a favor (administrador)')
                                                             : (isIncrease ? 'Nuevo Pedido' : 'Reporte de Pago');
+                                                        const cv = getConceptVisual(tx);
                                                         return (
-                                                            <div className="flex flex-col gap-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="font-bold text-zinc-900">{tx.description || (isManual ? 'Ajuste de cuenta' : 'Movimiento')}</span>
-                                                                    {isManual && (
-                                                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                                                                            <ShieldAlert className="w-3 h-3" />
-                                                                            Manual
-                                                                        </span>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-9 h-9 rounded-xl ${cv.bg} border ${cv.ring} flex items-center justify-center shrink-0`}>
+                                                                    <cv.Icon className="w-4 h-4" style={{ color: cv.color }} />
+                                                                </div>
+                                                                <div className="flex flex-col gap-0.5 min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-zinc-900">{tx.description || (isManual ? 'Ajuste de cuenta' : 'Movimiento')}</span>
+                                                                        {isManual && (
+                                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                                                                <ShieldAlert className="w-3 h-3" />
+                                                                                Manual
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">{label}</span>
+                                                                    {isManual && tx.reason && (
+                                                                        <span className="text-xs text-zinc-500 italic">“{tx.reason}”</span>
+                                                                    )}
+                                                                    {isManual && tx.createdBy && (
+                                                                        <span className="text-[10px] text-zinc-400">por {tx.createdBy}</span>
                                                                     )}
                                                                 </div>
-                                                                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">{label}</span>
-                                                                {isManual && tx.reason && (
-                                                                    <span className="text-xs text-zinc-500 italic">“{tx.reason}”</span>
-                                                                )}
-                                                                {isManual && tx.createdBy && (
-                                                                    <span className="text-[10px] text-zinc-400">por {tx.createdBy}</span>
-                                                                )}
                                                             </div>
                                                         );
                                                     })()}
