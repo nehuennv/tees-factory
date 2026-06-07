@@ -21,10 +21,11 @@ import {
     Clock,
     XCircle,
     Plus,
+    Minus,
     ShieldAlert
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AddDebtModal } from '@/features/admin/components/AddDebtModal';
+import { AddDebtModal, type DebtAdjustMode } from '@/features/admin/components/AddDebtModal';
 
 export function CurrentAccountPage() {
     const { clientId } = useParams();
@@ -42,7 +43,7 @@ export function CurrentAccountPage() {
     const [currentDebt, setCurrentDebt] = useState<number>(0);
     const [transactions, setTransactions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [showAddDebt, setShowAddDebt] = useState(false);
+    const [adjustMode, setAdjustMode] = useState<DebtAdjustMode | null>(null);
 
     const fetchLedger = useCallback(() => {
         if (!activeClientId) {
@@ -194,19 +195,27 @@ export function CurrentAccountPage() {
                                     </Button>
                                 </div>
                             )}
-                            {/* Acción de cargar deuda manual — solo Admin */}
+                            {/* Acciones de ajuste de cuenta — solo Admin */}
                             {canAddDebt && (
-                                <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/40 p-5 shadow-sm flex flex-col gap-4">
+                                <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-white/40 p-5 shadow-sm flex flex-col gap-3">
                                     <div className="flex flex-col gap-1">
                                         <h4 className="text-sm font-bold text-zinc-900">Ajuste de cuenta</h4>
-                                        <p className="text-xs text-zinc-500 leading-tight">Cargá un cargo manual a la cuenta corriente del cliente.</p>
+                                        <p className="text-xs text-zinc-500 leading-tight">Cargá un cargo manual o acreditá un ajuste a favor del cliente.</p>
                                     </div>
                                     <Button
-                                        onClick={() => setShowAddDebt(true)}
+                                        onClick={() => setAdjustMode('debt')}
                                         className="w-full rounded-xl bg-zinc-900 border-zinc-900 text-white hover:bg-zinc-800 h-10 font-bold transition-all shadow-md shadow-zinc-200 gap-2"
                                     >
                                         <Plus className="w-4 h-4" />
                                         Agregar deuda
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setAdjustMode('credit')}
+                                        className="w-full rounded-xl border-zinc-200 text-zinc-700 hover:bg-zinc-50 h-10 font-bold transition-all gap-2"
+                                    >
+                                        <Minus className="w-4 h-4" />
+                                        Ajustar a favor
                                     </Button>
                                 </div>
                             )}
@@ -298,11 +307,12 @@ export function CurrentAccountPage() {
 
             {canAddDebt && activeClientId && (
                 <AddDebtModal
-                    isOpen={showAddDebt}
-                    onClose={() => setShowAddDebt(false)}
+                    isOpen={adjustMode !== null}
+                    onClose={() => setAdjustMode(null)}
                     clientId={activeClientId}
                     clientName={clientName}
                     currentDebt={currentDebt}
+                    mode={adjustMode ?? 'debt'}
                     onDone={() => fetchLedger()}
                 />
             )}

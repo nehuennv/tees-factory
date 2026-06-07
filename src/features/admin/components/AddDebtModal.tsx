@@ -7,6 +7,8 @@ import { formatPrice } from '@/lib/formatters';
 import apiClient from '@/lib/apiClient';
 import { ArrowRight, Mail, AlertTriangle } from 'lucide-react';
 
+export type DebtAdjustMode = 'debt' | 'credit';
+
 interface AddDebtModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -14,25 +16,64 @@ interface AddDebtModalProps {
     clientName?: string;
     /** Deuda actual (para preview previo → nuevo). */
     currentDebt: number;
+    /** 'debt' = cargar deuda (suma); 'credit' = ajuste a favor (resta). */
+    mode?: DebtAdjustMode;
     /** Se llama al confirmar OK; recibe la nueva deuda devuelta por el back (o estimada). */
     onDone: (newDebt?: number) => void;
 }
 
 const REASON_MAX = 240;
 
-export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDebt, onDone }: AddDebtModalProps) {
+const COPY: Record<DebtAdjustMode, {
+    title: string;
+    endpoint: (id: string) => string;
+    actionLabel: (amt: string) => string;
+    placeholder: string;
+    accent: string;        // color del monto nuevo
+    confirmClass: string;  // color del botón / barra de progreso
+    sign: 1 | -1;
+}> = {
+    debt: {
+        title: 'Agregar deuda manual',
+        endpoint: (id) => `/clients/${id}/debt`,
+        actionLabel: (amt) => amt ? `Cargar ${amt}` : 'Cargar deuda',
+        placeholder: 'Ej: Ajuste por diferencia de cambio, flete especial, etc.',
+        accent: 'text-rose-400',
+        confirmClass: '',
+        sign: 1,
+    },
+    credit: {
+        title: 'Ajuste a favor del cliente',
+        endpoint: (id) => `/clients/${id}/credit`,
+        actionLabel: (amt) => amt ? `Acreditar ${amt}` : 'Acreditar a favor',
+        placeholder: 'Ej: Devolución, bonificación, corrección de un cargo previo, etc.',
+        accent: 'text-emerald-400',
+        confirmClass: '[&>span:first-child]:!bg-emerald-600',
+        sign: -1,
+    },
+};
+
+export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDebt, mode = 'debt', onDone }: AddDebtModalProps) {
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
     const [notify, setNotify] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    // Idempotency-Key estable por intento de modal: se regenera al abrir.
+    const [idempotencyKey, setIdempotencyKey] = useState('');
 
-    // Reset al abrir
+    const cfg = COPY[mode];
+
     useEffect(() => {
         if (isOpen) {
             setAmount('');
             setReason('');
             setNotify(true);
             setIsSubmitting(false);
+            setIdempotencyKey(
+                typeof crypto !== 'undefined' && 'randomUUID' in crypto
+                    ? crypto.randomUUID()
+                    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+            );
         }
     }, [isOpen]);
 
@@ -41,26 +82,31 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
     const reasonValid = reason.trim().length > 0;
     const canSubmit = amountValid && reasonValid && !isSubmitting;
 
-    const newDebt = currentDebt + (amountValid ? parsedAmount : 0);
+    const newDebt = currentDebt + cfg.sign * (amountValid ? parsedAmount : 0);
 
     const handleConfirm = async () => {
         if (!canSubmit) return;
         setIsSubmitting(true);
         try {
-            const res = await apiClient.post(`/clients/${clientId}/debt`, {
-                amount: Math.round(parsedAmount * 100) / 100,
-                reason: reason.trim(),
-                notify,
-            });
+            const res = await apiClient.post(
+                cfg.endpoint(clientId),
+                {
+                    amount: Math.round(parsedAmount * 100) / 100,
+                    reason: reason.trim(),
+                    notify,
+                },
+                { headers: { 'Idempotency-Key': idempotencyKey } }
+            );
             const data = res.data || {};
             const resultDebt = data.newDebt ?? newDebt;
-            toast.success('Deuda cargada', {
-                description: `${formatPrice(data.previousDebt ?? currentDebt)} → ${formatPrice(resultDebt)}${data.notified ?? notify ? ' · Cliente notificado por mail' : ''}`,
+            const wasNotified = data.notified ?? notify;
+            toast.success(mode === 'debt' ? 'Deuda cargada' : 'Ajuste acreditado', {
+                description: `${formatPrice(data.previousDebt ?? currentDebt)} → ${formatPrice(resultDebt)}${wasNotified ? ' · Cliente notificado por mail' : ''}`,
             });
             onDone(resultDebt);
             onClose();
         } catch (err: any) {
-            const msg = err?.response?.data?.error || err?.response?.data?.message || 'Error al cargar la deuda';
+            const msg = err?.response?.data?.error || err?.response?.data?.message || 'Error al procesar el ajuste';
             toast.error(msg);
             setIsSubmitting(false);
         }
@@ -70,7 +116,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
         <Modal
             isOpen={isOpen}
             onClose={() => { if (!isSubmitting) onClose(); }}
-            title="Agregar deuda manual"
+            title={cfg.title}
             description={clientName ? `Cuenta de ${clientName}` : undefined}
             maxWidth="md"
             preventCloseOnOutsideClick={isSubmitting}
@@ -88,9 +134,10 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
                         onConfirm={handleConfirm}
                         disabled={!canSubmit}
                         isLoading={isSubmitting}
-                        label={amountValid ? `Cargar ${formatPrice(parsedAmount)}` : 'Cargar deuda'}
+                        label={cfg.actionLabel(amountValid ? formatPrice(parsedAmount) : '')}
                         holdingLabel="Sostené para confirmar…"
-                        loadingLabel="Cargando…"
+                        loadingLabel="Procesando…"
+                        className={cfg.confirmClass}
                     />
                 </div>
             }
@@ -98,7 +145,9 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
             <div className="flex flex-col gap-5">
                 {/* Monto */}
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Monto a cargar *</label>
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                        {mode === 'debt' ? 'Monto a cargar *' : 'Monto a acreditar *'}
+                    </label>
                     <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">$</span>
                         <input
@@ -124,7 +173,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
                         value={reason}
                         maxLength={REASON_MAX}
                         onChange={(e) => setReason(e.target.value)}
-                        placeholder="Ej: Ajuste por diferencia de cambio, flete especial, devolución, etc."
+                        placeholder={cfg.placeholder}
                         rows={3}
                         className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 resize-none"
                     />
@@ -159,15 +208,19 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
                     </div>
                     <ArrowRight className="w-5 h-5 text-zinc-500" />
                     <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Nueva deuda</span>
-                        <span className="text-xl font-black text-rose-400">{formatPrice(newDebt)}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                            {newDebt < 0 ? 'Saldo a favor' : 'Nueva deuda'}
+                        </span>
+                        <span className={`text-xl font-black ${newDebt < 0 ? 'text-emerald-400' : cfg.accent}`}>
+                            {formatPrice(Math.abs(newDebt))}
+                        </span>
                     </div>
                 </div>
 
-                {/* Aviso sin reverso */}
+                {/* Aviso */}
                 <div className="flex items-start gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                     <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <span>Revisá el monto: cargar deuda impacta la cuenta del cliente de inmediato. Mantené presionado el botón para confirmar.</span>
+                    <span>Revisá el monto: impacta la cuenta del cliente de inmediato. Mantené presionado el botón para confirmar.</span>
                 </div>
             </div>
         </Modal>
