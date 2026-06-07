@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Variables de entorno (no commitear)
+.env
+.env.*
+!.env.example
+
 # Claude Code - local permissions (may contain credentials)
 .claude/settings.local.json
 
