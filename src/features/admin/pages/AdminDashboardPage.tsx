@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ActionListCard } from '../components/ActionListCard';
-import { Wallet, TrendingUp, TrendingDown, Receipt, Package, MessageCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Receipt, Package, AlertTriangle, XCircle } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell,
@@ -178,12 +177,12 @@ export function AdminDashboardPage() {
             .finally(() => setIsCategoryLoading(false));
 
         // Últimos movimientos: trae los más recientes, pendientes primero
-        apiClient.get('/payments', { params: { limit: 20 } })
+        apiClient.get('/payments', { params: { limit: 30 } })
             .then(({ data }) => {
                 if (!Array.isArray(data)) { setRecentPayments([]); return; }
+                // Solo pendientes: son los accionables. Los aprobados/rechazados no aportan acá.
                 const pending = data.filter((p: RecentPayment) => p.status === 'PENDING_REVIEW' || p.status === 'PENDING');
-                const rest = data.filter((p: RecentPayment) => p.status !== 'PENDING_REVIEW' && p.status !== 'PENDING');
-                setRecentPayments([...pending, ...rest].slice(0, LIST_ITEMS));
+                setRecentPayments(pending.slice(0, LIST_ITEMS));
             })
             .catch(() => setRecentPayments([]))
             .finally(() => setIsPaymentsLoading(false));
@@ -195,7 +194,21 @@ export function AdminDashboardPage() {
     const pendingPayments = kpis?.pendingPaymentsCount ?? 0;
     const preparingOrders = kpis?.preparingOrdersCount ?? 0;
     const topDebtors = [...(kpis?.topDebtors ?? [])].sort((a, b) => b.debt - a.debt).slice(0, LIST_ITEMS);
-    const criticalStock = [...(kpis?.criticalStock ?? [])].sort((a, b) => a.stock - b.stock).slice(0, LIST_ITEMS);
+
+    // Agrupa las alertas de stock por producto base (el nombre viene como
+    // "Producto - Color Talle"; tomamos lo previo al primer " - ").
+    const stockGroups = (() => {
+        const all = kpis?.criticalStock ?? [];
+        const map = new Map<string, { base: string; count: number; minStock: number }>();
+        for (const v of all) {
+            const base = (v.name || '').split(' - ')[0].trim() || v.name || 'Producto';
+            const g = map.get(base) ?? { base, count: 0, minStock: Infinity };
+            g.count += 1;
+            g.minStock = Math.min(g.minStock, v.stock ?? 0);
+            map.set(base, g);
+        }
+        return [...map.values()].sort((a, b) => a.minStock - b.minStock).slice(0, LIST_ITEMS);
+    })();
 
     const revenuePct = calcPctChange(totalRevenue, kpis?.previousMonthRevenue ?? 0);
     const debtPct = calcPctChange(totalDebt, kpis?.previousMonthDebt ?? 0);
@@ -470,7 +483,11 @@ export function AdminDashboardPage() {
                                 ))
                                 : <>
                                     {topDebtors.map((client, idx) => (
-                                        <div key={client.id} className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
+                                        <div
+                                            key={client.id}
+                                            onClick={() => navigate(`/admin/clientes/${client.id}/cuenta`)}
+                                            className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
+                                        >
                                             <div className="relative shrink-0">
                                                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ backgroundColor: getAvatarColor(client.name) }}>
                                                     {getInitials(client.name)}
@@ -485,19 +502,14 @@ export function AdminDashboardPage() {
                                                 </span>
                                                 <span className="text-xs text-red-600 font-semibold mt-0.5">Debe {formatCurrency(client.debt)}</span>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors shrink-0" title="Contactar por WhatsApp">
-                                                <MessageCircle className="h-4 w-4" />
-                                            </Button>
+                                            <span className="flex items-center gap-1 text-[11px] font-semibold text-zinc-400 group-hover:text-zinc-900 transition-colors shrink-0">
+                                                <Wallet className="h-3.5 w-3.5" />
+                                                Ver cuenta
+                                            </span>
                                         </div>
                                     ))}
-                                    {Array.from({ length: LIST_ITEMS - topDebtors.length }).map((_, i) => (
-                                        <div key={`fill-debtor-${i}`} className="flex items-center justify-between h-[48px] xl:h-[60px] gap-3">
-                                            <div className="flex flex-col gap-1.5 flex-1">
-                                                <SkeletonBlock className="h-4 w-3/4" />
-                                                <SkeletonBlock className="h-3 w-1/2" />
-                                            </div>
-                                            <SkeletonBlock className="h-8 w-8 rounded-full" />
-                                        </div>
+                                    {Array.from({ length: Math.max(0, LIST_ITEMS - topDebtors.length) }).map((_, i) => (
+                                        <div key={`fill-debtor-${i}`} className="h-[48px] xl:h-[60px]" />
                                     ))}
                                 </>
                             }
@@ -527,19 +539,27 @@ export function AdminDashboardPage() {
                                     </div>
                                 ))
                                 : <>
-                                    {criticalStock.map((product) => {
-                                        const sev = stockSeverity(product.stock);
+                                    {stockGroups.map((g) => {
+                                        const sev = stockSeverity(g.minStock);
+                                        const variantsTxt = `${g.count} ${g.count === 1 ? 'talle' : 'talles'}`;
+                                        const detail = g.minStock <= 0
+                                            ? `${variantsTxt} sin stock`
+                                            : `${variantsTxt} · desde ${g.minStock} uds`;
                                         return (
-                                        <div key={product.id} className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
+                                        <div
+                                            key={g.base}
+                                            onClick={() => navigate('/admin/inventario')}
+                                            className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
+                                        >
                                             <div className={`w-10 h-10 rounded-md ${sev.bg} border ${sev.border} shrink-0 flex items-center justify-center`}>
                                                 <sev.Icon className="w-5 h-5" style={{ color: sev.color }} />
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                <p className="text-sm font-medium text-zinc-900 truncate group-hover:text-zinc-700 transition-colors" title={product.name}>
-                                                    {product.name}
+                                                <p className="text-sm font-medium text-zinc-900 truncate group-hover:text-zinc-700 transition-colors" title={g.base}>
+                                                    {g.base}
                                                 </p>
                                                 <span className={`text-xs font-semibold mt-0.5 ${sev.text}`}>
-                                                    {product.stock <= 0 ? 'Sin stock' : `Quedan ${product.stock} uds`}
+                                                    {detail}
                                                 </span>
                                             </div>
                                             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${sev.bg} ${sev.text} border ${sev.border} shrink-0`}>
@@ -548,14 +568,8 @@ export function AdminDashboardPage() {
                                         </div>
                                         );
                                     })}
-                                    {Array.from({ length: LIST_ITEMS - criticalStock.length }).map((_, i) => (
-                                        <div key={`fill-stock-${i}`} className="flex items-center gap-3 h-[48px] xl:h-[60px]">
-                                            <SkeletonBlock className="w-10 h-10 rounded-md shrink-0" />
-                                            <div className="flex-1 flex flex-col gap-1.5">
-                                                <SkeletonBlock className="h-4 w-3/4" />
-                                                <SkeletonBlock className="h-5 w-1/3" />
-                                            </div>
-                                        </div>
+                                    {Array.from({ length: Math.max(0, LIST_ITEMS - stockGroups.length) }).map((_, i) => (
+                                        <div key={`fill-stock-${i}`} className="h-[48px] xl:h-[60px]" />
                                     ))}
                                 </>
                             }
@@ -570,8 +584,8 @@ export function AdminDashboardPage() {
                         className="flex flex-col"
                     >
                         <ActionListCard
-                            title="Últimos Movimientos"
-                            actionText="Ver todos los movimientos"
+                            title="Pagos a Revisar"
+                            actionText="Ver tesorería"
                             actionRoute="/admin/tesoreria"
                         >
                             {isPaymentsLoading
@@ -584,25 +598,33 @@ export function AdminDashboardPage() {
                                         <SkeletonBlock className="h-7 w-16 rounded-md" />
                                     </div>
                                 ))
+                                : recentPayments.length === 0
+                                ? (
+                                    <div className="h-full min-h-[200px] flex flex-col items-center justify-center gap-2 text-center">
+                                        <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                                            <Receipt className="w-6 h-6 text-emerald-500" />
+                                        </div>
+                                        <p className="text-sm font-semibold text-zinc-700">Todo conciliado</p>
+                                        <p className="text-xs text-zinc-400">No hay pagos pendientes de revisión.</p>
+                                    </div>
+                                )
                                 : <>
-                                    {recentPayments.map((payment) => {
-                                        const s = payment.status;
-                                        const isPending = s === 'PENDING' || s === 'PENDING_REVIEW';
-                                        const isApproved = s === 'APPROVED';
-                                        const isRejected = s === 'REJECTED';
-                                        const statusDot = isPending ? 'bg-amber-500' : isApproved ? 'bg-emerald-500' : isRejected ? 'bg-red-500' : 'bg-zinc-400';
-                                        const statusLabel = isPending ? 'Pendiente' : isApproved ? 'Aprobado' : isRejected ? 'Rechazado' : s;
-                                        return (
-                                        <div key={payment.id} className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer">
+                                    {recentPayments.map((payment) => (
+                                        <div
+                                            key={payment.id}
+                                            onClick={() => navigate('/admin/tesoreria')}
+                                            className="flex items-center gap-3 group p-2 -mx-2 h-[48px] xl:h-[60px] rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
+                                        >
                                             <div className="flex flex-col flex-1 min-w-0">
-                                                <span className="text-sm font-medium text-zinc-900 truncate transition-colors" title={payment.clientName}>
+                                                <span className="text-sm font-medium text-zinc-900 truncate" title={payment.clientName}>
                                                     {payment.clientName}
                                                 </span>
                                                 <div className="flex items-center gap-1.5 mt-1 min-w-0">
-                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot}`} />
-                                                    <span className="text-[11px] font-medium text-zinc-500 whitespace-nowrap">{statusLabel}</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100">
+                                                        Pendiente
+                                                    </span>
                                                     {payment.createdAt && (
-                                                        <span className="text-[11px] text-zinc-400 font-medium whitespace-nowrap truncate">· {new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(new Date(payment.createdAt))}</span>
+                                                        <span className="text-[11px] text-zinc-400 font-medium whitespace-nowrap">· {new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(new Date(payment.createdAt))}</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -610,24 +632,14 @@ export function AdminDashboardPage() {
                                                 <span className="text-sm font-bold text-zinc-900 whitespace-nowrap">
                                                     {formatCurrency(payment.amount)}
                                                 </span>
-                                                <button
-                                                    onClick={() => navigate('/admin/tesoreria')}
-                                                    className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-900 transition-colors mt-0.5"
-                                                >
+                                                <span className="text-[11px] font-semibold text-zinc-500 group-hover:text-zinc-900 transition-colors mt-0.5">
                                                     Revisar →
-                                                </button>
+                                                </span>
                                             </div>
                                         </div>
-                                        );
-                                    })}
+                                    ))}
                                     {Array.from({ length: LIST_ITEMS - recentPayments.length }).map((_, i) => (
-                                        <div key={`fill-mov-${i}`} className="flex items-center justify-between h-[48px] xl:h-[60px] gap-3">
-                                            <div className="flex flex-col gap-1.5 flex-1">
-                                                <SkeletonBlock className="h-4 w-3/4" />
-                                                <SkeletonBlock className="h-3 w-1/2" />
-                                            </div>
-                                            <SkeletonBlock className="h-7 w-16 rounded-md" />
-                                        </div>
+                                        <div key={`fill-mov-${i}`} className="h-[48px] xl:h-[60px]" />
                                     ))}
                                 </>
                             }
