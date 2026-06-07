@@ -1,27 +1,37 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, lazy, Suspense } from "react"
 import { Routes, Route, Navigate } from "react-router-dom"
 import { AnimatePresence } from "framer-motion"
+import { Loader2 } from "lucide-react"
 import MainLayout from "@/components/layout/MainLayout"
-import { CatalogPage } from "@/features/catalog/pages/CatalogPage"
-import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage"
-import { CheckoutPage } from "@/features/checkout/pages/CheckoutPage"
-import { CheckoutSuccessPage } from "@/features/checkout/pages/CheckoutSuccessPage"
 import { LoginPageB2B } from "@/features/auth/pages/LoginPageB2B"
-import { ForgotPasswordPage } from "@/features/auth/pages/ForgotPasswordPage"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { useAuthStore } from "@/store/authStore"
 import SplashScreen from "@/components/shared/SplashScreen"
-import ClientsPage from "@/pages/ClientsPage"
-import { CurrentAccountPage } from "@/features/client/pages/CurrentAccountPage"
-import { ClientOrdersPage } from "@/features/client/pages/ClientOrdersPage"
-import { PaymentReportPage } from "@/features/client/pages/PaymentReportPage"
-import { CatalogManagementPage } from "@/features/admin/pages/CatalogManagementPage"
-import { OrdersBoardPage } from "@/features/admin/pages/OrdersBoardPage"
-import { TreasuryPage } from "@/features/admin/pages/TreasuryPage"
-import { AdminDashboardPage } from "@/features/admin/pages/AdminDashboardPage"
 import { NewClientModal } from "@/features/admin/components/NewClientModal"
 
+// Páginas con carga diferida (lazy): cada ruta baja su propio chunk on-demand.
+// Las que usan named export se adaptan a default con .then(...).
+const ForgotPasswordPage = lazy(() => import("@/features/auth/pages/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
+const CatalogPage = lazy(() => import("@/features/catalog/pages/CatalogPage").then(m => ({ default: m.CatalogPage })))
+const ProductDetailPage = lazy(() => import("@/features/catalog/pages/ProductDetailPage").then(m => ({ default: m.ProductDetailPage })))
+const CheckoutPage = lazy(() => import("@/features/checkout/pages/CheckoutPage").then(m => ({ default: m.CheckoutPage })))
+const CheckoutSuccessPage = lazy(() => import("@/features/checkout/pages/CheckoutSuccessPage").then(m => ({ default: m.CheckoutSuccessPage })))
+const ClientsPage = lazy(() => import("@/pages/ClientsPage"))
+const CurrentAccountPage = lazy(() => import("@/features/client/pages/CurrentAccountPage").then(m => ({ default: m.CurrentAccountPage })))
+const ClientOrdersPage = lazy(() => import("@/features/client/pages/ClientOrdersPage").then(m => ({ default: m.ClientOrdersPage })))
+const PaymentReportPage = lazy(() => import("@/features/client/pages/PaymentReportPage").then(m => ({ default: m.PaymentReportPage })))
+const CatalogManagementPage = lazy(() => import("@/features/admin/pages/CatalogManagementPage").then(m => ({ default: m.CatalogManagementPage })))
+const OrdersBoardPage = lazy(() => import("@/features/admin/pages/OrdersBoardPage").then(m => ({ default: m.OrdersBoardPage })))
+const TreasuryPage = lazy(() => import("@/features/admin/pages/TreasuryPage").then(m => ({ default: m.TreasuryPage })))
+const AdminDashboardPage = lazy(() => import("@/features/admin/pages/AdminDashboardPage").then(m => ({ default: m.AdminDashboardPage })))
 
+function PageLoader() {
+  return (
+    <div className="h-full w-full flex items-center justify-center py-24 text-zinc-400">
+      <Loader2 className="w-6 h-6 animate-spin" />
+    </div>
+  )
+}
 
 // Root component to route authenticated users to their home
 function RootRedirect() {
@@ -54,6 +64,7 @@ function App() {
       <AnimatePresence>
         {isGlobalLoading && <SplashScreen key="splash" />}
       </AnimatePresence>
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPageB2B />} />
@@ -245,6 +256,7 @@ function App() {
         {/* Catch-all route mapping to root to rely on Role routing or authentication state */}
         <Route path="*" element={<RootRedirect />} />
       </Routes>
+      </Suspense>
 
       {/* Global Modals for App Level Actions */}
       <NewClientModal 
