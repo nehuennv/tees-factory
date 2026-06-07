@@ -3,6 +3,7 @@ import type { Product, ProductSortKey } from "@/types/product";
 import apiClient from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableSkeletonRows } from "@/components/ui/skeleton";
 import { Search, Edit2, ChevronDown, MoreHorizontal, Trash2, Package, Eye, EyeOff, Tag } from "lucide-react";
 import { ProductImage } from "@/components/shared/ProductImage";
 import { toast } from "sonner";
@@ -22,7 +23,7 @@ interface AdminProduct extends Product {
 
 export function CatalogManagementPage() {
     const [products, setProducts] = useState<AdminProduct[]>([]);
-    const [_isLoadingProducts, setIsLoadingProducts] = useState(true);
+    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
     useEffect(() => {
         setIsLoadingProducts(true);
@@ -211,6 +212,10 @@ export function CatalogManagementPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
+                        {isLoadingProducts ? (
+                            <TableSkeletonRows rows={6} cols={5} />
+                        ) : (
+                        <>
                         {filteredProducts.map((product) => (
                             <TableRow key={product.id} className="hover:bg-zinc-50/50 transition-colors group">
                                 <TableCell>
@@ -311,6 +316,8 @@ export function CatalogManagementPage() {
                                     No se encontraron productos coincidentes.
                                 </TableCell>
                             </TableRow>
+                        )}
+                        </>
                         )}
                     </TableBody>
                 </Table>

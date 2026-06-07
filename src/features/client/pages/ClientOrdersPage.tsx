@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Eye, PackageOpen, Truck, CheckCircle2, Clock, ShoppingBag } from 'lucide-react';
 import { OrderDetailModal } from '@/features/admin/components/OrderDetailModal';
+import { TableSkeletonRows } from '@/components/ui/skeleton';
 
 const formatCurrency = (value: number) =>
     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
@@ -108,14 +109,7 @@ export function ClientOrdersPage() {
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-16 text-zinc-400">
-                                    <div className="flex flex-col items-center gap-3">
-                                        <span className="w-5 h-5 rounded-full border-2 border-zinc-400 border-t-transparent animate-spin" />
-                                        <span className="text-sm">Cargando pedidos...</span>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
+                            <TableSkeletonRows rows={6} cols={6} />
                         ) : orders.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center py-16 text-zinc-400">

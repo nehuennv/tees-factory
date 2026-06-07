@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AddDebtModal, type DebtAdjustMode } from '@/features/admin/components/AddDebtModal';
+import { TableSkeletonRows } from '@/components/ui/skeleton';
 
 export function CurrentAccountPage() {
     const { clientId } = useParams();
@@ -240,14 +241,7 @@ export function CurrentAccountPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {isLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-12 text-zinc-500">
-                                                <div className="flex justify-center mb-4">
-                                                    <span className="w-6 h-6 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin" />
-                                                </div>
-                                                Cargando historial...
-                                            </TableCell>
-                                        </TableRow>
+                                        <TableSkeletonRows rows={5} cols={4} />
                                     ) : transactions.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={4} className="text-center py-12 text-zinc-500">
