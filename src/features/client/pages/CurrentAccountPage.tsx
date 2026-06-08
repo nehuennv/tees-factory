@@ -47,12 +47,10 @@ export function CurrentAccountPage() {
                 const ledger = res.data.ledger || [];
                 const clientData = res.data.client || {};
 
-                // Si el backend nos manda 0 de deuda pero hay movimientos aprobados,
-                // calculamos el balance real nosotros para mostrar el "Saldo a Favor".
+                // Saldo recalculado del ledger (fallback).
                 const realBalance = ledger.reduce((acc: number, tx: any) => {
                     const status = (tx.status || 'COMPLETED').toUpperCase();
                     if (status !== 'COMPLETED' && status !== 'APPROVED') return acc;
-
                     if (tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER') {
                         return acc + (tx.amount || 0);
                     } else {
@@ -60,8 +58,20 @@ export function CurrentAccountPage() {
                     }
                 }, 0);
 
-                // Priorizamos el cálculo real si el del backend es 0 o menor
-                setCurrentDebt(realBalance);
+                // Fuente de verdad = balance del backend (consistente en admin y cliente).
+                // Busca el campo en varias formas posibles; si no viene, usa el recalculado.
+                const candidates = [
+                    clientData.balance, clientData.currentDebt, clientData.current_debt,
+                    res.data.balance, res.data.currentDebt, res.data.current_debt,
+                ];
+                const backendBalance = candidates.find((v) => typeof v === 'number');
+                // Si el recálculo da un número (cliente), se respeta; si da 0 (admin con
+                // ledger incompleto), se usa el balance del backend.
+                const finalBalance = realBalance !== 0
+                    ? realBalance
+                    : (typeof backendBalance === 'number' ? backendBalance : 0);
+
+                setCurrentDebt(finalBalance);
                 setClientName(clientData.name || '');
                 setTransactions(ledger);
             })
