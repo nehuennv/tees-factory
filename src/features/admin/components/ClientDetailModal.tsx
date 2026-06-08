@@ -185,7 +185,7 @@ export function ClientDetailModal({ isOpen, onClose, client, onEdit, onDelete }:
                                 const isManual = (tx.origin || '').toUpperCase() === 'MANUAL';
                                 const isIncrease = tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER';
                                 const label = isManual
-                                    ? (isIncrease ? 'Deuda cargada por admin' : 'Ajuste a favor')
+                                    ? (isIncrease ? 'Cargo manual' : 'Crédito a favor')
                                     : (isIncrease ? 'Pedido' : 'Pago');
                                 return (
                                     <div key={tx.id || i} className="flex items-center justify-between px-3 py-2.5 gap-3">

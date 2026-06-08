@@ -201,8 +201,8 @@ export function CurrentAccountPage() {
                                         const isManual = (tx.origin || '').toUpperCase() === 'MANUAL';
                                         const isIncrease = tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER';
                                         const label = isManual
-                                            ? (isIncrease ? 'Deuda cargada por administrador' : 'Ajuste a favor (administrador)')
-                                            : (isIncrease ? 'Nuevo Pedido' : 'Reporte de Pago');
+                                            ? (isIncrease ? 'Cargo manual' : 'Crédito a favor')
+                                            : (isIncrease ? 'Pedido' : 'Pago');
                                         const cv = getConceptVisual(tx);
                                         return (
                                             <div key={tx.id || idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-50 transition-colors">
