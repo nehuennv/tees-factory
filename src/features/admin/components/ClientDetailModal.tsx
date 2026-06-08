@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import type { Client } from '@/types/client';
 import { AddDebtModal, type DebtAdjustMode } from './AddDebtModal';
 import { resolveBalance, adjustActionLabels } from '@/lib/ledger';
+import { getInitials, getAvatarColor } from '@/lib/avatar';
 
 interface ClientDetailModalProps {
     isOpen: boolean;
@@ -22,23 +23,11 @@ interface ClientDetailModalProps {
 const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
 
-const getInitials = (name: string) => {
-    if (!name) return '?';
-    return name.split(' ').slice(0, 2).map(n => n?.[0] ?? '').join('').toUpperCase() || '?';
-};
-
 const GENDER_LABELS: Record<string, string> = {
     MALE: 'Masculino', FEMALE: 'Femenino', OTHER: 'Otro',
     male: 'Masculino', female: 'Femenino', other: 'Otro',
 };
 const normalizeGender = (g?: string) => g ? (GENDER_LABELS[g] ?? g) : undefined;
-
-const AVATAR_COLORS = ['#42318B', '#C44A87', '#2DBDD0', '#EFBC4E', '#10b981', '#6366f1'];
-const getAvatarColor = (name: string) => {
-    if (!name) return AVATAR_COLORS[0];
-    const hash = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-};
 
 const formatDate = (iso: string) =>
     new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short', year: '2-digit' }).format(new Date(iso));

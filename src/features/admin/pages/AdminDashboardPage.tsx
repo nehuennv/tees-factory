@@ -9,21 +9,12 @@ import {
     PieChart, Pie, Cell,
 } from 'recharts';
 import apiClient from '@/lib/apiClient';
+import { getInitials, getAvatarColor } from '@/lib/avatar';
 
 // Brand Accent Colors
 const COLORS = ['#42318B', '#C44A87', '#2DBDD0', '#EFBC4E'];
 
 const LIST_ITEMS = 4;
-
-// ── Helpers visuales ────────────────────────────────────────────
-const AVATAR_COLORS = ['#42318B', '#C44A87', '#2DBDD0', '#EFBC4E', '#10b981', '#6366f1'];
-const getInitials = (name: string) =>
-    !name ? '?' : (name.split(' ').slice(0, 2).map(n => n?.[0] ?? '').join('').toUpperCase() || '?');
-const getAvatarColor = (name: string) => {
-    if (!name) return AVATAR_COLORS[0];
-    const hash = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-};
 
 // Severidad de stock para color/etiqueta
 function stockSeverity(stock: number) {

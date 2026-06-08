@@ -24,6 +24,7 @@ import { useOrderDraftStore } from '@/store/orderDraftStore';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 import type { Client } from '@/types/client';
+import { getInitials, getAvatarColor } from '@/lib/avatar';
 
 export type { Client } from '@/types/client';
 
@@ -37,17 +38,6 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
-const getInitials = (name: string) => {
-    if (!name) return '?';
-    return name.split(' ').slice(0, 2).map(n => n?.[0] ?? '').join('').toUpperCase() || '?';
-};
-
-const AVATAR_COLORS = ['#42318B', '#C44A87', '#2DBDD0', '#EFBC4E', '#10b981', '#6366f1'];
-const getAvatarColor = (name: string) => {
-    if (!name) return AVATAR_COLORS[0];
-    const hash = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-};
 
 const truncateText = (text: string, maxLength: number = 30) => {
     if (text.length <= maxLength) return text;
