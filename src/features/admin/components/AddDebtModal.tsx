@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { HoldToConfirmButton } from '@/components/shared/HoldToConfirmButton';
 import { formatPrice } from '@/lib/formatters';
 import apiClient from '@/lib/apiClient';
-import { ArrowRight, Mail, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Mail, AlertTriangle, CheckCircle2, MailCheck } from 'lucide-react';
 
 export type DebtAdjustMode = 'debt' | 'credit';
 
@@ -58,6 +58,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
     const [reason, setReason] = useState('');
     const [notify, setNotify] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [result, setResult] = useState<{ previousDebt: number; newDebt: number; notified: boolean } | null>(null);
     // Idempotency-Key estable por intento de modal: se regenera al abrir.
     const [idempotencyKey, setIdempotencyKey] = useState('');
 
@@ -69,6 +70,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
             setReason('');
             setNotify(true);
             setIsSubmitting(false);
+            setResult(null);
             setIdempotencyKey(
                 typeof crypto !== 'undefined' && 'randomUUID' in crypto
                     ? crypto.randomUUID()
@@ -100,11 +102,11 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
             const data = res.data || {};
             const resultDebt = data.newDebt ?? newDebt;
             const wasNotified = data.notified ?? notify;
-            toast.success(mode === 'debt' ? 'Deuda aumentada' : 'Deuda reducida', {
-                description: `${formatPrice(data.previousDebt ?? currentDebt)} → ${formatPrice(resultDebt)}${wasNotified ? ' · Cliente notificado por mail' : ''}`,
-            });
+            // Refresca el fondo (modal del cliente o cuenta corriente) al instante.
             onDone(resultDebt);
-            onClose();
+            // Muestra el cartel de éxito dentro del modal.
+            setResult({ previousDebt: data.previousDebt ?? currentDebt, newDebt: resultDebt, notified: wasNotified });
+            setIsSubmitting(false);
         } catch (err: any) {
             const msg = err?.response?.data?.error || err?.response?.data?.message || 'Error al procesar el ajuste';
             toast.error(msg);
@@ -116,32 +118,80 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
         <Modal
             isOpen={isOpen}
             onClose={() => { if (!isSubmitting) onClose(); }}
-            title={cfg.title}
-            description={clientName ? `Cuenta de ${clientName}` : undefined}
+            title={result ? undefined : cfg.title}
+            description={result ? undefined : (clientName ? `Cuenta de ${clientName}` : undefined)}
             maxWidth="md"
+            hideCloseButton={!!result}
             preventCloseOnOutsideClick={isSubmitting}
             footer={
-                <div className="flex w-full items-center justify-between gap-3">
+                result ? (
                     <Button
-                        variant="outline"
                         onClick={onClose}
-                        disabled={isSubmitting}
-                        className="rounded-xl font-semibold border-zinc-200"
+                        className="w-full rounded-xl font-bold h-11 bg-zinc-900 text-white hover:bg-zinc-800"
                     >
-                        Cancelar
+                        Listo
                     </Button>
-                    <HoldToConfirmButton
-                        onConfirm={handleConfirm}
-                        disabled={!canSubmit}
-                        isLoading={isSubmitting}
-                        label={cfg.actionLabel(amountValid ? formatPrice(parsedAmount) : '')}
-                        holdingLabel="Sostené para confirmar…"
-                        loadingLabel="Procesando…"
-                        className={cfg.confirmClass}
-                    />
-                </div>
+                ) : (
+                    <div className="flex w-full items-center justify-between gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={onClose}
+                            disabled={isSubmitting}
+                            className="rounded-xl font-semibold border-zinc-200"
+                        >
+                            Cancelar
+                        </Button>
+                        <HoldToConfirmButton
+                            onConfirm={handleConfirm}
+                            disabled={!canSubmit}
+                            isLoading={isSubmitting}
+                            label={cfg.actionLabel(amountValid ? formatPrice(parsedAmount) : '')}
+                            holdingLabel="Sostené para confirmar…"
+                            loadingLabel="Procesando…"
+                            className={cfg.confirmClass}
+                        />
+                    </div>
+                )
             }
         >
+            {result ? (
+                <div className="flex flex-col items-center text-center gap-4 py-4">
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${mode === 'debt' ? 'bg-rose-50' : 'bg-emerald-50'} animate-in zoom-in-50 duration-300`}>
+                        <CheckCircle2 className={`w-9 h-9 ${mode === 'debt' ? 'text-rose-500' : 'text-emerald-500'}`} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <h3 className="text-lg font-black text-zinc-900">
+                            {mode === 'debt' ? '¡Deuda aumentada!' : '¡Deuda reducida!'}
+                        </h3>
+                        <p className="text-sm text-zinc-500">
+                            {clientName ? `Cuenta de ${clientName}` : 'Cuenta del cliente'} actualizada.
+                        </p>
+                    </div>
+                    {/* Previo → nuevo */}
+                    <div className="w-full flex items-center justify-between rounded-xl bg-zinc-900 px-5 py-4 text-white">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Antes</span>
+                            <span className="text-base font-bold">{formatPrice(Math.abs(result.previousDebt))}</span>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-zinc-500" />
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                                {result.newDebt < 0 ? 'Saldo a favor' : 'Deuda actual'}
+                            </span>
+                            <span className={`text-2xl font-black ${result.newDebt < 0 ? 'text-emerald-400' : (mode === 'debt' ? 'text-rose-400' : 'text-emerald-400')}`}>
+                                {formatPrice(Math.abs(result.newDebt))}
+                            </span>
+                        </div>
+                    </div>
+                    {result.notified ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1">
+                            <MailCheck className="w-3.5 h-3.5" /> Cliente notificado por mail
+                        </span>
+                    ) : (
+                        <span className="text-xs text-zinc-400">No se envió notificación por mail.</span>
+                    )}
+                </div>
+            ) : (
             <div className="flex flex-col gap-5">
                 {/* Monto */}
                 <div className="flex flex-col gap-1.5">
@@ -225,6 +275,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
                     <span>Revisá el monto: impacta la cuenta del cliente de inmediato. Mantené presionado el botón para confirmar.</span>
                 </div>
             </div>
+            )}
         </Modal>
     );
 }
