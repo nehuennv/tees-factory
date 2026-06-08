@@ -147,7 +147,29 @@ export function CurrentAccountPage() {
 
     return (
         <div className="h-full w-full overflow-y-auto bg-zinc-50 p-4 lg:p-6 animate-in fade-in duration-500">
-            <div className="w-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
+            <div className="w-full max-w-[1400px] mx-auto flex flex-col gap-5">
+
+                {/* ── SALDO (protagonista, ancho completo) ── */}
+                <div className={`rounded-2xl border border-zinc-200 border-l-[8px] ${cardBorderColor} ${cardBgGradient} p-6 lg:p-7 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4`}>
+                    <div className="flex items-center gap-5">
+                        <div className={`w-14 h-14 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center shrink-0 border border-white/40 ${balanceBg}`}>
+                            <Wallet className={`w-7 h-7 lg:w-8 lg:h-8 ${balanceColor}`} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">
+                                {isAdministrativeView ? `Cuenta de ${clientName}` : balanceLabel}
+                            </span>
+                            <span className={`text-5xl lg:text-6xl font-black tracking-tight ${balanceColor}`}>
+                                {formatPrice(Math.abs(currentDebt))}
+                            </span>
+                        </div>
+                    </div>
+                    <span className={`self-start sm:self-center text-xs font-semibold px-3 py-1.5 rounded-full ${isDebt ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {isDebt ? 'Con deuda' : 'Al día'}
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
 
                 {/* ── IZQUIERDA: Timeline de movimientos ── */}
                 <div className="order-2 lg:order-1 bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden">
@@ -230,24 +252,6 @@ export function CurrentAccountPage() {
                 {/* ── DERECHA: Resumen + acciones (sticky) ── */}
                 <div className="order-1 lg:order-2 lg:sticky lg:top-6 flex flex-col gap-4">
 
-                    {/* Saldo */}
-                    <div className={`rounded-2xl border border-zinc-200 border-l-[6px] ${cardBorderColor} ${cardBgGradient} p-5 shadow-sm`}>
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${balanceBg}`}>
-                                <Wallet className={`w-5 h-5 ${balanceColor}`} />
-                            </div>
-                            <span className="text-[11px] font-bold tracking-widest text-zinc-500 uppercase leading-tight">
-                                {isAdministrativeView ? `Cuenta de ${clientName}` : balanceLabel}
-                            </span>
-                        </div>
-                        <div className={`text-4xl font-black tracking-tight ${balanceColor}`}>
-                            {formatPrice(Math.abs(currentDebt))}
-                        </div>
-                        <span className={`inline-block mt-2 text-[11px] font-semibold px-2.5 py-1 rounded-full ${isDebt ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {isDebt ? 'Con deuda' : 'Al día'}
-                        </span>
-                    </div>
-
                     {/* Acciones */}
                     {!isAdministrativeView && (
                         <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm flex flex-col gap-3">
@@ -290,6 +294,7 @@ export function CurrentAccountPage() {
                             <span className="text-base font-black text-emerald-600 leading-tight">{formatPrice(totalPagos)}</span>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
 
