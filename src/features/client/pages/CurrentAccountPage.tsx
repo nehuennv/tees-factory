@@ -159,9 +159,13 @@ export function CurrentAccountPage() {
 
                 {/* ── IZQUIERDA: Timeline de movimientos ── */}
                 <div className="order-2 lg:order-1 bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+                    <div className="flex items-center gap-2 px-5 py-4 border-b border-zinc-100">
                         <h2 className="text-base font-bold text-zinc-900">Movimientos</h2>
-                        {!isLoading && <span className="text-xs font-semibold text-zinc-400">{transactions.length}</span>}
+                        {!isLoading && transactions.length > 0 && (
+                            <span className="text-[11px] font-bold text-zinc-500 bg-zinc-100 rounded-full px-2 py-0.5 leading-none">
+                                {transactions.length}
+                            </span>
+                        )}
                     </div>
 
                     {isLoading ? (
@@ -189,8 +193,9 @@ export function CurrentAccountPage() {
                         <div className="p-2 sm:p-3">
                             {groups.map((group) => (
                                 <div key={group.key} className="mb-2 last:mb-0">
-                                    <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-3 py-2">
-                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{group.label}</span>
+                                    <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-3 py-2 flex items-center gap-3">
+                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">{group.label}</span>
+                                        <span className="h-px flex-1 bg-zinc-100" />
                                     </div>
                                     {group.items.map((tx: any, idx: number) => {
                                         const isManual = (tx.origin || '').toUpperCase() === 'MANUAL';
