@@ -86,6 +86,7 @@ export function ClientDetailModal({ isOpen, onClose, client, onEdit, onDelete }:
         apiClient.get(`/clients/${client.id}/ledger`)
             .then(res => {
                 const ledger = res.data.ledger || [];
+                const clientData = res.data.client || {};
                 const realBalance = ledger.reduce((acc: number, tx: any) => {
                     const status = (tx.status || 'COMPLETED').toUpperCase();
                     if (status !== 'COMPLETED' && status !== 'APPROVED') return acc;
@@ -93,8 +94,19 @@ export function ClientDetailModal({ isOpen, onClose, client, onEdit, onDelete }:
                         ? acc + (tx.amount || 0)
                         : acc - (tx.amount || 0);
                 }, 0);
+                // Fuente de verdad: balance del backend (o el del listado). Si el
+                // recalculo da 0 (ledger incompleto), se usa ese balance real.
+                const candidates = [
+                    clientData.balance, clientData.currentDebt, clientData.current_debt,
+                    res.data.balance, res.data.currentDebt, res.data.current_debt,
+                    client.balance,
+                ];
+                const backendBalance = candidates.find((v) => typeof v === 'number');
+                const finalBalance = realBalance !== 0
+                    ? realBalance
+                    : (typeof backendBalance === 'number' ? backendBalance : 0);
                 setMovements(ledger);
-                setBalance(realBalance);
+                setBalance(finalBalance);
             })
             .catch(() => { /* silencioso: si falla, queda el balance del listado */ })
             .finally(() => setLoadingLedger(false));
