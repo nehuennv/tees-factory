@@ -219,7 +219,7 @@ export function CurrentAccountPage() {
                                                         {getStatusBadge(tx.status || 'COMPLETED')}
                                                     </div>
                                                     {isManual && tx.reason && (
-                                                        <span className="text-xs text-zinc-500 italic truncate">“{tx.reason}”{tx.createdBy ? ` — ${tx.createdBy}` : ''}</span>
+                                                        <span className="text-xs text-zinc-500 italic truncate">“{tx.reason}”{(() => { const by = typeof tx.createdBy === 'string' ? tx.createdBy : (tx.createdBy?.name || tx.createdBy?.email || ''); return by ? ` — ${by}` : ''; })()}</span>
                                                     )}
                                                 </div>
                                                 <span className={`text-sm font-bold whitespace-nowrap flex items-center gap-1 ${isIncrease ? 'text-rose-600' : 'text-emerald-600'}`}>
