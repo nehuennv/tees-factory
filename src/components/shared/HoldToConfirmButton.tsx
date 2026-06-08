@@ -129,25 +129,40 @@ export function HoldToConfirmButton({
                 aria-hidden="true"
             />
 
-            <span className="relative flex items-center justify-center gap-2">
-                {isLoading ? (
-                    <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {loadingLabel}
-                    </>
-                ) : done ? (
-                    <>
-                        <Check className="w-4 h-4" />
-                        ¡Listo!
-                    </>
-                ) : holding ? (
-                    <>
-                        {holdingLabel}
-                        <span className="tabular-nums opacity-80">{pct}%</span>
-                    </>
-                ) : (
-                    label
-                )}
+            {/* Estados apilados en la misma celda: el ancho del botón queda fijo
+                (= el estado más largo) y la transición es un fade, sin saltos. */}
+            <span className="relative grid items-center justify-items-center">
+                <span
+                    className="[grid-area:1/1] flex items-center justify-center gap-2 whitespace-nowrap transition-opacity duration-150"
+                    style={{ opacity: !isLoading && !done && !holding ? 1 : 0 }}
+                    aria-hidden={isLoading || done || holding}
+                >
+                    {label}
+                </span>
+                <span
+                    className="[grid-area:1/1] flex items-center justify-center gap-1.5 whitespace-nowrap transition-opacity duration-150"
+                    style={{ opacity: holding && !done && !isLoading ? 1 : 0 }}
+                    aria-hidden={!holding}
+                >
+                    {holdingLabel}
+                    <span className="inline-block w-[3ch] text-right tabular-nums opacity-80">{pct}%</span>
+                </span>
+                <span
+                    className="[grid-area:1/1] flex items-center justify-center gap-2 whitespace-nowrap transition-opacity duration-150"
+                    style={{ opacity: done && !isLoading ? 1 : 0 }}
+                    aria-hidden={!done}
+                >
+                    <Check className="w-4 h-4" />
+                    ¡Listo!
+                </span>
+                <span
+                    className="[grid-area:1/1] flex items-center justify-center gap-2 whitespace-nowrap transition-opacity duration-150"
+                    style={{ opacity: isLoading ? 1 : 0 }}
+                    aria-hidden={!isLoading}
+                >
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {loadingLabel}
+                </span>
             </span>
         </button>
     );
