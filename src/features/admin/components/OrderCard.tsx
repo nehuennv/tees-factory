@@ -105,6 +105,11 @@ export const OrderCard = memo(function OrderCard({ order, onClick, isNew, isDrag
                             {DISPATCH_LABELS[dispatchType as DispatchType] || dispatchType}
                         </span>
                     )}
+                    {(order as any).extrasQuoteStatus === 'PENDING_QUOTE' && (
+                        <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200">
+                            Extras a cotizar
+                        </span>
+                    )}
                 </div>
                 {!isDragDisabled && (
                     <GripHorizontal className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600 transition-colors shrink-0" />

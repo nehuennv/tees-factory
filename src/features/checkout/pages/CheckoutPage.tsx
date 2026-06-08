@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderDraftStore } from "@/store/orderDraftStore";
@@ -20,8 +20,15 @@ import {
     CheckCircle2,
     Bike,
     Globe,
+    Sparkles,
+    Plus,
+    Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { ExtraService } from "@/types/extra";
+
+// Extra seleccionado por el cliente en el paso 2 (mapea a serviceExtras[] del POST)
+type ExtraDraft = { uid: string; serviceId: string; itemIndex: number | null; quantity: number; notes: string };
 
 export function CheckoutPage() {
     const navigate = useNavigate();
@@ -33,6 +40,37 @@ export function CheckoutPage() {
     const [notes, setNotes] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+    // ── Servicios extra (paso 2) ──
+    const [extrasCatalog, setExtrasCatalog] = useState<ExtraService[]>([]);
+    const [serviceExtras, setServiceExtras] = useState<ExtraDraft[]>([]);
+
+    useEffect(() => {
+        apiClient.get('/extras')
+            .then(({ data }) => setExtrasCatalog(Array.isArray(data) ? data.filter((s: ExtraService) => s.isActive) : []))
+            .catch(() => setExtrasCatalog([])); // si el endpoint no está, simplemente no se ofrecen extras
+    }, []);
+
+    const serviceName = (id: string) => extrasCatalog.find((s) => s.id === id)?.name ?? 'Servicio';
+    const itemLabel = (idx: number) => {
+        const it = items[idx];
+        return it ? `${it.productName} · ${it.color}/${it.size}` : `Prenda ${idx + 1}`;
+    };
+
+    const addExtra = () => {
+        if (extrasCatalog.length === 0) return;
+        setServiceExtras((prev) => [...prev, {
+            uid: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            serviceId: extrasCatalog[0].id,
+            itemIndex: null,
+            quantity: 1,
+            notes: '',
+        }]);
+    };
+    const updateExtra = (uid: string, patch: Partial<ExtraDraft>) =>
+        setServiceExtras((prev) => prev.map((e) => (e.uid === uid ? { ...e, ...patch } : e)));
+    const removeExtra = (uid: string) =>
+        setServiceExtras((prev) => prev.filter((e) => e.uid !== uid));
 
     const deliveryLabel = deliveryMethod === 'fabrica'
         ? 'Retiro por Fábrica'
@@ -73,7 +111,7 @@ export function CheckoutPage() {
 
         setIsLoading(true);
 
-        const payload = {
+        const payload: any = {
             clientId: isDraft && draftClientId ? draftClientId : undefined,
             items: items.map(item => ({
                 variantId: item.variantId,
@@ -83,6 +121,16 @@ export function CheckoutPage() {
             dispatchType: resolvedDispatchType(),
             observations: notes.trim() || null,
         };
+
+        // Servicios extra (paso 2). itemIndex referencia el índice dentro de items[].
+        if (serviceExtras.length > 0) {
+            payload.serviceExtras = serviceExtras.map((e) => ({
+                serviceId: e.serviceId,
+                ...(e.itemIndex != null ? { itemIndex: e.itemIndex } : {}),
+                quantity: e.quantity > 0 ? e.quantity : 1,
+                ...(e.notes.trim() ? { notes: e.notes.trim() } : {}),
+            }));
+        }
 
         try {
             const res = await apiClient.post('/orders', payload);
@@ -284,6 +332,77 @@ export function CheckoutPage() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Servicios extra Card (paso 2) — solo si hay catálogo */}
+                        {extrasCatalog.length > 0 && (
+                            <div className="bg-white rounded-3xl border border-zinc-200 p-6 sm:p-8 shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-[#42318B]" /> Servicios extra
+                                    </h2>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">Opcional</span>
+                                </div>
+                                <p className="text-sm text-zinc-500 mb-5">
+                                    Planchado, estampado y más sobre tus prendas. <span className="font-semibold text-zinc-700">El costo lo confirma el equipo</span> y se suma al total final.
+                                </p>
+
+                                {serviceExtras.length > 0 && (
+                                    <div className="flex flex-col gap-3 mb-4">
+                                        {serviceExtras.map((ex) => (
+                                            <div key={ex.uid} className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-3 flex flex-col gap-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <select
+                                                        value={ex.serviceId}
+                                                        onChange={(e) => updateExtra(ex.uid, { serviceId: e.target.value })}
+                                                        className="flex-1 h-9 rounded-lg border border-zinc-200 bg-white px-2.5 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                                                    >
+                                                        {extrasCatalog.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                    </select>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded whitespace-nowrap">A cotizar</span>
+                                                    <button onClick={() => removeExtra(ex.uid)} className="w-8 h-8 rounded-lg hover:bg-rose-50 flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-colors shrink-0" title="Quitar">
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                                                    <select
+                                                        value={ex.itemIndex === null ? 'all' : String(ex.itemIndex)}
+                                                        onChange={(e) => updateExtra(ex.uid, { itemIndex: e.target.value === 'all' ? null : Number(e.target.value) })}
+                                                        className="h-9 rounded-lg border border-zinc-200 bg-white px-2.5 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                                                    >
+                                                        <option value="all">Todo el pedido</option>
+                                                        {items.map((_, idx) => <option key={idx} value={idx}>{itemLabel(idx)}</option>)}
+                                                    </select>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Cant.</span>
+                                                        <input
+                                                            type="number" min={1}
+                                                            value={ex.quantity}
+                                                            onChange={(e) => updateExtra(ex.uid, { quantity: parseInt(e.target.value, 10) || 1 })}
+                                                            className="w-20 h-9 rounded-lg border border-zinc-200 bg-white px-2.5 text-sm text-center text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Nota (opcional): ej. logo al frente"
+                                                    value={ex.notes}
+                                                    onChange={(e) => updateExtra(ex.uid, { notes: e.target.value })}
+                                                    className="h-9 rounded-lg border border-zinc-200 bg-white px-2.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={addExtra}
+                                    className="flex items-center gap-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 transition-colors"
+                                >
+                                    <span className="w-6 h-6 rounded-md border border-zinc-200 bg-white flex items-center justify-center"><Plus className="w-3.5 h-3.5" /></span>
+                                    Agregar servicio
+                                </button>
+                            </div>
+                        )}
 
                         {/* Observations Card */}
                         <div className="bg-white rounded-3xl border border-zinc-200 p-6 sm:p-8 shadow-sm">
@@ -511,6 +630,29 @@ export function CheckoutPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Servicios extra */}
+                    {serviceExtras.length > 0 && (
+                        <div className="space-y-1">
+                            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                <Sparkles className="w-3.5 h-3.5" /> Servicios extra
+                            </p>
+                            <div className="border border-zinc-200 rounded-2xl overflow-hidden divide-y divide-zinc-100">
+                                {serviceExtras.map((ex) => (
+                                    <div key={ex.uid} className="px-4 py-3 bg-white flex items-center justify-between gap-3">
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-sm font-semibold text-zinc-900 truncate">{serviceName(ex.serviceId)}</span>
+                                            <span className="text-[11px] text-zinc-400 truncate">
+                                                {ex.itemIndex === null ? 'Todo el pedido' : itemLabel(ex.itemIndex)} · {ex.quantity}u{ex.notes.trim() ? ` · “${ex.notes.trim()}”` : ''}
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded whitespace-nowrap shrink-0">A cotizar</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-[11px] text-zinc-400 mt-1.5">El costo de los servicios lo confirma el equipo y se suma al total final.</p>
+                        </div>
+                    )}
 
                     {/* Total */}
                     <div className="flex items-center justify-between bg-zinc-900 text-white rounded-2xl px-5 py-4">

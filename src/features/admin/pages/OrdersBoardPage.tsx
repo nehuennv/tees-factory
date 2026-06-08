@@ -362,6 +362,14 @@ export function OrdersBoardPage() {
             return;
         }
 
+        // Guard: no aprobar con servicios extra sin cotizar
+        if (overContainer === 'APPROVED' && (draggedOrder as any).extrasQuoteStatus === 'PENDING_QUOTE') {
+            toast.error('Cotizá los extras primero', {
+                description: 'El pedido tiene servicios sin precio. Cotizalos en "Editar pedido → Servicios" antes de aprobar.',
+            });
+            return;
+        }
+
         // Validate transition client-side first
         const allowed = ALLOWED_TRANSITIONS[draggedOrder.status];
         if (!allowed.includes(overContainer as OrderStatus)) {

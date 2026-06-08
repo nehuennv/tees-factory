@@ -219,6 +219,50 @@ export function OrderDetailModal({ order: initialOrder, isOpen, onClose, hideCli
                         );
                     })()}
 
+                    {/* Servicios extra (nuevo) */}
+                    {(() => {
+                        const list: any[] = order.serviceExtras || [];
+                        if (list.length === 0) return null;
+                        const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+                        const status = (order.extrasQuoteStatus || 'NONE').toUpperCase();
+                        const statusBadge = status === 'QUOTED'
+                            ? { t: 'Cotizado', c: 'bg-emerald-50 text-emerald-600 border-emerald-100' }
+                            : status === 'PENDING_QUOTE'
+                            ? { t: 'A cotizar', c: 'bg-amber-50 text-amber-600 border-amber-100' }
+                            : { t: '—', c: 'bg-zinc-100 text-zinc-500 border-zinc-200' };
+                        return (
+                            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2.5 text-sm">
+                                <div className="flex items-center justify-between mb-1">
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Servicios extra</p>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${statusBadge.c}`}>{statusBadge.t}</span>
+                                </div>
+                                {list.map((e: any, i: number) => {
+                                    const quoted = e.status === 'QUOTED' && e.finalSubtotal != null;
+                                    return (
+                                        <div key={e.id || i} className="flex items-start justify-between gap-3">
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="font-semibold text-zinc-900">{e.serviceName || 'Servicio'}</span>
+                                                <span className="text-xs text-zinc-400">
+                                                    {e.orderItemId ? 'Sobre una prenda' : 'Todo el pedido'} · {e.quantity}u
+                                                    {e.notes ? ` · “${e.notes}”` : ''}
+                                                </span>
+                                            </div>
+                                            {quoted
+                                                ? <span className="font-semibold text-zinc-900 whitespace-nowrap">{fmt(e.finalSubtotal)}</span>
+                                                : <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded whitespace-nowrap">A cotizar</span>}
+                                        </div>
+                                    );
+                                })}
+                                {(order.extrasServicesTotal ?? 0) > 0 && (
+                                    <div className="flex justify-between border-t border-zinc-200 pt-2 mt-1">
+                                        <span className="font-bold text-zinc-700">Total servicios</span>
+                                        <span className="font-bold text-zinc-900">{fmt(order.extrasServicesTotal as number)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+
                     {(onEdit || onCancel) && (
                         <div className="flex gap-2">
                             {onEdit && (

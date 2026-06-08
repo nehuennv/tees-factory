@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
 import { patchOrder, putOrderItems, calcPricing } from '@/lib/ordersApi';
-import type { Order, OrderExtra, DispatchType, PaymentStatus } from '@/types/order';
+import type { Order, OrderExtra, OrderServiceExtra, DispatchType, PaymentStatus } from '@/types/order';
 import { LOCKED_STATUSES, DISPATCH_LABELS } from '@/types/order';
 
 const formatCurrency = (n: number) =>
@@ -16,7 +16,7 @@ const TAX_PRESETS = [
     { label: 'Sin IVA', value: 0 },
 ];
 
-type Tab = 'items' | 'pricing' | 'meta';
+type Tab = 'items' | 'pricing' | 'meta' | 'servicios';
 
 interface OrderEditModalProps {
     order: Order;
@@ -56,6 +56,13 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
     );
     const [isSavingPricing, setIsSavingPricing] = useState(false);
 
+    // ── Servicios extra tab state ─────────────────────────────────
+    const [svcExtras, setSvcExtras] = useState<OrderServiceExtra[]>(order.serviceExtras || []);
+    const [svcPrices, setSvcPrices] = useState<Record<string, string>>(
+        Object.fromEntries((order.serviceExtras || []).map((e) => [e.id, e.finalUnitPrice != null ? String(e.finalUnitPrice) : '']))
+    );
+    const [isSavingSvc, setIsSavingSvc] = useState(false);
+
     const subtotal = useMemo(() => {
         const items = order.items || order.order_items || order.orderItems || [];
         return items.reduce((s: number, i: any) => {
@@ -88,9 +95,41 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
         setExtras(order.extras || []);
         setTaxRate(order.taxRate ?? order.tax_rate ?? 0);
         setDiscountPercentage(order.discountPercentage ?? order.discount_percentage ?? 0);
+        setSvcExtras(order.serviceExtras || []);
+        setSvcPrices(Object.fromEntries((order.serviceExtras || []).map((e) => [e.id, e.finalUnitPrice != null ? String(e.finalUnitPrice) : ''])));
         setItemsChanged(false);
         setTab('meta');
     }, [isOpen, order.id]);
+
+    const handleSaveServices = async () => {
+        const payload = svcExtras.map((e) => {
+            const raw = svcPrices[e.id];
+            const n = raw === '' || raw == null ? null : parseFloat(raw);
+            return { id: e.id, finalUnitPrice: n != null && !Number.isNaN(n) ? n : null };
+        });
+        if (payload.some((p) => p.finalUnitPrice == null)) {
+            toast.error('Cargá el precio final de todos los servicios antes de guardar.');
+            return;
+        }
+        setIsSavingSvc(true);
+        try {
+            const res = await apiClient.put(`/orders/${order.id}/extras`, payload);
+            const data = res.data || {};
+            setSvcExtras(data.serviceExtras || svcExtras);
+            toast.success('Servicios cotizados', { description: 'El total y la deuda del cliente se actualizaron.' });
+            onSaved({
+                id: order.id,
+                serviceExtras: data.serviceExtras,
+                extrasQuoteStatus: data.extrasQuoteStatus,
+                extrasServicesTotal: data.extrasServicesTotal,
+                totalAmount: data.totalAmount,
+            });
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Error al cotizar los servicios');
+        } finally {
+            setIsSavingSvc(false);
+        }
+    };
 
     // Fetch full order items when items tab opens
     useEffect(() => {
@@ -201,6 +240,7 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
     const TABS: { id: Tab; label: string }[] = [
         { id: 'meta', label: 'Metadatos' },
         { id: 'pricing', label: 'Cotización' },
+        ...(svcExtras.length > 0 ? [{ id: 'servicios' as Tab, label: 'Servicios' }] : []),
         { id: 'items', label: 'Items' },
     ];
 
@@ -477,6 +517,56 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
                         </div>
                     )}
 
+                    {/* ── Servicios tab ── */}
+                    {tab === 'servicios' && (
+                        <div className="p-6 flex flex-col gap-4">
+                            <p className="text-sm text-zinc-500">
+                                Poné el precio unitario final de cada servicio. El subtotal se calcula × cantidad y, al guardar, se suma al total del pedido y a la deuda del cliente.
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                {svcExtras.map((e) => {
+                                    const raw = svcPrices[e.id] ?? '';
+                                    const unit = parseFloat(raw);
+                                    const sub = !Number.isNaN(unit) ? unit * (e.quantity || 0) : null;
+                                    return (
+                                        <div key={e.id} className="rounded-xl border border-zinc-200 bg-white p-4 flex flex-col gap-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="font-bold text-zinc-900">{e.serviceName}</span>
+                                                    <span className="text-xs text-zinc-400">
+                                                        {e.orderItemId ? 'Sobre una prenda' : 'Todo el pedido'} · {e.quantity}u
+                                                        {e.notes ? ` · “${e.notes}”` : ''}
+                                                    </span>
+                                                </div>
+                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border whitespace-nowrap ${e.status === 'QUOTED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                                    {e.status === 'QUOTED' ? 'Cotizado' : 'A cotizar'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">$ unit.</span>
+                                                    <div className="relative">
+                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-bold">$</span>
+                                                        <input
+                                                            type="number" min={0}
+                                                            value={raw}
+                                                            disabled={isPricingLocked}
+                                                            onChange={(ev) => setSvcPrices((p) => ({ ...p, [e.id]: ev.target.value }))}
+                                                            placeholder="0"
+                                                            className="w-32 h-9 pl-6 pr-3 rounded-lg border border-zinc-200 bg-zinc-50 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-zinc-900/10 disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-zinc-400">× {e.quantity}u =</span>
+                                                <span className="text-sm font-black text-zinc-900">{sub != null ? formatCurrency(sub) : '—'}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* ── Items tab ── */}
                     {tab === 'items' && (
                         <div className="p-6 flex flex-col gap-4">
@@ -565,6 +655,16 @@ export function OrderEditModal({ order, isOpen, onClose, onSaved }: OrderEditMod
                             className="rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold gap-2"
                         >
                             {isSavingPricing && <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
+                            Guardar cotización
+                        </Button>
+                    )}
+                    {tab === 'servicios' && !isPricingLocked && (
+                        <Button
+                            onClick={handleSaveServices}
+                            disabled={isSavingSvc}
+                            className="rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold gap-2"
+                        >
+                            {isSavingSvc && <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
                             Guardar cotización
                         </Button>
                     )}

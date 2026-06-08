@@ -20,6 +20,23 @@ export interface OrderExtra {
     amount: number;
 }
 
+// ── Servicios extra (planchado, estampado, …) ──────────────────
+export type ExtrasQuoteStatus = 'NONE' | 'PENDING_QUOTE' | 'QUOTED';
+
+export interface OrderServiceExtra {
+    id: string;
+    orderItemId: string | null;   // null = extra global del pedido
+    serviceId: string | null;
+    serviceName: string;          // snapshot, siempre presente
+    quantity: number;
+    notes: string | null;
+    estimatedUnitPrice: number | null;
+    estimatedSubtotal: number | null;
+    finalUnitPrice: number | null;   // lo carga el admin al cotizar
+    finalSubtotal: number | null;
+    status: 'PENDING_QUOTE' | 'QUOTED';
+}
+
 export interface OrderItem {
     id: string;
     variantId?: string;
@@ -73,6 +90,10 @@ export interface Order {
     totalAmount?: number;
     total_amount?: number;
     extras?: OrderExtra[];
+    // Servicios extra (nuevo) — no confundir con `extras` legacy
+    extrasQuoteStatus?: ExtrasQuoteStatus;
+    extrasServicesTotal?: number;
+    serviceExtras?: OrderServiceExtra[];
     // Metadata
     paymentStatus?: PaymentStatus;
     payment_status?: PaymentStatus;
