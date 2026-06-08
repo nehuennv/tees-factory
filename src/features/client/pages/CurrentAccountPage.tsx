@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AddDebtModal, type DebtAdjustMode } from '@/features/admin/components/AddDebtModal';
+import { resolveBalance } from '@/lib/ledger';
 
 export function CurrentAccountPage() {
     const { clientId } = useParams();
@@ -46,32 +47,7 @@ export function CurrentAccountPage() {
             .then(res => {
                 const ledger = res.data.ledger || [];
                 const clientData = res.data.client || {};
-
-                // Saldo recalculado del ledger (fallback).
-                const realBalance = ledger.reduce((acc: number, tx: any) => {
-                    const status = (tx.status || 'COMPLETED').toUpperCase();
-                    if (status !== 'COMPLETED' && status !== 'APPROVED') return acc;
-                    if (tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER') {
-                        return acc + (tx.amount || 0);
-                    } else {
-                        return acc - (tx.amount || 0);
-                    }
-                }, 0);
-
-                // Fuente de verdad = balance del backend (consistente en admin y cliente).
-                // Busca el campo en varias formas posibles; si no viene, usa el recalculado.
-                const candidates = [
-                    clientData.balance, clientData.currentDebt, clientData.current_debt,
-                    res.data.balance, res.data.currentDebt, res.data.current_debt,
-                ];
-                const backendBalance = candidates.find((v) => typeof v === 'number');
-                // Si el recálculo da un número (cliente), se respeta; si da 0 (admin con
-                // ledger incompleto), se usa el balance del backend.
-                const finalBalance = realBalance !== 0
-                    ? realBalance
-                    : (typeof backendBalance === 'number' ? backendBalance : 0);
-
-                setCurrentDebt(finalBalance);
+                setCurrentDebt(resolveBalance(res.data, ledger));
                 setClientName(clientData.name || '');
                 setTransactions(ledger);
             })

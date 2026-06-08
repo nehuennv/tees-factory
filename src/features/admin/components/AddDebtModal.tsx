@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { HoldToConfirmButton } from '@/components/shared/HoldToConfirmButton';
 import { formatPrice } from '@/lib/formatters';
 import apiClient from '@/lib/apiClient';
-import { ArrowRight, Mail, AlertTriangle, CheckCircle2, MailCheck } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownLeft, Mail, AlertTriangle, CheckCircle2, MailCheck } from 'lucide-react';
 
 export type DebtAdjustMode = 'debt' | 'credit';
 
@@ -155,41 +155,49 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
             }
         >
             {result ? (
-                <div className="flex flex-col items-center text-center gap-4 py-4">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${mode === 'debt' ? 'bg-rose-50' : 'bg-emerald-50'} animate-in zoom-in-50 duration-300`}>
-                        <CheckCircle2 className={`w-9 h-9 ${mode === 'debt' ? 'text-rose-500' : 'text-emerald-500'}`} />
+                <div className="flex flex-col items-center text-center gap-5 pt-2 pb-1">
+                    {/* Check on-brand */}
+                    <div className="relative">
+                        <div className="w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center shadow-sm animate-in zoom-in-50 duration-300">
+                            <CheckCircle2 className="w-8 h-8 text-white" />
+                        </div>
+                        <span className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white ${mode === 'debt' ? 'bg-rose-500' : 'bg-emerald-500'}`}>
+                            {mode === 'debt'
+                                ? <ArrowUpRight className="w-3.5 h-3.5 text-white" />
+                                : <ArrowDownLeft className="w-3.5 h-3.5 text-white" />}
+                        </span>
                     </div>
+
                     <div className="flex flex-col gap-1">
-                        <h3 className="text-lg font-black text-zinc-900">
-                            {mode === 'debt' ? '¡Deuda aumentada!' : '¡Deuda reducida!'}
+                        <h3 className="text-lg font-bold text-zinc-900">
+                            {mode === 'debt' ? 'Deuda aumentada' : 'Deuda reducida'}
                         </h3>
                         <p className="text-sm text-zinc-500">
-                            {clientName ? `Cuenta de ${clientName}` : 'Cuenta del cliente'} actualizada.
+                            Cuenta {clientName ? `de ${clientName} ` : ''}actualizada correctamente.
                         </p>
                     </div>
-                    {/* Previo → nuevo */}
-                    <div className="w-full flex items-center justify-between rounded-xl bg-zinc-900 px-5 py-4 text-white">
+
+                    {/* Antes → nuevo (mismo estilo que el preview del form) */}
+                    <div className="w-full flex items-center justify-between rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-4">
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Antes</span>
-                            <span className="text-base font-bold">{formatPrice(Math.abs(result.previousDebt))}</span>
+                            <span className="text-base font-bold text-zinc-500">{formatPrice(Math.abs(result.previousDebt))}</span>
                         </div>
-                        <ArrowRight className="w-5 h-5 text-zinc-500" />
+                        <ArrowRight className="w-5 h-5 text-zinc-300" />
                         <div className="flex flex-col items-end">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                                 {result.newDebt < 0 ? 'Saldo a favor' : 'Deuda actual'}
                             </span>
-                            <span className={`text-2xl font-black ${result.newDebt < 0 ? 'text-emerald-400' : (mode === 'debt' ? 'text-rose-400' : 'text-emerald-400')}`}>
+                            <span className={`text-2xl font-black ${result.newDebt < 0 ? 'text-emerald-600' : (mode === 'debt' ? 'text-rose-600' : 'text-emerald-600')}`}>
                                 {formatPrice(Math.abs(result.newDebt))}
                             </span>
                         </div>
                     </div>
-                    {result.notified ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1">
-                            <MailCheck className="w-3.5 h-3.5" /> Cliente notificado por mail
-                        </span>
-                    ) : (
-                        <span className="text-xs text-zinc-400">No se envió notificación por mail.</span>
-                    )}
+
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1 ${result.notified ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-zinc-400 bg-zinc-50 border border-zinc-100'}`}>
+                        <MailCheck className="w-3.5 h-3.5" />
+                        {result.notified ? 'Cliente notificado por mail' : 'Sin notificación por mail'}
+                    </span>
                 </div>
             ) : (
             <div className="flex flex-col gap-5">
