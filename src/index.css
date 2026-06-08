@@ -135,3 +135,8 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+/* ── Brillo del botón mantener-para-confirmar ── */
+@keyframes htc-shine {
+  0%   { transform: translateX(-150%) skewX(-12deg); }
+  100% { transform: translateX(520%) skewX(-12deg); }
+}

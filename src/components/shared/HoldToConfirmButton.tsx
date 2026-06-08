@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface HoldToConfirmButtonProps {
@@ -18,14 +18,13 @@ interface HoldToConfirmButtonProps {
 
 /**
  * Botón "mantener para confirmar": evita confirmaciones accidentales y dobles
- * envíos en acciones sensibles (ej. cargar deuda). El usuario debe sostener la
- * pulsación holdDuration ms; al soltar antes se cancela. Accesible por teclado
- * (Enter/Espacio confirman directamente, ya que tabular hasta él es intencional).
+ * envíos. Hay que sostener holdDuration ms; al soltar antes se cancela.
+ * Accesible por teclado (Enter/Espacio confirman).
  */
 export function HoldToConfirmButton({
     onConfirm,
     label,
-    holdingLabel = 'Mantené para confirmar…',
+    holdingLabel = 'Seguí sosteniendo…',
     loadingLabel = 'Procesando…',
     holdDuration = 1500,
     disabled = false,
@@ -34,6 +33,7 @@ export function HoldToConfirmButton({
 }: HoldToConfirmButtonProps) {
     const [progress, setProgress] = useState(0);
     const [holding, setHolding] = useState(false);
+    const [done, setDone] = useState(false);
     const rafRef = useRef<number | null>(null);
     const startRef = useRef<number>(0);
     const firedRef = useRef(false);
@@ -42,7 +42,7 @@ export function HoldToConfirmButton({
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
         setHolding(false);
-        setProgress(0);
+        if (!firedRef.current) setProgress(0);
     }, []);
 
     const tick = useCallback(() => {
@@ -52,13 +52,15 @@ export function HoldToConfirmButton({
         if (p >= 1) {
             if (!firedRef.current) {
                 firedRef.current = true;
-                stop();
-                onConfirm();
+                setHolding(false);
+                setDone(true);
+                // pequeño pop antes de disparar
+                setTimeout(() => onConfirm(), 180);
             }
             return;
         }
         rafRef.current = requestAnimationFrame(tick);
-    }, [holdDuration, onConfirm, stop]);
+    }, [holdDuration, onConfirm]);
 
     const start = useCallback(() => {
         if (disabled || isLoading || firedRef.current) return;
@@ -67,9 +69,9 @@ export function HoldToConfirmButton({
         rafRef.current = requestAnimationFrame(tick);
     }, [disabled, isLoading, tick]);
 
-    // reset fired flag cuando deja de cargar (permite reusar)
     useEffect(() => {
-        if (!isLoading) firedRef.current = false;
+        if (!isLoading) { firedRef.current = false; setDone(false); if (!holding) setProgress(0); }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isLoading]);
 
     useEffect(() => () => { if (rafRef.current != null) cancelAnimationFrame(rafRef.current); }, []);
@@ -82,6 +84,8 @@ export function HoldToConfirmButton({
         }
     };
 
+    const pct = Math.round(progress * 100);
+
     return (
         <button
             type="button"
@@ -92,28 +96,55 @@ export function HoldToConfirmButton({
             onPointerCancel={stop}
             onKeyDown={onKeyDown}
             aria-label={label}
+            style={{ transform: done ? 'scale(1.03)' : holding ? 'scale(0.97)' : 'scale(1)' }}
             className={cn(
                 'relative overflow-hidden select-none touch-none rounded-xl h-11 px-5 font-bold text-white',
-                'bg-zinc-900 hover:bg-zinc-800 transition-colors shadow-sm',
+                'bg-zinc-900 hover:bg-zinc-800 shadow-sm',
+                'transition-[transform,background-color] duration-150 ease-out',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
                 className
             )}
         >
-            {/* Relleno de progreso */}
+            {/* Relleno de progreso con gradiente + borde brillante (rAF, sin transition para que sea fluido) */}
             <span
-                className="absolute inset-y-0 left-0 bg-rose-600/80 pointer-events-none transition-[width] duration-75"
+                className="absolute inset-y-0 left-0 pointer-events-none bg-gradient-to-r from-rose-500 to-rose-600"
+                style={{
+                    width: `${progress * 100}%`,
+                    boxShadow: progress > 0 && progress < 1 ? '6px 0 18px 0 rgba(255,255,255,0.55)' : 'none',
+                    borderRight: progress > 0 && progress < 1 ? '2px solid rgba(255,255,255,0.9)' : 'none',
+                }}
+                aria-hidden="true"
+            />
+            {/* Brillo sutil que recorre mientras se sostiene */}
+            {holding && (
+                <span className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+                    <span className="absolute inset-y-0 left-0 w-1/4 -skew-x-12 bg-white/25" style={{ animation: 'htc-shine 1.1s linear infinite' }} />
+                </span>
+            )}
+            {/* Línea de progreso brillante al pie */}
+            <span
+                className="absolute bottom-0 left-0 h-[3px] bg-white/90 pointer-events-none"
                 style={{ width: `${progress * 100}%` }}
                 aria-hidden="true"
             />
+
             <span className="relative flex items-center justify-center gap-2">
                 {isLoading ? (
                     <>
                         <Loader2 className="w-4 h-4 animate-spin" />
                         {loadingLabel}
                     </>
+                ) : done ? (
+                    <>
+                        <Check className="w-4 h-4" />
+                        ¡Listo!
+                    </>
                 ) : holding ? (
-                    holdingLabel
+                    <>
+                        {holdingLabel}
+                        <span className="tabular-nums opacity-80">{pct}%</span>
+                    </>
                 ) : (
                     label
                 )}
