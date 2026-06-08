@@ -35,6 +35,7 @@ export function CurrentAccountPage() {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [adjustMode, setAdjustMode] = useState<DebtAdjustMode | null>(null);
+    const [movFilter, setMovFilter] = useState<'all' | 'cargos' | 'pagos'>('all');
 
     const fetchLedger = useCallback(() => {
         if (!activeClientId) {
@@ -115,9 +116,14 @@ export function CurrentAccountPage() {
     const totalCargos = countedTx.filter((t: any) => isIncrease(t)).reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0);
     const totalPagos = countedTx.filter((t: any) => !isIncrease(t)).reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0);
 
+    // Filtro de movimientos (front): todos / cargos / pagos
+    const visibleTx = transactions.filter((tx: any) =>
+        movFilter === 'all' ? true : movFilter === 'cargos' ? isIncrease(tx) : !isIncrease(tx)
+    );
+
     // Agrupa movimientos por mes (ya vienen ordenados del más reciente)
     const groups: { key: string; label: string; items: any[] }[] = [];
-    for (const tx of transactions) {
+    for (const tx of visibleTx) {
         const d = new Date(tx.createdAt || tx.date);
         const key = `${d.getFullYear()}-${d.getMonth()}`;
         const label = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(d);
@@ -132,6 +138,14 @@ export function CurrentAccountPage() {
         <div className="h-full w-full overflow-y-auto bg-zinc-50 p-4 lg:p-6 animate-in fade-in duration-500">
             <div className="w-full max-w-[1400px] mx-auto flex flex-col gap-5">
 
+                {/* ── Título: nombre del cliente (vista admin) ── */}
+                {isAdministrativeView && clientName && (
+                    <div className="flex flex-col gap-0.5 px-1">
+                        <span className="text-[11px] font-bold tracking-widest text-zinc-400 uppercase">Cuenta corriente</span>
+                        <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-zinc-900">{clientName}</h1>
+                    </div>
+                )}
+
                 {/* ── SALDO (protagonista, ancho completo) ── */}
                 <div className={`rounded-2xl border border-zinc-200 border-l-[8px] ${cardBorderColor} ${cardBgGradient} p-6 lg:p-7 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4`}>
                     <div className="flex items-center gap-5">
@@ -140,7 +154,7 @@ export function CurrentAccountPage() {
                         </div>
                         <div className="flex flex-col gap-1">
                             <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">
-                                {isAdministrativeView ? `Cuenta de ${clientName}` : balanceLabel}
+                                {balanceLabel}
                             </span>
                             <span className={`text-5xl lg:text-6xl font-black tracking-tight ${balanceColor}`}>
                                 {formatPrice(Math.abs(currentDebt))}
@@ -156,12 +170,29 @@ export function CurrentAccountPage() {
 
                 {/* ── IZQUIERDA: Timeline de movimientos ── */}
                 <div className="order-2 lg:order-1 bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="flex items-center gap-2 px-5 py-4 border-b border-zinc-100">
-                        <h2 className="text-base font-bold text-zinc-900">Movimientos</h2>
+                    <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-zinc-100 flex-wrap">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-base font-bold text-zinc-900">Movimientos</h2>
+                            {!isLoading && transactions.length > 0 && (
+                                <span className="text-[11px] font-bold text-zinc-500 bg-zinc-100 rounded-full px-2 py-0.5 leading-none">
+                                    {transactions.length}
+                                </span>
+                            )}
+                        </div>
                         {!isLoading && transactions.length > 0 && (
-                            <span className="text-[11px] font-bold text-zinc-500 bg-zinc-100 rounded-full px-2 py-0.5 leading-none">
-                                {transactions.length}
-                            </span>
+                            <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-0.5">
+                                {([['all', 'Todos'], ['cargos', 'Cargos'], ['pagos', 'Pagos']] as const).map(([key, lbl]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setMovFilter(key)}
+                                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                                            movFilter === key ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
+                                        }`}
+                                    >
+                                        {lbl}
+                                    </button>
+                                ))}
+                            </div>
                         )}
                     </div>
 
@@ -185,6 +216,11 @@ export function CurrentAccountPage() {
                             </div>
                             <p className="text-sm font-semibold text-zinc-500">Sin movimientos</p>
                             <p className="text-xs text-zinc-400">Todavía no hay actividad en esta cuenta.</p>
+                        </div>
+                    ) : visibleTx.length === 0 ? (
+                        <div className="py-16 flex flex-col items-center justify-center gap-2 text-center">
+                            <p className="text-sm font-semibold text-zinc-500">Sin {movFilter === 'cargos' ? 'cargos' : 'pagos'}</p>
+                            <p className="text-xs text-zinc-400">No hay movimientos de este tipo.</p>
                         </div>
                     ) : (
                         <div className="p-2 sm:p-3">
