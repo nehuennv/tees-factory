@@ -13,6 +13,7 @@ const ROUTE_IMPORTS: Record<string, () => Promise<unknown>> = {
     '/admin/tesoreria': () => import('@/features/admin/pages/TreasuryPage'),
     '/admin/clientes': () => import('@/pages/ClientsPage'),
     '/admin/inventario': () => import('@/features/admin/pages/CatalogManagementPage'),
+    '/admin/servicios': () => import('@/features/admin/pages/ServicesPage'),
     '/portal': () => import('@/features/client/pages/CurrentAccountPage'),
     '/portal/catalogo': () => import('@/features/catalog/pages/CatalogPage'),
     '/portal/pedidos': () => import('@/features/client/pages/ClientOrdersPage'),

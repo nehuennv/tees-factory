@@ -24,6 +24,7 @@ const CatalogManagementPage = lazy(() => import("@/features/admin/pages/CatalogM
 const OrdersBoardPage = lazy(() => import("@/features/admin/pages/OrdersBoardPage").then(m => ({ default: m.OrdersBoardPage })))
 const TreasuryPage = lazy(() => import("@/features/admin/pages/TreasuryPage").then(m => ({ default: m.TreasuryPage })))
 const AdminDashboardPage = lazy(() => import("@/features/admin/pages/AdminDashboardPage").then(m => ({ default: m.AdminDashboardPage })))
+const ServicesPage = lazy(() => import("@/features/admin/pages/ServicesPage").then(m => ({ default: m.ServicesPage })))
 
 function PageLoader() {
   return (
@@ -126,6 +127,16 @@ function App() {
               tooltipInfo: 'Administra el catálogo, activa productos y ajusta el stock de matriz.'
             }}>
               <CatalogManagementPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/servicios" element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <MainLayout headerProps={{
+              title: 'Servicios',
+              tooltipInfo: 'Gestioná los servicios extra (planchado, estampado, etc.) y sus precios.'
+            }}>
+              <ServicesPage />
             </MainLayout>
           </ProtectedRoute>
         } />

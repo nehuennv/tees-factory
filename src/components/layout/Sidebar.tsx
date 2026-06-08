@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
     LayoutGrid, Database, Users, LogOut, Wallet, Receipt,
-    ClipboardCheck, ShoppingBag, ClipboardList, ChevronRight,
+    ClipboardCheck, ShoppingBag, ClipboardList, ChevronRight, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { prefetchRoute } from '@/lib/routePrefetch';
@@ -28,6 +28,7 @@ const NAV_ITEMS: NavItemConfig[] = [
     { to: '/admin/tesoreria',  icon: Wallet,        label: 'Tesorería',       allowedRoles: ['ADMIN'] },
     { to: '/admin/clientes',   icon: Users,         label: 'Clientes',        allowedRoles: ['ADMIN'] },
     { to: '/admin/inventario', icon: Database,      label: 'Inventario',      aliases: ['/admin/inventario'], allowedRoles: ['ADMIN'] },
+    { to: '/admin/servicios',  icon: Sparkles,      label: 'Servicios',       allowedRoles: ['ADMIN'] },
     { to: '/portal',           icon: LayoutGrid,    label: 'Resumen / Deuda', allowedRoles: ['CLIENT'] },
     { to: '/portal/catalogo',  icon: ShoppingBag,   label: 'Catálogo',        allowedRoles: ['CLIENT'] },
     { to: '/portal/pedidos',   icon: ClipboardList, label: 'Mis Pedidos',     allowedRoles: ['CLIENT'] },
