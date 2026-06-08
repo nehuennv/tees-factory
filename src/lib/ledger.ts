@@ -6,14 +6,26 @@
 
 type AnyTx = { type?: string; status?: string; amount?: number };
 
-/** Recalcula el saldo sumando movimientos COMPLETED/APPROVED del ledger. */
+/**
+ * ¿El movimiento impacta el saldo? Cuentan todos salvo los anulados/pendientes
+ * (rechazado, cancelado, pendiente, revertido). Así incluye COMPLETED, APPROVED
+ * y cualquier estado "firme" del backend (ej. los ajustes manuales).
+ */
+export function countsToBalance(status?: string): boolean {
+    const s = (status || 'COMPLETED').toUpperCase();
+    return s !== 'REJECTED' && s !== 'CANCELLED' && s !== 'PENDING'
+        && s !== 'PENDING_REVIEW' && s !== 'REVERSED' && s !== 'VOID';
+}
+
+export function isIncrease(tx: AnyTx): boolean {
+    return tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER';
+}
+
+/** Recalcula el saldo sumando los movimientos firmes del ledger. */
 export function recalcLedgerBalance(ledger: AnyTx[]): number {
     return (ledger || []).reduce((acc, tx) => {
-        const status = (tx.status || 'COMPLETED').toUpperCase();
-        if (status !== 'COMPLETED' && status !== 'APPROVED') return acc;
-        return (tx.type === 'DEBT_INCREASE' || tx.type === 'ORDER')
-            ? acc + (tx.amount || 0)
-            : acc - (tx.amount || 0);
+        if (!countsToBalance(tx.status)) return acc;
+        return isIncrease(tx) ? acc + (Number(tx.amount) || 0) : acc - (Number(tx.amount) || 0);
     }, 0);
 }
 

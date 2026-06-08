@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AddDebtModal, type DebtAdjustMode } from '@/features/admin/components/AddDebtModal';
-import { resolveBalance, adjustActionLabels } from '@/lib/ledger';
+import { resolveBalance, adjustActionLabels, countsToBalance, isIncrease } from '@/lib/ledger';
 
 export function CurrentAccountPage() {
     const { clientId } = useParams();
@@ -111,12 +111,9 @@ export function CurrentAccountPage() {
         return { Icon: ShoppingBag, color: '#42318B', bg: 'bg-[#42318B]/10', ring: 'border-[#42318B]/20' };
     };
 
-    const completedTx = transactions.filter((tx: any) => {
-        const s = (tx.status || 'COMPLETED').toUpperCase();
-        return s === 'COMPLETED' || s === 'APPROVED';
-    });
-    const totalCargos = completedTx.filter((t: any) => t.type === 'DEBT_INCREASE' || t.type === 'ORDER').reduce((a: number, t: any) => a + (t.amount || 0), 0);
-    const totalPagos = completedTx.filter((t: any) => !(t.type === 'DEBT_INCREASE' || t.type === 'ORDER')).reduce((a: number, t: any) => a + (t.amount || 0), 0);
+    const countedTx = transactions.filter((tx: any) => countsToBalance(tx.status));
+    const totalCargos = countedTx.filter((t: any) => isIncrease(t)).reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0);
+    const totalPagos = countedTx.filter((t: any) => !isIncrease(t)).reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0);
 
     // Agrupa movimientos por mes (ya vienen ordenados del más reciente)
     const groups: { key: string; label: string; items: any[] }[] = [];
