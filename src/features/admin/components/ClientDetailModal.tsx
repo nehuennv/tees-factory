@@ -9,7 +9,7 @@ import apiClient from '@/lib/apiClient';
 import { toast } from 'sonner';
 import type { Client } from '@/types/client';
 import { AddDebtModal, type DebtAdjustMode } from './AddDebtModal';
-import { resolveBalance } from '@/lib/ledger';
+import { resolveBalance, adjustActionLabels } from '@/lib/ledger';
 
 interface ClientDetailModalProps {
     isOpen: boolean;
@@ -156,10 +156,10 @@ export function ClientDetailModal({ isOpen, onClose, client, onEdit, onDelete }:
                 {isAdmin && (
                     <div className="grid grid-cols-2 gap-2 mb-4">
                         <Button onClick={() => setAdjustMode('debt')} className="rounded-xl bg-rose-600 text-white hover:bg-rose-700 h-10 text-sm font-semibold gap-2">
-                            <ArrowUpRight className="w-4 h-4" /> Aumentar deuda
+                            <ArrowUpRight className="w-4 h-4" /> {adjustActionLabels(balance).debt}
                         </Button>
                         <Button onClick={() => setAdjustMode('credit')} className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 h-10 text-sm font-semibold gap-2">
-                            <ArrowDownLeft className="w-4 h-4" /> Reducir deuda
+                            <ArrowDownLeft className="w-4 h-4" /> {adjustActionLabels(balance).credit}
                         </Button>
                     </div>
                 )}

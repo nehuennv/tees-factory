@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { HoldToConfirmButton } from '@/components/shared/HoldToConfirmButton';
 import { formatPrice } from '@/lib/formatters';
 import apiClient from '@/lib/apiClient';
+import { adjustActionLabels } from '@/lib/ledger';
 import { ArrowRight, ArrowUpRight, ArrowDownLeft, Mail, AlertTriangle, CheckCircle2, MailCheck } from 'lucide-react';
 
 export type DebtAdjustMode = 'debt' | 'credit';
@@ -63,6 +64,8 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
     const [idempotencyKey, setIdempotencyKey] = useState('');
 
     const cfg = COPY[mode];
+    // Etiqueta del botón/título según el estado actual de la cuenta.
+    const actionWord = adjustActionLabels(currentDebt)[mode];
 
     useEffect(() => {
         if (isOpen) {
@@ -118,7 +121,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
         <Modal
             isOpen={isOpen}
             onClose={() => { if (!isSubmitting) onClose(); }}
-            title={result ? undefined : cfg.title}
+            title={result ? undefined : actionWord}
             description={result ? undefined : (clientName ? `Cuenta de ${clientName}` : undefined)}
             maxWidth="md"
             hideCloseButton={!!result}
@@ -145,7 +148,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
                             onConfirm={handleConfirm}
                             disabled={!canSubmit}
                             isLoading={isSubmitting}
-                            label={cfg.actionLabel(amountValid ? formatPrice(parsedAmount) : '')}
+                            label={amountValid ? `${actionWord} · ${formatPrice(parsedAmount)}` : actionWord}
                             holdingLabel="Sostené para confirmar…"
                             loadingLabel="Procesando…"
                             className={cfg.confirmClass}
@@ -170,7 +173,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
 
                     <div className="flex flex-col gap-1">
                         <h3 className="text-lg font-bold text-zinc-900">
-                            {mode === 'debt' ? 'Deuda aumentada' : 'Deuda reducida'}
+                            {mode === 'debt' ? 'Cargo aplicado' : 'Pago registrado'}
                         </h3>
                         <p className="text-sm text-zinc-500">
                             Cuenta {clientName ? `de ${clientName} ` : ''}actualizada correctamente.
@@ -204,7 +207,7 @@ export function AddDebtModal({ isOpen, onClose, clientId, clientName, currentDeb
                 {/* Monto */}
                 <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                        {mode === 'debt' ? 'Monto a sumar a la deuda *' : 'Monto a descontar de la deuda *'}
+                        {mode === 'debt' ? 'Monto del cargo *' : 'Monto a acreditar *'}
                     </label>
                     <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">$</span>

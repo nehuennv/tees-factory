@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AddDebtModal, type DebtAdjustMode } from '@/features/admin/components/AddDebtModal';
-import { resolveBalance } from '@/lib/ledger';
+import { resolveBalance, adjustActionLabels } from '@/lib/ledger';
 
 export function CurrentAccountPage() {
     const { clientId } = useParams();
@@ -254,13 +254,13 @@ export function CurrentAccountPage() {
                         <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm flex flex-col gap-3">
                             <div className="flex flex-col gap-0.5">
                                 <h4 className="text-sm font-bold text-zinc-900">Ajuste de cuenta</h4>
-                                <p className="text-xs text-zinc-500 leading-tight">Aumentar = debe más · Reducir = debe menos.</p>
+                                <p className="text-xs text-zinc-500 leading-tight">Un cargo: el cliente debe más · un pago/crédito: debe menos.</p>
                             </div>
                             <Button onClick={() => setAdjustMode('debt')} className="w-full rounded-xl bg-rose-600 text-white hover:bg-rose-700 h-10 font-bold gap-2">
-                                <ArrowUpRight className="w-4 h-4" /> Aumentar deuda
+                                <ArrowUpRight className="w-4 h-4" /> {adjustActionLabels(currentDebt).debt}
                             </Button>
                             <Button onClick={() => setAdjustMode('credit')} className="w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 h-10 font-bold gap-2">
-                                <ArrowDownLeft className="w-4 h-4" /> Reducir deuda
+                                <ArrowDownLeft className="w-4 h-4" /> {adjustActionLabels(currentDebt).credit}
                             </Button>
                         </div>
                     )}

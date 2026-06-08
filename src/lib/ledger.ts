@@ -38,3 +38,16 @@ export function resolveBalance(res: any, ledger: AnyTx[], fallback?: number): nu
     if (real !== 0) return real;
     return typeof backend === 'number' ? backend : 0;
 }
+
+/**
+ * Etiquetas de los botones de ajuste según el estado de la cuenta.
+ * - Con deuda (balance > 0): "Aumentar deuda" / "Reducir deuda".
+ * - Al día o saldo a favor (balance <= 0): "Cargar deuda" / "Acreditar a favor".
+ */
+export function adjustActionLabels(balance: number): { debt: string; credit: string } {
+    const hasDebt = balance > 0;
+    return {
+        debt: hasDebt ? 'Aumentar deuda' : 'Cargar deuda',
+        credit: hasDebt ? 'Reducir deuda' : 'Acreditar a favor',
+    };
+}
